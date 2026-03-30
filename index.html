@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>月相牌卡 - 月相陣地戰</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* 確保全螢幕降級方案時的滾動條與預設樣式正常 */
+    body {
+      overflow-x: hidden;
+      background-color: #020617; /* slate-950 */
+    }
+    .pseudo-fullscreen {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background-color: #020617;
+      overflow-y: auto;
+      width: 100vw;
+      height: 100vh;
+    }
+  </style>
+</head>
+<body class="text-slate-100 font-sans selection:bg-indigo-500/30">
+  <div id="app" class="min-h-screen relative transition-all duration-300 flex flex-col items-center">
+    <!-- 內容將由 JavaScript 渲染 -->
+  </div>
+
+  <!-- Firebase SDKs -->
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js';
+    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js';
+    import { getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
+
+    // ==========================================
+    // 🌟 GitHub Pages 部署提示 🌟
+    // 若要在 GitHub Pages 啟用「連線對戰」功能，
+    // 請將下方的 firebaseConfig 換成你自己的 Firebase 專案設定！
+    // ==========================================
+    let firebaseConfig = {};
+    let appId = 'moonphase-app'; // 自訂的 App ID，用於區隔資料庫路徑
+
+    // 支援 Canvas 環境的注入變數 (如果在本地或 GitHub 則使用上方預設或你填入的值)
+    if (typeof __firebase_config !== 'undefined') {
+      firebaseConfig = JSON.parse(__firebase_config);
+    }
+    if (typeof __app_id !== 'undefined') {
+      appId = __app_id;
+    }
+
+    // 初始化 Firebase
+    let app, auth, db;
+    try {
+      if (Object.keys(firebaseConfig).length > 0) {
+        app = initializeApp(firebaseConfig);
+        auth = getAuth(app);
+        db = getFirestore(app);
+      }
+    } catch (e) {
+      console.warn("Firebase 未初始化。線上功能將無法使用。", e);
+    }
+
+    // --- 遊戲常數與狀態 ---
+    const PHASES = [
+      { id: 0, name: '新月' }, { id: 1, name: '眉月' }, { id: 2, name: '上弦月' }, { id: 3, name: '盈凸月' },
+      { id: 4, name: '滿月' }, { id: 5, name: '虧凸月' }, { id: 6, name: '下弦月' }, { id: 7, name: '殘月' },
+    ];
+
+    let user = null;
+    let roomId = '';
+    let errorMsg = '';
+    let myPlayerId = 1;
+    let isPseudoFs = false;
+    let nativeFs = false;
+    let lastProcessedMoveTs = 0;
+    let roomUnsubscribe = null;
+
+    let gameState = {
+      mode: 'menu', 
+      board: Array(9).fill(null),
+      p1Deck: [], p2Deck: [], p1Hand: [], p2Hand: [],
+      turn: 1, comboScores: { 1: 0, 2: 0 },
+      matchingCells: [], isAnimating: false, gameOver: false,
+      tallyState: 'none', selectedCardIdx: null, lastPlayInfo: null, round: 1
+    };
+
+    // --- 核心邏輯函式 ---
+    const isMatch = (phase1, phase2) => (phase1 + 4) % 8 === phase2;
+    const isIdentical = (phase1, phase2) => phase1 === phase2;
+
+    const getNeighbors = (idx) => {
+      const neighbors = [];
+      if (idx % 3 !== 0) neighbors.push(idx - 1); // 左
+      if (idx % 3 !== 2) neighbors.push(idx + 1); // 右
+      if (idx >= 3) neighbors.push(idx - 3); // 上
+      if (idx <= 5) neighbors.push(idx + 3); // 下
+      return neighbors;
+    };
+
+    const getPath = (boardArray, currIdx, step) => {
+      let capturedNodes = new Set([currIdx]);
+      let currentLayer = [currIdx];
+      let depth = 0; 
+      while (currentLayer.length > 0) {
+        let nextLayer = [];
+        let expectedPhase = (boardArray[currentLayer[0]].phase + step + 8) % 8;
+        currentLayer.forEach(node => {
+          getNeighbors(node).forEach(n => {
+            if (boardArray[n] && boardArray[n].phase === expectedPhase && !capturedNodes.has(n)) {
+              nextLayer.push(n);
+              capturedNodes.add(n);
+            }
+          });
+        });
+        if (nextLayer.length > 0) {
+          depth++;
+          currentLayer = nextLayer;
+        } else break; 
+      }
+      return { nodes: Array.from(capturedNodes), depth };
+    };
+
+    const findSequence = (boardArray, startIdx) => {
+      const pathUp = getPath(boardArray, startIdx, 1);
+      const pathDown = getPath(boardArray, startIdx, -1);
+      const sequenceLength = pathUp.depth + pathDown.depth + 1;
+      if (sequenceLength >= 3) {
+        return Array.from(new Set([...pathUp.nodes, ...pathDown.nodes]));
+      }
+      return [];
+    };
+
+    const drawCard = (deck, hand) => {
+      if (deck.length === 0) return { newDeck: deck, newHand: hand };
+      return { newDeck: deck.slice(1), newHand: [...hand, deck[0]] };
+    };
+
+    // --- SVG 資源 ---
+    const getMoonSvg = (phase, className = "") => {
+      let inner = '';
+      if (phase === 1) inner = '<path d="M 50,2 A 48,48 0 0,1 50,98 A 24,48 0 0,0 50,2 Z" fill="#fef08a" />';
+      if (phase === 2) inner = '<path d="M 50,2 A 48,48 0 0,1 50,98 L 50,2 Z" fill="#fef08a" />';
+      if (phase === 3) inner = '<path d="M 50,2 A 48,48 0 0,1 50,98 A 24,48 0 0,1 50,2 Z" fill="#fef08a" />';
+      if (phase === 4) inner = '<circle cx="50" cy="50" r="48" fill="#fef08a" />';
+      if (phase === 5) inner = '<path d="M 50,2 A 48,48 0 0,0 50,98 A 24,48 0 0,0 50,2 Z" fill="#fef08a" />';
+      if (phase === 6) inner = '<path d="M 50,2 A 48,48 0 0,0 50,98 L 50,2 Z" fill="#fef08a" />';
+      if (phase === 7) inner = '<path d="M 50,2 A 48,48 0 0,0 50,98 A 24,48 0 0,1 50,2 Z" fill="#fef08a" />';
+      const dot = phase !== 0 ? `<circle cx="${phase > 0 && phase < 4 ? 70 : phase > 4 ? 30 : 50}" cy="40" r="3" fill="#ca8a04" opacity="0.3" />` : '';
+      return `<svg viewBox="0 0 100 100" class="${className}" style="filter: drop-shadow(0px 0px 6px rgba(254, 240, 138, 0.5))">
+        <circle cx="50" cy="50" r="48" fill="#1e1b4b" stroke="#312e81" stroke-width="2" />
+        ${inner}${dot}
+      </svg>`;
+    };
+
+    const getIcon = (name, className = "w-6 h-6") => {
+      const base = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="${className}">`;
+      const paths = {
+        'User': '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+        'Users': '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+        'RotateCcw': '<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>',
+        'Home': '<path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>',
+        'Trophy': '<path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7c0 6 6 10 6 10s6-4 6-10Z"/>',
+        'Globe': '<circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>',
+        'Maximize': '<path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>',
+        'Minimize': '<path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/>'
+      };
+      return base + paths[name] + '</svg>';
+    };
+
+    const StarryBackground = `<div class="fixed inset-0 z-0 overflow-hidden pointer-events-none bg-gradient-to-b from-slate-950 via-indigo-950 to-slate-900"><div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MDAiIGhlaWdodD0iNDAwIj48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSIxIiBmaWxsPSIjZmZmIiBvcGFjaXR5PSIwLjMiLz48Y2lyY2xlIGN4PSIyNTAiIGN5PSIxNTAiIHI9IjEuNSIgZmlsbD0iI2ZmZiIgb3BhY2l0eT0iMC41Ii8+PGNpcmNsZSBjeD0iMzUwIiBjeT0iMzIwIiByPSIxIiBmaWxsPSIjZmZmIiBvcGFjaXR5PSIwLjIiLz48L3N2Zz4=')] bg-repeat opacity-50 animate-pulse"></div></div>`;
+
+    // --- 遊戲邏輯與操作 ---
+    const render = () => {
+      const appDiv = document.getElementById('app');
+      
+      // 更新全螢幕 class
+      if (isPseudoFs) {
+        appDiv.classList.add('pseudo-fullscreen');
+        appDiv.classList.remove('min-h-screen', 'relative');
+      } else {
+        appDiv.classList.remove('pseudo-fullscreen');
+        appDiv.classList.add('min-h-screen', 'relative');
+      }
+
+      if (gameState.mode === 'menu') appDiv.innerHTML = renderMenu();
+      else if (gameState.mode === 'lobby') appDiv.innerHTML = renderLobby();
+      else if (gameState.mode === 'waiting') appDiv.innerHTML = renderWaiting();
+      else appDiv.innerHTML = renderGame();
+    };
+
+    const updateState = (newState) => {
+      gameState = { ...gameState, ...newState };
+      render();
+    };
+
+    const handleAITurn = () => {
+      if (gameState.mode === 'single' && gameState.turn === 2 && !gameState.isAnimating && !gameState.gameOver) {
+        setTimeout(() => {
+          // 在超時後重新檢查狀態，確保沒被使用者打斷或遊戲已結束
+          if (gameState.turn !== 2 || gameState.isAnimating || gameState.gameOver) return;
+          
+          const emptyCells = gameState.board.map((c, i) => c === null ? i : -1).filter(i => i !== -1);
+          if (gameState.p2Hand.length > 0 && emptyCells.length > 0) {
+            let bestMove = null;
+            let maxPoints = -1;
+            gameState.p2Hand.forEach((phase, cardIdx) => {
+              emptyCells.forEach(boardIdx => {
+                let simBoard = [...gameState.board];
+                simBoard[boardIdx] = { phase: phase, player: 0 };
+                let simCapture = new Set();
+                let comboPts = 0;
+                getNeighbors(boardIdx).forEach(n => {
+                  const neighbor = simBoard[n];
+                  if (neighbor) {
+                    if (isIdentical(phase, neighbor.phase)) { simCapture.add(boardIdx); simCapture.add(n); comboPts += 1; }
+                    else if (isMatch(phase, neighbor.phase)) { simCapture.add(boardIdx); simCapture.add(n); comboPts += 2; }
+                  }
+                });
+                const seqCells = findSequence(simBoard, boardIdx);
+                if (seqCells.length > 0) { seqCells.forEach(n => simCapture.add(n)); comboPts += seqCells.length; }
+                let pts = comboPts;
+                simCapture.forEach(idx => { if (gameState.board[idx] && gameState.board[idx].player === 1) pts += 1.5; });
+                pts += Math.random() * 0.5;
+                if (pts > maxPoints) { maxPoints = pts; bestMove = { cardIdx, boardIdx }; }
+              });
+            });
+            if (bestMove) window.playCard(bestMove.cardIdx, bestMove.boardIdx, false);
+          }
+        }, 1000);
+      }
+    };
+
+    const resolveTurn = (cellsToCapture, comboPoints, updatedHandWithoutCard, currentPlayer) => {
+      let newBoard = [...gameState.board];
+      cellsToCapture.forEach(idx => { if (newBoard[idx]) newBoard[idx].player = currentPlayer; });
+      let newComboScores = { ...gameState.comboScores };
+      newComboScores[currentPlayer] += comboPoints;
+      
+      const isP1 = gameState.turn === 1;
+      const currentDeck = isP1 ? gameState.p1Deck : gameState.p2Deck;
+      const { newDeck, newHand } = drawCard(currentDeck, updatedHandWithoutCard);
+      const nextP1Hand = isP1 ? newHand : gameState.p1Hand;
+      const nextP2Hand = isP1 ? gameState.p2Hand : newHand;
+      
+      const isBoardFull = !newBoard.includes(null);
+      const isOutOFCards = nextP1Hand.length === 0 && nextP2Hand.length === 0;
+      const gameOver = isOutOFCards || isBoardFull;
+      
+      updateState({
+        board: newBoard,
+        p1Deck: isP1 ? newDeck : gameState.p1Deck, 
+        p2Deck: isP1 ? gameState.p2Deck : newDeck,
+        p1Hand: nextP1Hand, p2Hand: nextP2Hand,
+        comboScores: newComboScores, matchingCells: [],
+        isAnimating: false, turn: gameState.turn === 1 ? 2 : 1,
+        gameOver: gameOver, tallyState: gameOver ? 'start' : 'none', lastPlayInfo: null,
+      });
+
+      if (gameOver) {
+        triggerTallyAnimation();
+      } else {
+        handleAITurn();
+      }
+    };
+
+    const triggerTallyAnimation = () => {
+      setTimeout(() => { updateState({ tallyState: 'p1' }); 
+        setTimeout(() => { updateState({ tallyState: 'p2' });
+          setTimeout(() => { updateState({ tallyState: 'done' }); }, 1500);
+        }, 1500);
+      }, 1200);
+    };
+
+    window.playCard = (cardIdx, boardIdx, isRemote = false) => {
+      if (gameState.isAnimating || gameState.gameOver || gameState.board[boardIdx] !== null) return;
+      const isP1 = gameState.turn === 1;
+      const hand = isP1 ? gameState.p1Hand : gameState.p2Hand;
+      if (hand[cardIdx] === undefined) return;
+      
+      const playedPhase = hand[cardIdx];
+      let newHand = [...hand];
+      newHand.splice(cardIdx, 1);
+      
+      let newBoard = [...gameState.board];
+      newBoard[boardIdx] = { phase: playedPhase, player: 0 };
+      
+      if (!isRemote && gameState.mode === 'online' && roomId && db) {
+        const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'moonphase_rooms', roomId);
+        updateDoc(roomRef, { lastMove: { cardIdx, boardIdx, player: gameState.turn, ts: Date.now() } }).catch(err => console.error(err));
+      }
+      
+      let cellsToCapture = new Set();
+      let comboPoints = 0;
+      getNeighbors(boardIdx).forEach(n => {
+        const neighbor = newBoard[n];
+        if (neighbor) {
+          if (isIdentical(playedPhase, neighbor.phase)) { cellsToCapture.add(boardIdx); cellsToCapture.add(n); comboPoints += 1; }
+          else if (isMatch(playedPhase, neighbor.phase)) { cellsToCapture.add(boardIdx); cellsToCapture.add(n); comboPoints += 2; }
+        }
+      });
+      
+      const seqCells = findSequence(newBoard, boardIdx);
+      if (seqCells.length > 0) { seqCells.forEach(n => cellsToCapture.add(n)); comboPoints += seqCells.length; }
+      
+      const captureArray = Array.from(cellsToCapture);
+      
+      if (captureArray.length > 0) {
+        updateState({
+          board: newBoard, p1Hand: isP1 ? newHand : gameState.p1Hand, p2Hand: isP1 ? gameState.p2Hand : newHand,
+          matchingCells: captureArray, isAnimating: true, selectedCardIdx: null, lastPlayInfo: { idx: boardIdx, pts: comboPoints }
+        });
+        setTimeout(() => resolveTurn(captureArray, comboPoints, newHand, gameState.turn), 1200);
+      } else {
+        updateState({
+          board: newBoard, p1Hand: isP1 ? newHand : gameState.p1Hand, p2Hand: isP1 ? gameState.p2Hand : newHand,
+          selectedCardIdx: null, isAnimating: true,
+        });
+        setTimeout(() => resolveTurn([], 0, newHand, gameState.turn), 500);
+      }
+    };
+
+    window.initGame = (mode) => {
+      const generateDeck = () => {
+        let deck = [];
+        for(let i=0; i<3; i++) deck.push(0, 1, 2, 3, 4, 5, 6, 7);
+        return deck.sort(() => Math.random() - 0.5);
+      };
+      let deck1 = generateDeck(), deck2 = generateDeck();
+      updateState({
+        mode, board: Array(9).fill(null),
+        p1Deck: deck1.slice(3), p2Deck: deck2.slice(3),
+        p1Hand: deck1.slice(0, 3), p2Hand: deck2.slice(0, 3),
+        turn: 1, comboScores: { 1: 0, 2: 0 },
+        matchingCells: [], isAnimating: false, gameOver: false,
+        tallyState: 'none', selectedCardIdx: null, lastPlayInfo: null,
+      });
+    };
+
+    window.setMode = (mode) => {
+      updateState({ mode });
+      errorMsg = '';
+    };
+
+    window.toggleFullscreen = () => {
+      const docElem = document.documentElement;
+      const isNowFs = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
+
+      if (!isNowFs && !isPseudoFs) {
+        const requestMethod = docElem.requestFullscreen || docElem.webkitRequestFullscreen || docElem.mozRequestFullScreen || docElem.msRequestFullscreen;
+        if (requestMethod) {
+          requestMethod.call(docElem).catch(() => { isPseudoFs = true; render(); });
+        } else {
+          isPseudoFs = true;
+          render();
+        }
+      } else {
+        const exitMethod = document.exitFullscreen || document.webkitExitFullscreen || document.mozCancelFullScreen || document.msExitFullscreen;
+        if (isNowFs && exitMethod) {
+          exitMethod.call(document).catch(() => { isPseudoFs = false; render(); });
+        } else {
+          isPseudoFs = false;
+          render();
+        }
+      }
+    };
+
+    // 監聽全螢幕變化
+    const handleFsChange = () => {
+      nativeFs = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
+      if (!nativeFs) isPseudoFs = false;
+      render();
+    };
+    document.addEventListener('fullscreenchange', handleFsChange);
+    document.addEventListener('webkitfullscreenchange', handleFsChange);
+
+    // --- Firebase 連線邏輯 ---
+    const listenToRoom = () => {
+      if (roomUnsubscribe) roomUnsubscribe();
+      if (!roomId || !user || !db) return;
+      const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'moonphase_rooms', roomId);
+      roomUnsubscribe = onSnapshot(roomRef, (snap) => {
+        if (!snap.exists()) return;
+        const data = snap.data();
+        let nextState = { ...gameState };
+        
+        if (data.status === 'playing' && (nextState.mode === 'waiting' || (data.round && data.round !== nextState.round))) {
+          lastProcessedMoveTs = 0; 
+          nextState = {
+            ...nextState, mode: 'online', ...data.initialState,
+            turn: 1, comboScores: { 1: 0, 2: 0 },
+            matchingCells: [], isAnimating: false, gameOver: false, tallyState: 'none', selectedCardIdx: null, lastPlayInfo: null,
+            round: data.round || 1
+          };
+          updateState(nextState);
+        }
+
+        if (data.lastMove && data.lastMove.player !== myPlayerId) {
+          if (data.lastMove.ts > lastProcessedMoveTs) {
+            lastProcessedMoveTs = data.lastMove.ts;
+            window.playCard(data.lastMove.cardIdx, data.lastMove.boardIdx, true);
+          }
+        }
+      }, (err) => console.error("Snapshot error:", err));
+    };
+
+    window.createRoom = async () => {
+      if (!user || !db) { errorMsg = "Firebase 未連接"; render(); return; }
+      const code = Math.random().toString(36).substring(2, 6).toUpperCase();
+      const hostRole = Math.random() < 0.5 ? 1 : 2;
+      const generateDeck = () => {
+        let deck = [];
+        for(let i=0; i<3; i++) deck.push(0, 1, 2, 3, 4, 5, 6, 7);
+        return deck.sort(() => Math.random() - 0.5);
+      };
+      let deck1 = generateDeck(), deck2 = generateDeck();
+      const initialState = {
+        board: Array(9).fill(null),
+        p1Deck: deck1.slice(3), p2Deck: deck2.slice(3),
+        p1Hand: deck1.slice(0, 3), p2Hand: deck2.slice(0, 3),
+      };
+      const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'moonphase_rooms', code);
+      await setDoc(roomRef, {
+        status: 'waiting', hostId: user.uid, guestId: null, initialState, lastMove: null,
+        hostRole, round: 1
+      });
+      roomId = code;
+      myPlayerId = hostRole;
+      updateState({ mode: 'waiting' });
+      listenToRoom();
+    };
+
+    window.joinRoom = async () => {
+      const codeInput = document.getElementById('joinCodeInput');
+      const code = codeInput ? codeInput.value.toUpperCase() : '';
+      if (!user || !code || !db) return;
+      
+      const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'moonphase_rooms', code);
+      const snap = await getDoc(roomRef);
+      if (snap.exists() && snap.data().status === 'waiting') {
+        const data = snap.data();
+        const guestRole = data.hostRole === 1 ? 2 : 1; 
+        await updateDoc(roomRef, { status: 'playing', guestId: user.uid });
+        roomId = code;
+        myPlayerId = guestRole;
+        updateState({
+          mode: 'online', ...data.initialState,
+          turn: 1, comboScores: { 1: 0, 2: 0 },
+          matchingCells: [], isAnimating: false, gameOver: false, tallyState: 'none', selectedCardIdx: null, lastPlayInfo: null, round: data.round || 1
+        });
+        listenToRoom();
+      } else {
+        errorMsg = '找不到房間或遊戲已開始！';
+        render();
+      }
+    };
+
+    window.handlePlayAgain = async () => {
+      if (gameState.mode === 'online' && roomId && db) {
+        const generateDeck = () => {
+          let deck = [];
+          for(let i=0; i<3; i++) deck.push(0, 1, 2, 3, 4, 5, 6, 7);
+          return deck.sort(() => Math.random() - 0.5);
+        };
+        let deck1 = generateDeck(), deck2 = generateDeck();
+        const initialState = {
+          board: Array(9).fill(null),
+          p1Deck: deck1.slice(3), p2Deck: deck2.slice(3),
+          p1Hand: deck1.slice(0, 3), p2Hand: deck2.slice(0, 3),
+        };
+        const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'moonphase_rooms', roomId);
+        await updateDoc(roomRef, {
+          initialState, lastMove: null, status: 'playing', round: Date.now() 
+        });
+      } else {
+        window.initGame(gameState.mode);
+      }
+    };
+
+    window.handleCardClick = (isBoard, boardIdx, player, index) => {
+      const isMyTurn = (gameState.mode === 'online') ? (gameState.turn === myPlayerId && player === myPlayerId) : (player === gameState.turn);
+      if (!isBoard && isMyTurn && !gameState.isAnimating && gameState.tallyState === 'none') {
+        updateState({ selectedCardIdx: gameState.selectedCardIdx === index ? null : index });
+      }
+      if (isBoard && gameState.selectedCardIdx !== null) {
+        const canPlay = gameState.mode === 'single' ? gameState.turn === 1 : (gameState.mode === 'multi' ? true : (gameState.mode === 'online' ? gameState.turn === myPlayerId : false));
+        if (canPlay) window.playCard(gameState.selectedCardIdx, boardIdx, false);
+      }
+    };
+
+    // --- UI 渲染區塊 ---
+    const renderCard = (phase, index, player, isBoard = false, boardIdx = -1) => {
+      if (phase === undefined || phase === null) return '';
+      const isNeutral = !isBoard || player === 0;
+      const isTallyingP1 = gameState.tallyState === 'p1' && isBoard && player === 1;
+      const isTallyingP2 = gameState.tallyState === 'p2' && isBoard && player === 2;
+      const isDimmed = isBoard && (gameState.tallyState === 'p1' || gameState.tallyState === 'p2') && !isTallyingP1 && !isTallyingP2;
+      const isSelected = !isBoard && gameState.selectedCardIdx === index && player === gameState.turn;
+      const isMatching = isBoard && gameState.matchingCells.includes(boardIdx);
+      
+      let isHidden = false;
+      if (!isBoard && index >= 0 && !gameState.gameOver) {
+        if (gameState.mode === 'single') isHidden = player === 2; 
+        else if (gameState.mode === 'multi') isHidden = player !== gameState.turn;
+        else if (gameState.mode === 'online') isHidden = player !== myPlayerId; 
+      }
+
+      let colorClasses = '';
+      if (isNeutral) colorClasses = isBoard ? 'bg-slate-700/60 border-slate-500 ring-1 ring-slate-500' : 'bg-gradient-to-br from-slate-700/80 to-slate-800 border-slate-500 shadow-lg hover:border-slate-400';
+      else if (player === 1) colorClasses = 'bg-indigo-900/90 border-indigo-400 ring-2 ring-indigo-400 shadow-[0_0_15px_rgba(99,102,241,0.5)]';
+      else if (player === 2) colorClasses = 'bg-rose-900/90 border-rose-400 ring-2 ring-rose-400 shadow-[0_0_15px_rgba(244,63,94,0.5)]';
+
+      if (isHidden) colorClasses = 'bg-slate-800 border-slate-600 shadow-inner';
+
+      let animClasses = '';
+      if (isTallyingP1) animClasses = 'scale-110 shadow-[0_0_40px_rgba(129,140,248,1)] z-20 ring-4 ring-indigo-300 transition-all duration-300';
+      else if (isTallyingP2) animClasses = 'scale-110 shadow-[0_0_40px_rgba(251,113,133,1)] z-20 ring-4 ring-rose-300 transition-all duration-300';
+      else if (isDimmed) animClasses = 'opacity-30 grayscale transition-all duration-500';
+
+      const sizeClasses = isBoard ? 'w-20 h-24 sm:w-28 sm:h-32' : 'w-16 h-20 sm:w-24 sm:h-28 cursor-pointer';
+      const selectClasses = isSelected ? 'ring-2 ring-yellow-400 -translate-y-4 shadow-[0_10px_20px_rgba(250,204,21,0.4)]' : '';
+      const matchClasses = isMatching ? 'brightness-125 scale-105 shadow-[0_0_30px_rgba(254,240,138,1)] ring-2 ring-yellow-300 z-10' : '';
+
+      const content = !isHidden ? `
+        ${getMoonSvg(phase, "w-10 h-10 sm:w-16 sm:h-16 mb-1 sm:mb-2")}
+        <span class="text-[10px] sm:text-xs font-medium tracking-wide ${isNeutral ? 'text-slate-300' : player === 1 ? 'text-indigo-200' : 'text-rose-200'}">${PHASES[phase].name}</span>
+      ` : `<div class="w-10 h-10 sm:w-16 sm:h-16 rounded-full bg-slate-700/50 border border-slate-600/50 flex items-center justify-center"><span class="text-slate-400 opacity-50 font-bold">?</span></div>`;
+
+      return `<div onclick="window.handleCardClick(${isBoard}, ${boardIdx}, ${player}, ${index})" class="relative flex flex-col items-center justify-center rounded-2xl transition-all duration-300 ${sizeClasses} ${colorClasses} border ${selectClasses} ${matchClasses} ${animClasses}">${content}</div>`;
+    };
+
+    const renderMenu = () => `
+      ${StarryBackground}
+      <div class="z-10 flex flex-col items-center justify-center flex-1 w-full mt-20">
+        <div class="flex flex-col items-center p-8 bg-slate-900/60 backdrop-blur-xl rounded-3xl border border-indigo-500/30 shadow-2xl relative">
+          <button onclick="window.toggleFullscreen()" class="absolute top-4 right-4 p-2 text-indigo-300 hover:text-white bg-slate-800/50 rounded-full border border-white/10 transition-colors" title="切換全螢幕">
+            ${getIcon((nativeFs || isPseudoFs) ? 'Minimize' : 'Maximize', 'w-5 h-5')}
+          </button>
+          <div class="flex items-center space-x-4 mb-6 mt-4">
+            ${getMoonSvg(2, "w-16 h-16")}
+            ${getMoonSvg(6, "w-16 h-16")}
+          </div>
+          <h1 class="text-4xl md:text-5xl font-extrabold mb-2 tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-yellow-200 to-yellow-500 drop-shadow-lg text-center">月相陣地戰</h1>
+          <p class="mb-8 text-indigo-200 text-lg text-center">配對連鎖，染上你的專屬星際色彩！</p>
+          <div class="flex flex-col space-y-4 w-full md:w-80">
+            <button onclick="window.initGame('single')" class="flex items-center justify-center space-x-3 w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold transition-all shadow-lg">${getIcon('User')}<span>單人遊戲 (對戰電腦)</span></button>
+            <button onclick="window.initGame('multi')" class="flex items-center justify-center space-x-3 w-full py-4 bg-rose-800 hover:bg-rose-700 text-white border border-rose-500/50 rounded-xl font-bold transition-all">${getIcon('Users')}<span>雙人遊戲 (本地同機)</span></button>
+            <button onclick="window.setMode('lobby')" class="flex items-center justify-center space-x-3 w-full py-4 bg-emerald-700 hover:bg-emerald-600 text-white border border-emerald-500/50 rounded-xl font-bold transition-all">${getIcon('Globe')}<span>連線對戰 (線上雙人)</span></button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const renderLobby = () => `
+      ${StarryBackground}
+      <div class="z-10 flex flex-col items-center justify-center flex-1 w-full">
+        <div class="flex flex-col items-center p-8 bg-slate-900/60 backdrop-blur-xl rounded-3xl border border-indigo-500/30 shadow-2xl w-full max-w-md my-10 relative">
+          <button onclick="window.toggleFullscreen()" class="absolute top-4 right-4 p-2 text-indigo-300 hover:text-white bg-slate-800/50 rounded-full border border-white/10 transition-colors" title="切換全螢幕">
+            ${getIcon((nativeFs || isPseudoFs) ? 'Minimize' : 'Maximize', 'w-5 h-5')}
+          </button>
+          <h1 class="text-3xl font-extrabold mb-8 tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-yellow-200 to-yellow-500 drop-shadow-lg text-center mt-4">線上連線大廳</h1>
+          ${!user ? '<p class="text-indigo-200 animate-pulse">連線伺服器中...</p>' : `
+             <div class="w-full flex flex-col space-y-6">
+               <button onclick="window.createRoom()" class="w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold shadow-lg">建立新房間</button>
+               <div class="flex items-center space-x-2"><div class="h-px bg-slate-700 flex-1"></div><span class="text-slate-400 text-sm">或</span><div class="h-px bg-slate-700 flex-1"></div></div>
+               <div class="flex flex-col space-y-2">
+                  <input type="text" id="joinCodeInput" maxlength="4" placeholder="輸入 4 碼房號" class="uppercase w-full px-4 py-3 bg-slate-800 border border-slate-600 rounded-xl text-center text-xl font-bold tracking-[0.5em] focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 text-white" />
+                  ${errorMsg ? `<p class="text-rose-400 text-sm text-center">${errorMsg}</p>` : ''}
+                  <button onclick="window.joinRoom()" class="w-full py-4 bg-emerald-700 hover:bg-emerald-600 text-white rounded-xl font-bold">加入房間</button>
+               </div>
+             </div>
+          `}
+          <button onclick="window.setMode('menu')" class="mt-8 text-slate-400 hover:text-white flex items-center space-x-2">${getIcon('Home', 'w-4 h-4')} <span>返回首頁</span></button>
+        </div>
+      </div>
+    `;
+
+    const renderWaiting = () => `
+      ${StarryBackground}
+      <div class="z-10 flex flex-col items-center justify-center flex-1 w-full">
+        <div class="flex flex-col items-center p-8 bg-slate-900/60 backdrop-blur-xl rounded-3xl border border-indigo-500/30 shadow-2xl text-center my-10 relative min-w-[300px]">
+          <button onclick="window.toggleFullscreen()" class="absolute top-4 right-4 p-2 text-indigo-300 hover:text-white bg-slate-800/50 rounded-full border border-white/10 transition-colors" title="切換全螢幕">
+            ${getIcon((nativeFs || isPseudoFs) ? 'Minimize' : 'Maximize', 'w-5 h-5')}
+          </button>
+          <h2 class="text-2xl font-bold mb-4 text-indigo-200 mt-4">你的房間代碼</h2>
+          <div class="text-6xl font-black tracking-widest text-yellow-400 mb-8 drop-shadow-[0_0_15px_rgba(250,204,21,0.5)]">${roomId}</div>
+          <p class="text-slate-300 animate-pulse mb-8">等待對手加入...</p>
+          <button onclick="window.setMode('menu')" class="text-slate-400 hover:text-white flex items-center space-x-2">${getIcon('RotateCcw', 'w-4 h-4')} <span>取消並返回</span></button>
+        </div>
+      </div>
+    `;
+
+    const renderGame = () => {
+      const getPlayerLabel = (playerId) => {
+        if (gameState.mode === 'single') return playerId === 1 ? '玩家 1' : '電腦 (AI)';
+        if (gameState.mode === 'online') return playerId === myPlayerId ? `玩家 ${playerId} (你)` : `玩家 ${playerId} (對手)`;
+        return `玩家 ${playerId}`;
+      };
+
+      let bottomPlayer = 1, topPlayer = 2;
+      if (gameState.mode === 'online') { bottomPlayer = myPlayerId; topPlayer = myPlayerId === 1 ? 2 : 1; }
+
+      const topHand = topPlayer === 1 ? gameState.p1Hand : gameState.p2Hand;
+      const bottomHand = bottomPlayer === 1 ? gameState.p1Hand : gameState.p2Hand;
+      const topScore = gameState.comboScores[topPlayer];
+      const bottomScore = gameState.comboScores[bottomPlayer];
+      const isTopScoring = gameState.isAnimating && gameState.lastPlayInfo && gameState.turn === topPlayer;
+      const isBottomScoring = gameState.isAnimating && gameState.lastPlayInfo && gameState.turn === bottomPlayer;
+
+      const getPlayerContainerStyle = (player) => {
+        if (gameState.turn !== player || gameState.tallyState !== 'none') return 'bg-transparent border border-transparent';
+        return player === 1 ? 'bg-indigo-900/20 border border-indigo-500/30 shadow-[0_0_20px_rgba(99,102,241,0.1)]' : 'bg-rose-900/20 border border-rose-500/30 shadow-[0_0_20px_rgba(244,63,94,0.1)]';
+      };
+
+      let html = `${StarryBackground}`;
+
+      // Tally Animation Banner
+      if (['start', 'p1', 'p2'].includes(gameState.tallyState)) {
+        let msg = gameState.tallyState === 'start' ? '遊戲結束！開始結算領地...' :
+                  gameState.tallyState === 'p1' ? '結算 玩家 1 領地...' :
+                  `結算 ${getPlayerLabel(2).split(' ')[0]} 領地...`;
+        html += `<div class="absolute inset-0 z-[100] flex items-center justify-center pointer-events-none">
+           <div class="bg-slate-900/90 text-white px-8 py-5 rounded-full text-2xl font-bold animate-bounce shadow-2xl border border-slate-500">${msg}</div>
+        </div>`;
+      }
+
+      // Top Bar
+      html += `
+      <div class="w-full flex-1 flex flex-col p-4 sm:p-8">
+        <div class="z-10 w-full max-w-4xl flex justify-between items-center mx-auto mb-6 px-2">
+          <div class="flex space-x-2">
+            <button onclick="window.setMode('menu')" class="flex items-center space-x-2 text-indigo-300 hover:text-white bg-slate-900/50 px-3 py-2 rounded-full border border-white/10 transition-colors">${getIcon('Home', 'w-4 h-4')} <span class="text-sm font-bold hidden sm:inline">退出</span></button>
+            <button onclick="window.toggleFullscreen()" class="flex items-center justify-center p-2 text-indigo-300 hover:text-white bg-slate-900/50 rounded-full border border-white/10 transition-colors" title="切換全螢幕">${getIcon((nativeFs || isPseudoFs) ? 'Minimize' : 'Maximize', 'w-4 h-4')}</button>
+          </div>
+          ${gameState.mode === 'online' ? `<span class="text-sm font-bold px-4 py-2 rounded-full border border-emerald-500/30 ${gameState.turn === myPlayerId ? 'bg-emerald-900 text-emerald-300 shadow-lg animate-pulse' : 'bg-slate-800 text-slate-400'}">${gameState.turn === myPlayerId ? '輪到你了！' : '等待對手...'} (房號: ${roomId})</span>` : ''}
+          <div class="flex space-x-4 text-sm text-slate-400 bg-slate-900/50 px-4 py-2 rounded-full border border-white/10">
+            <span class="${topPlayer === 1 ? 'text-indigo-300' : 'text-rose-300'}">上方剩餘: ${topPlayer === 1 ? gameState.p1Deck.length : gameState.p2Deck.length}</span>
+            <span>|</span>
+            <span class="${bottomPlayer === 1 ? 'text-indigo-300' : 'text-rose-300'}">下方剩餘: ${bottomPlayer === 1 ? gameState.p1Deck.length : gameState.p2Deck.length}</span>
+          </div>
+        </div>
+
+        <div class="z-10 flex flex-col w-full max-w-lg mx-auto items-center justify-center space-y-6 sm:space-y-8 pb-10 flex-1">
+          <!-- Top Player Area -->
+          <div class="flex flex-col items-center w-full p-4 rounded-3xl transition-colors ${getPlayerContainerStyle(topPlayer)}">
+            <div class="flex justify-between w-full px-6 mb-3 items-center">
+              <span class="font-bold ${topPlayer === 1 ? 'text-indigo-300' : 'text-rose-300'}">${getPlayerLabel(topPlayer)}</span>
+              <span class="text-2xl font-black transition-all duration-300 flex items-baseline ${isTopScoring ? 'text-yellow-300 scale-110' : (topPlayer === 1 ? 'text-indigo-100' : 'text-rose-100')}">${topScore}${isTopScoring ? `<span class="ml-2 text-xl animate-pulse text-yellow-400">+${gameState.lastPlayInfo.pts}</span>` : ''}<span class="text-sm font-normal ml-1 ${topPlayer === 1 ? 'text-indigo-400' : 'text-rose-400'}">分</span></span>
+            </div>
+            <div class="flex space-x-4 h-20 sm:h-28">${topHand.map((phase, i) => renderCard(phase, i, topPlayer)).join('')}</div>
+          </div>
+
+          <!-- Board Area -->
+          <div class="relative grid grid-cols-3 gap-2 sm:gap-3 p-3 bg-slate-900/60 rounded-[2rem] backdrop-blur-lg border border-slate-700/50 shadow-2xl">
+            ${gameState.mode === 'online' && gameState.turn !== myPlayerId ? `<div class="absolute top-0 right-0 -mt-4 -mr-4 bg-slate-800 text-yellow-300 text-xs px-3 py-1 rounded-full animate-pulse border border-slate-600 z-30">等待對方出牌...</div>` : ''}
+            ${gameState.board.map((cell, idx) => `
+              <div onclick="if(${cell === null} && ${gameState.selectedCardIdx !== null} && !${gameState.isAnimating}) { window.handleCardClick(true, ${idx}, 0, 0); }" class="relative flex items-center justify-center rounded-2xl w-20 h-24 sm:w-28 sm:h-32 transition-colors ${cell === null ? 'border-2 border-dashed border-slate-600/40 bg-slate-800/20 hover:bg-slate-700/40 cursor-pointer' : ''}">
+                ${cell ? renderCard(cell.phase, -1, cell.player, true, idx) : ''}
+                ${gameState.isAnimating && gameState.lastPlayInfo?.idx === idx ? `<div class="absolute inset-0 flex items-center justify-center z-50 pointer-events-none animate-bounce"><span class="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-t from-yellow-500 to-yellow-100 drop-shadow-lg" style="-webkit-text-stroke: 2px #a16207;">+${gameState.lastPlayInfo.pts}</span></div>` : ''}
+              </div>
+            `).join('')}
+          </div>
+
+          <!-- Bottom Player Area -->
+          <div class="flex flex-col items-center w-full p-4 rounded-3xl transition-colors ${getPlayerContainerStyle(bottomPlayer)}">
+            <div class="flex space-x-4 h-20 sm:h-28">${bottomHand.map((phase, i) => renderCard(phase, i, bottomPlayer)).join('')}</div>
+            <div class="flex justify-between w-full px-6 mt-3 items-center">
+              <span class="font-bold ${bottomPlayer === 1 ? 'text-indigo-300' : 'text-rose-300'}">${getPlayerLabel(bottomPlayer)}</span>
+              <span class="text-2xl font-black transition-all duration-300 flex items-baseline ${isBottomScoring ? 'text-yellow-300 scale-110' : (bottomPlayer === 1 ? 'text-indigo-100' : 'text-rose-100')}">${bottomScore}${isBottomScoring ? `<span class="ml-2 text-xl animate-pulse text-yellow-400">+${gameState.lastPlayInfo.pts}</span>` : ''}<span class="text-sm font-normal ml-1 ${bottomPlayer === 1 ? 'text-indigo-400' : 'text-rose-400'}">分</span></span>
+            </div>
+          </div>
+        </div>
+      </div>
+      `;
+
+      // GameOver Modal
+      if (gameState.gameOver && gameState.tallyState === 'done') {
+        const currentScore1 = gameState.comboScores[1], currentScore2 = gameState.comboScores[2];
+        const territory1 = gameState.board.filter(c => c !== null && c.player === 1).length;
+        const territory2 = gameState.board.filter(c => c !== null && c.player === 2).length;
+        const finalScore1 = currentScore1 + territory1, finalScore2 = currentScore2 + territory2;
+        
+        html += `
+        <div class="fixed inset-0 z-[99999] flex items-center justify-center bg-slate-950/80 backdrop-blur-sm px-4">
+          <div class="bg-gradient-to-b from-slate-900 to-indigo-950 p-8 rounded-3xl max-w-sm w-full shadow-2xl border border-indigo-500/30 text-center animate-in zoom-in duration-500">
+            <div class="flex justify-center mb-4 text-yellow-400 drop-shadow-lg">${getIcon('Trophy', 'w-16 h-16')}</div>
+            <h2 class="text-3xl font-bold mb-6 text-white">結算星辰分數</h2>
+            <div class="my-6 space-y-4 text-lg bg-slate-900/50 p-6 rounded-2xl">
+               <div class="flex justify-between items-center"><span class="text-indigo-300">${getPlayerLabel(1)}</span><div class="text-right"><div class="text-xs text-indigo-400/70 mb-1">連鎖 ${currentScore1} + 領地 ${territory1}</div><span class="${finalScore1 > finalScore2 ? 'text-yellow-300 font-bold text-3xl' : 'text-indigo-100 font-bold text-2xl'}">${finalScore1}</span></div></div>
+               <div class="flex justify-between items-center border-t border-slate-700/50 pt-4"><span class="text-rose-300">${getPlayerLabel(2)}</span><div class="text-right"><div class="text-xs text-rose-400/70 mb-1">連鎖 ${currentScore2} + 領地 ${territory2}</div><span class="${finalScore2 > finalScore1 ? 'text-yellow-300 font-bold text-3xl' : 'text-rose-100 font-bold text-2xl'}">${finalScore2}</span></div></div>
+            </div>
+            <p class="text-xl font-bold mb-8 text-yellow-100 bg-white/10 py-3 rounded-xl">${finalScore1 === finalScore2 ? '平分秋色！' : finalScore1 > finalScore2 ? '玩家 1 獲勝！' : `玩家 2 獲勝！`}</p>
+            <div class="flex space-x-4">
+               <button onclick="window.handlePlayAgain()" class="flex-1 flex items-center justify-center space-x-2 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold transition-all shadow-lg">${getIcon('RotateCcw', 'w-5 h-5')}<span>再玩一局</span></button>
+               <button onclick="window.setMode('menu')" class="flex-1 flex items-center justify-center space-x-2 py-3 bg-slate-800 hover:bg-slate-700 text-white border border-slate-600/50 rounded-xl font-bold transition-all">${getIcon('Home', 'w-5 h-5')}<span>退出</span></button>
+            </div>
+          </div>
+        </div>
+        `;
+      }
+
+      return html;
+    };
+
+    // --- 初始化執行 ---
+    if (auth) {
+      const initAuth = async () => {
+        try {
+          if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+            await signInWithCustomToken(auth, __initial_auth_token);
+          } else {
+            await signInAnonymously(auth);
+          }
+        } catch (e) { console.error("Firebase Auth Error:", e); }
+      };
+      initAuth();
+      onAuthStateChanged(auth, (u) => { user = u; render(); });
+    }
+
+    render(); // 首次渲染
+  </script>
+</body>
+</html>
