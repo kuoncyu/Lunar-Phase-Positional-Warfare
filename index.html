@@ -79,7 +79,7 @@
     const { useState, useEffect, useCallback, useRef } = React;
 
     const myFirebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
-      apiKey: "AIzaSyDs8L6uD0SvtUYn4A6iC2jGB_uHLYXS-1o",
+     apiKey: "AIzaSyDs8L6uD0SvtUYn4A6iC2jGB_uHLYXS-1o",
       authDomain: "moonphasegame.firebaseapp.com",
       projectId: "moonphasegame",
       storageBucket: "moonphasegame.firebasestorage.app",
@@ -118,18 +118,30 @@
       constructor() {
         this.ctx = null; this.masterGain = null; this.bgmGain = null;
         this.isMuted = false; this.bgmPlaying = false;
+        // === 修改點：提升預設基礎音量 ===
+        this.baseVolume = 0.8; 
       }
       init() {
         if (this.ctx) { if (this.ctx.state === 'suspended') this.ctx.resume(); return; }
         const AudioContext = window.AudioContext || window.webkitAudioContext;
         this.ctx = new AudioContext();
-        this.masterGain = this.ctx.createGain(); this.masterGain.gain.value = 0.5;
+        this.masterGain = this.ctx.createGain(); 
+        this.masterGain.gain.value = this.isMuted ? 0 : this.baseVolume;
         this.masterGain.connect(this.ctx.destination);
         this.startBGM();
       }
+      // === 新增：設置音量方法 ===
+      setVolume(val) {
+        this.baseVolume = val;
+        if (this.masterGain && !this.isMuted) {
+          this.masterGain.gain.setTargetAtTime(val, this.ctx.currentTime, 0.1);
+        }
+      }
       toggleMute() {
         this.isMuted = !this.isMuted;
-        if (this.masterGain) this.masterGain.gain.setTargetAtTime(this.isMuted ? 0 : 0.5, this.ctx.currentTime, 0.1);
+        if (this.masterGain) {
+          this.masterGain.gain.setTargetAtTime(this.isMuted ? 0 : this.baseVolume, this.ctx.currentTime, 0.1);
+        }
       }
       playTone(freq, type, duration, vol = 1, slideTo = null) {
         if (!this.ctx || this.isMuted) return;
@@ -290,7 +302,10 @@
       const [myPlayerId, setMyPlayerId] = useState(1);
       const [isPseudoFs, setIsPseudoFs] = useState(false);
       const [nativeFs, setNativeFs] = useState(false);
+      
       const [isMuted, setIsMuted] = useState(false);
+      // === 新增：管理音量的狀態 ===
+      const [volume, setVolumeState] = useState(0.8);
       
       const [boardTypePref, setBoardTypePref] = useState('random');
       const [aiDifficulty, setAiDifficulty] = useState('medium'); 
@@ -329,7 +344,27 @@
         }
       };
 
-      const toggleMute = () => { audioManager.init(); audioManager.toggleMute(); setIsMuted(!isMuted); };
+      const toggleMute = () => { 
+        audioManager.init(); 
+        audioManager.toggleMute(); 
+        setIsMuted(!isMuted); 
+      };
+
+      // === 新增：處理音量滑桿變動 ===
+      const handleVolumeChange = (e) => {
+        const val = parseFloat(e.target.value);
+        setVolumeState(val);
+        audioManager.init();
+        audioManager.setVolume(val);
+        
+        if (isMuted && val > 0) {
+          audioManager.isMuted = false;
+          setIsMuted(false);
+        } else if (!isMuted && val === 0) {
+          audioManager.isMuted = true;
+          setIsMuted(true);
+        }
+      };
 
       useEffect(() => {
         const initAuth = async () => {
@@ -449,14 +484,12 @@
         }
       }, [gameState.currentScoringEvent, gameState.isAnimating, gameState.scoringQueue.length, gameState.pendingResolveInfo]);
 
-      // === 修改點：領地結算加分 ===
       useEffect(() => {
         if (gameState.tallyState === 'start') { 
           setTimeout(() => setGameState(p => ({ ...p, tallyState: 'p1' })), 1200); 
         } 
         else if (gameState.tallyState === 'p1') { 
           audioManager.playTone(880, 'sine', 0.1, 0.2); 
-          // 加上玩家 1 所佔領的領地分數 (每格 1 分)
           setGameState(p => {
             const p1Territory = p.board.filter(c => c && c.player === 1).length;
             return { ...p, comboScores: { ...p.comboScores, 1: p.comboScores[1] + p1Territory } };
@@ -465,7 +498,6 @@
         } 
         else if (gameState.tallyState === 'p2') { 
           audioManager.playTone(880, 'sine', 0.1, 0.2); 
-          // 加上玩家 2 所佔領的領地分數 (每格 1 分)
           setGameState(p => {
             const p2Territory = p.board.filter(c => c && c.player === 2).length;
             return { ...p, comboScores: { ...p.comboScores, 2: p.comboScores[2] + p2Territory } };
@@ -596,6 +628,21 @@
       const FullscreenIcon = (nativeFs || isPseudoFs) ? Minimize : Maximize;
       const VolumeIcon = isMuted ? VolumeX : Volume2;
 
+      // === 新增：包含滑桿的音量控制組件 ===
+      const VolumeControl = () => (
+        <div className="flex items-center space-x-2 bg-slate-800/60 backdrop-blur-md rounded-full px-3 py-1.5 border border-white/10 hover:border-white/30 transition-all">
+          <button onClick={toggleMute} className="text-indigo-300 hover:text-white transition-colors flex-shrink-0">
+            <VolumeIcon className="w-5 h-5" />
+          </button>
+          <input
+            type="range" min="0" max="1" step="0.01"
+            value={isMuted ? 0 : volume}
+            onChange={handleVolumeChange}
+            className="w-16 sm:w-24 h-1.5 bg-slate-900 rounded-lg appearance-none cursor-pointer accent-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+          />
+        </div>
+      );
+
       const renderCard = (phase, index, player, isBoard = false, boardIdx = -1) => {
         if (phase === undefined || phase === null) return null;
         const isNeutral = !isBoard || player === 0;
@@ -657,9 +704,11 @@
           <div className={`${wrapperClass} justify-center overflow-y-auto`}>
             <StarryBackground />
             <div className="z-10 flex flex-col items-center p-8 bg-slate-900/60 backdrop-blur-xl rounded-3xl border border-indigo-500/30 shadow-2xl relative w-full max-w-md my-10 mx-4">
-              <div className="absolute top-4 right-4 flex space-x-2">
-                <button onClick={toggleMute} className="p-2 text-indigo-300 hover:text-white bg-slate-800/50 rounded-full border border-white/10 transition-colors"><VolumeIcon className="w-5 h-5" /></button>
-                <button onClick={toggleFullscreen} className="p-2 text-indigo-300 hover:text-white bg-slate-800/50 rounded-full border border-white/10 transition-colors"><FullscreenIcon className="w-5 h-5" /></button>
+              
+              {/* === 選單畫面的音量與全螢幕按鈕 === */}
+              <div className="absolute top-4 right-4 flex space-x-2 items-center">
+                <VolumeControl />
+                <button onClick={toggleFullscreen} className="p-2 text-indigo-300 hover:text-white bg-slate-800/50 rounded-full border border-white/10 transition-colors flex-shrink-0"><FullscreenIcon className="w-5 h-5" /></button>
               </div>
               
               {gameState.mode === 'menu' && (
@@ -748,7 +797,6 @@
 
       const currentBoardConfig = BOARDS[gameState.boardType];
 
-      // --- 取得當前計分的字體對應樣式 ---
       let currentScoreTextClass = '';
       let currentScoreNumClass = '';
       if (gameState.currentScoringEvent) {
@@ -791,9 +839,10 @@
           )}
 
           <div className="z-10 w-full max-w-2xl flex justify-between items-center px-4 py-2 shrink-0">
-            <div className="flex space-x-2">
-              <button onClick={() => setGameState(prev => ({ ...prev, mode: 'menu' }))} className="p-2 text-indigo-300 hover:text-white bg-slate-900/50 rounded-full border border-white/10"><Home className="w-5 h-5" /></button>
-              <button onClick={toggleMute} className="p-2 text-indigo-300 hover:text-white bg-slate-900/50 rounded-full border border-white/10"><VolumeIcon className="w-5 h-5" /></button>
+            {/* === 遊戲畫面的音量控制區塊 === */}
+            <div className="flex space-x-2 items-center">
+              <button onClick={() => setGameState(prev => ({ ...prev, mode: 'menu' }))} className="p-2 text-indigo-300 hover:text-white bg-slate-900/50 rounded-full border border-white/10 flex-shrink-0"><Home className="w-5 h-5" /></button>
+              <VolumeControl />
             </div>
             <div className="flex flex-col items-end">
               {gameState.mode === 'online' && ( <span className={`text-xs sm:text-sm font-bold px-3 py-1 rounded-full border mb-1 ${gameState.turn === myPlayerId ? 'bg-emerald-900 border-emerald-500/30 text-emerald-300 animate-pulse' : 'bg-slate-800 border-slate-600 text-slate-400'}`}>{gameState.turn === myPlayerId ? '輪到你了！' : '等待對手...'} ({roomId})</span> )}
@@ -830,19 +879,16 @@
                 {currentBoardConfig.edges.map((edge, i) => {
                   const n1 = currentBoardConfig.nodes[edge[0]]; const n2 = currentBoardConfig.nodes[edge[1]];
                   
-                  // === 修改點：連線沿著月相變化順序亮起 ===
                   let isScoringEdge = false;
                   if (gameState.currentScoringEvent) {
                     const ev = gameState.currentScoringEvent;
                     if (ev.type === 'sequence') {
-                      // 檢查這條線的兩個端點是否在 sequence 陣列中互為相鄰的步驟
                       const idx1 = ev.cells.indexOf(edge[0]);
                       const idx2 = ev.cells.indexOf(edge[1]);
                       if (idx1 !== -1 && idx2 !== -1 && Math.abs(idx1 - idx2) === 1) {
                         isScoringEdge = true;
                       }
                     } else {
-                      // 相同月相或互補滿月
                       isScoringEdge = ev.cells.includes(edge[0]) && ev.cells.includes(edge[1]);
                     }
                   }
