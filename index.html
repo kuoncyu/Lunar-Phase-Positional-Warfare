@@ -12,13 +12,16 @@
   <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
   
-  <!-- 引入 Babel -->
+  <!-- 引入 Babel 用於在瀏覽器編譯 JSX -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
   <style>
-    body { margin: 0; padding: 0; background-color: #020617; overscroll-behavior: none; }
-    /* 隱藏滾動條但保持可滾動 */
-    ::-webkit-scrollbar { width: 0px; background: transparent; }
+    body, html { 
+      margin: 0; padding: 0; 
+      background-color: #020617; /* slate-950 */
+      overflow: hidden; /* 鎖定畫面，防止滑動導致跑版 */
+      touch-action: none; /* 防止手機瀏覽器下拉刷新 */
+    }
   </style>
 </head>
 <body class="text-slate-100 selection:bg-indigo-500/30">
@@ -26,15 +29,18 @@
 
   <!-- 主程式邏輯 -->
   <script type="text/babel" data-type="module">
-    // --- Firebase 雲端資料庫模組 ---
+    // --- Firebase 雲端資料庫模組 (使用 ES Module CDN) ---
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js';
     import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js';
     import { getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
 
     const { useState, useEffect, useCallback, useRef } = React;
 
+    // ⚠️ 部署到 GitHub Pages 時：
+    // 如果你要啟用「連線對戰」，請在下方填入你自己的 Firebase 專案設定。
+    // 單人對戰電腦 / 雙人同機模式 則不需要設定即可運作。
     const myFirebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
-     apiKey: "AIzaSyDs8L6uD0SvtUYn4A6iC2jGB_uHLYXS-1o",
+      apiKey: "AIzaSyDs8L6uD0SvtUYn4A6iC2jGB_uHLYXS-1o",
       authDomain: "moonphasegame.firebaseapp.com",
       projectId: "moonphasegame",
       storageBucket: "moonphasegame.firebasestorage.app",
@@ -183,7 +189,7 @@
     }
     const audioManager = new AudioManager();
 
-    // --- 遊戲資料定義 (更新為百分比自適應大小) ---
+    // --- 遊戲資料定義 ---
     const PHASES = [
       { id: 0, name: '新月' }, { id: 1, name: '眉月' }, { id: 2, name: '上弦月' }, { id: 3, name: '盈凸月' },
       { id: 4, name: '滿月' }, { id: 5, name: '虧凸月' }, { id: 6, name: '下弦月' }, { id: 7, name: '殘月' },
@@ -193,15 +199,15 @@
       classic: {
         id: 'classic',
         name: '九宮格 (9格)',
-        cardClass: 'w-[28%] aspect-[4/5]', // 使用百分比與長寬比，徹底解決被切斷問題
+        cardClass: 'w-[28%] aspect-[4/5]', // 使用百分比與等比例縮放
         nodes: [
           { x: 16.6, y: 16.6 }, { x: 50, y: 16.6 }, { x: 83.3, y: 16.6 },
           { x: 16.6, y: 50 },   { x: 50, y: 50 },   { x: 83.3, y: 50 },
           { x: 16.6, y: 83.3 }, { x: 50, y: 83.3 }, { x: 83.3, y: 83.3 }
         ],
         edges: [
-          [0,1], [1,2], [3,4], [4,5], [6,7], [7,8], 
-          [0,3], [3,6], [1,4], [4,7], [2,5], [5,8]  
+          [0,1], [1,2], [3,4], [4,5], [6,7], [7,8], // 橫向
+          [0,3], [3,6], [1,4], [4,7], [2,5], [5,8]  // 縱向
         ]
       },
       owl: {
@@ -215,16 +221,18 @@
           {x: 35, y: 85}, {x: 65, y: 85}
         ],
         edges: [
-          [0,1], [0,2], [0,3], [1,4], [1,5],
+          [0,1],
+          [0,2], [0,3], [1,4], [1,5],
           [2,6], [3,7], [4,8], [5,9],
-          [6,10], [7,10], [8,11], [9,11], [10,11],
+          [6,10], [7,10], [8,11], [9,11],
+          [10,11],
           [2,3], [4,5], [6,7], [8,9]
         ]
       },
       tree: {
         id: 'tree',
         name: '拱門神木 (13格)',
-        cardClass: 'w-[16%] aspect-[4/5]',
+        cardClass: 'w-[18%] aspect-[4/5]',
         nodes: [
           {x: 50, y: 10},
           {x: 25, y: 28}, {x: 50, y: 28}, {x: 75, y: 28},
@@ -233,11 +241,14 @@
           {x: 35, y: 90}, {x: 65, y: 90}
         ],
         edges: [
-          [0,1], [0,2], [0,3], [1,2], [2,3],
+          [0,1], [0,2], [0,3],
+          [1,2], [2,3],
           [1,4], [1,5], [2,5], [2,6], [3,6], [3,7],
           [4,5], [5,6], [6,7],
           [4,8], [5,8], [5,9], [6,9], [6,10], [7,10],
-          [8,9], [9,10], [8,11], [9,11], [9,12], [10,12], [11,12]
+          [8,9], [9,10],
+          [8,11], [9,11], [9,12], [10,12],
+          [11,12]
         ]
       }
     };
@@ -266,7 +277,9 @@
             subPaths.forEach(p => paths.push([currIdx, ...p]));
           }
         });
-        if (!hasNext) { paths.push([currIdx]); }
+        if (!hasNext) {
+          paths.push([currIdx]);
+        }
         return paths;
       };
 
@@ -277,7 +290,9 @@
       pathsDown.forEach(pDown => {
         pathsUp.forEach(pUp => {
           const combined = [...pDown].reverse().concat(pUp.slice(1));
-          if (combined.length >= 3) sequences.push(combined);
+          if (combined.length >= 3) {
+            sequences.push(combined);
+          }
         });
       });
 
@@ -608,7 +623,8 @@
 
       const createRoom = async () => {
         if (!user || !db) return alert("無法連接 Firebase，請檢查設定。");
-        const newRoomId = Math.random().toString(36).substring(2, 8).toUpperCase();
+        // 生成 6 位數房間代碼
+        const newRoomId = Math.floor(100000 + Math.random() * 900000).toString();
         const actualBoardId = getActualBoardId();
         const generateDeck = () => { let d = []; for(let i=0; i<3; i++) d.push(0,1,2,3,4,5,6,7); return d.sort(()=>Math.random()-0.5); };
         let d1 = generateDeck(), d2 = generateDeck();
@@ -630,11 +646,11 @@
       const joinRoom = async (code) => {
         if (!user || !code || !db) return;
         try {
-          const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'moonphase_rooms', code.toUpperCase());
+          const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'moonphase_rooms', code);
           const snap = await getDoc(roomRef);
           if (snap.exists() && snap.data().status === 'waiting') {
             await updateDoc(roomRef, { status: 'playing', guest: user.uid });
-            setRoomId(code.toUpperCase()); setMyPlayerId(2);
+            setRoomId(code); setMyPlayerId(2);
           } else {
             alert("找不到房間，或遊戲已開始");
           }
@@ -672,12 +688,10 @@
       let bottomPlayer = 1, topPlayer = 2;
       if (gameState.mode === 'online') { bottomPlayer = myPlayerId; topPlayer = myPlayerId === 1 ? 2 : 1; }
 
-      // 判斷是否為遊戲中畫面，設定 wrapper 鎖死 100dvh
-      const isGameMode = ['single', 'multi', 'online'].includes(gameState.mode);
-      const wrapperClass = `flex flex-col items-center font-sans transition-all duration-300 w-screen ${
-        isGameMode ? 'h-[100dvh] h-screen overflow-hidden' : 'min-h-[100dvh] overflow-x-hidden'
-      } ${isPseudoFs ? 'fixed inset-0 z-[9999] bg-slate-950' : ''}`;
-      
+      // 確保畫面在任何裝置都不會超出 100dvh 高度
+      const wrapperClass = `flex flex-col items-center font-sans text-slate-100 selection:bg-indigo-500/30 transition-all duration-300 ${
+        isPseudoFs ? 'fixed inset-0 z-[9999] bg-slate-950 w-screen h-[100dvh] overflow-hidden' : 'w-full h-[100dvh] relative overflow-hidden'
+      }`;
       const FullscreenIcon = (nativeFs || isPseudoFs) ? Minimize : Maximize;
       const VolumeIcon = isMuted ? VolumeX : Volume2;
 
@@ -698,8 +712,8 @@
         }
 
         let colorClasses = isNeutral ? (isBoard ? 'bg-slate-700/60 border-slate-500 ring-1 ring-slate-500 hover:border-slate-400' : 'bg-gradient-to-br from-slate-700/80 to-slate-800 border-slate-500 shadow-lg hover:border-slate-400')
-          : player === 1 ? 'bg-indigo-900/90 border-indigo-400 ring-[1.5px] ring-indigo-400 shadow-[0_0_15px_rgba(99,102,241,0.5)]'
-          : 'bg-rose-900/90 border-rose-400 ring-[1.5px] ring-rose-400 shadow-[0_0_15px_rgba(244,63,94,0.5)]';
+          : player === 1 ? 'bg-indigo-900/90 border-indigo-400 ring-2 ring-indigo-400 shadow-[0_0_15px_rgba(99,102,241,0.5)]'
+          : 'bg-rose-900/90 border-rose-400 ring-2 ring-rose-400 shadow-[0_0_15px_rgba(244,63,94,0.5)]';
         if (isHidden) colorClasses = 'bg-slate-800 border-slate-600 shadow-inner';
 
         let animClasses = '';
@@ -708,10 +722,8 @@
         else if (isTallyingP2) animClasses = 'scale-110 shadow-[0_0_40px_rgba(251,113,133,1)] z-20 ring-[3px] ring-rose-300 transition-all duration-300';
         else if (isDimmed) animClasses = 'opacity-30 grayscale transition-all duration-500';
 
-        // 尺寸計算：如果是棋盤上的，使用百分比；如果是手牌，使用 vw/max-w 限制
-        let sizeClass = isBoard 
-          ? BOARDS[gameState.boardType].cardClass 
-          : 'w-[14vw] max-w-[4.5rem] sm:max-w-[5.5rem] aspect-[4/5]';
+        // 卡片大小透過父層自適應或是套用百分比與 Aspect Ratio
+        let sizeClass = isBoard ? BOARDS[gameState.boardType].cardClass : 'h-[90%] aspect-[4/5] max-w-[30%]';
 
         return (
           <div 
@@ -727,14 +739,14 @@
                 if (canPlay) playCard(gameState.selectedCardIdx, boardIdx, false);
               }
             }}
-            className={`relative flex flex-col items-center justify-center rounded-xl sm:rounded-2xl transition-all duration-300 ${sizeClass} cursor-pointer ${colorClasses} border ${isSelected ? 'ring-2 ring-yellow-400 -translate-y-2 sm:-translate-y-4 shadow-[0_10px_20px_rgba(250,204,21,0.4)]' : ''} ${animClasses}`}
+            className={`relative flex flex-col items-center justify-center rounded-xl sm:rounded-2xl transition-all duration-300 ${sizeClass} cursor-pointer border ${colorClasses} ${isSelected ? 'ring-2 ring-yellow-400 -translate-y-2 shadow-[0_10px_20px_rgba(250,204,21,0.4)]' : ''} ${animClasses}`}
           >
             {!isHidden ? (
               <React.Fragment>
-                <MoonSvg phase={phase} className="w-[50%] h-[50%] mb-[4%] sm:mb-1" />
-                <span className={`text-[9px] sm:text-xs font-medium tracking-wide ${isNeutral ? 'text-slate-300' : player === 1 ? 'text-indigo-200' : 'text-rose-200'}`}>{PHASES[phase].name}</span>
+                <MoonSvg phase={phase} className="w-[50%] h-[50%] mb-1" />
+                <span className={`text-[10px] sm:text-xs font-medium tracking-wide ${isNeutral ? 'text-slate-300' : player === 1 ? 'text-indigo-200' : 'text-rose-200'}`}>{PHASES[phase].name}</span>
               </React.Fragment>
-            ) : ( <div className="w-[60%] h-[60%] rounded-full bg-slate-700/50 border border-slate-600/50 flex items-center justify-center"><span className="text-slate-400 opacity-50 font-bold text-xs">?</span></div> )}
+            ) : ( <div className="w-[60%] h-[60%] rounded-full bg-slate-700/50 border border-slate-600/50 flex items-center justify-center"><span className="text-slate-400 opacity-50 font-bold">?</span></div> )}
           </div>
         );
       };
@@ -744,12 +756,11 @@
         return player === 1 ? 'bg-indigo-900/20 border border-indigo-500/30 shadow-[0_0_20px_rgba(99,102,241,0.1)]' : 'bg-rose-900/20 border border-rose-500/30 shadow-[0_0_20px_rgba(244,63,94,0.1)]';
       };
 
-      // --- 主選單畫面 ---
       if (gameState.mode === 'menu' || gameState.mode === 'lobby' || gameState.mode === 'waiting') {
         return (
           <div className={`${wrapperClass} justify-center overflow-y-auto`}>
             <StarryBackground />
-            <div className="z-10 flex flex-col items-center p-6 sm:p-8 bg-slate-900/60 backdrop-blur-xl rounded-3xl border border-indigo-500/30 shadow-2xl relative w-full max-w-md my-10 mx-4">
+            <div className="z-10 flex flex-col items-center p-8 bg-slate-900/60 backdrop-blur-xl rounded-3xl border border-indigo-500/30 shadow-2xl relative w-full max-w-md my-10 mx-4">
               <div className="absolute top-4 right-4 flex space-x-2">
                 <button onClick={toggleMute} className="p-2 text-indigo-300 hover:text-white bg-slate-800/50 rounded-full border border-white/10 transition-colors" title="切換音效"><VolumeIcon className="w-5 h-5" /></button>
                 <button onClick={toggleFullscreen} className="p-2 text-indigo-300 hover:text-white bg-slate-800/50 rounded-full border border-white/10 transition-colors" title="切換全螢幕"><FullscreenIcon className="w-5 h-5" /></button>
@@ -757,18 +768,18 @@
               
               {gameState.mode === 'menu' && (
                 <React.Fragment>
-                  <div className="flex items-center space-x-4 mb-4 mt-6"><MoonSvg phase={2} className="w-12 h-12 sm:w-16 sm:h-16" /><MoonSvg phase={6} className="w-12 h-12 sm:w-16 sm:h-16" /></div>
-                  <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold mb-2 tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-yellow-200 to-yellow-500 drop-shadow-lg text-center">月相陣地戰</h1>
-                  <p className="mb-6 text-indigo-200 text-sm sm:text-lg text-center">配對連鎖，染上你的專屬星際色彩！</p>
+                  <div className="flex items-center space-x-4 mb-6 mt-8"><MoonSvg phase={2} className="w-16 h-16" /><MoonSvg phase={6} className="w-16 h-16" /></div>
+                  <h1 className="text-4xl md:text-5xl font-extrabold mb-2 tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-yellow-200 to-yellow-500 drop-shadow-lg text-center">月相陣地戰</h1>
+                  <p className="mb-6 text-indigo-200 text-lg text-center">配對連鎖，染上你的專屬星際色彩！</p>
                   
-                  <div className="w-full bg-slate-800/50 border border-slate-600/50 rounded-xl p-3 sm:p-4 mb-6">
+                  <div className="w-full bg-slate-800/50 border border-slate-600/50 rounded-xl p-4 mb-6">
                     <label className="flex items-center space-x-2 text-sm font-bold text-slate-300 mb-2">
                       <Settings2 className="w-4 h-4" /> <span>偏好棋盤佈局</span>
                     </label>
                     <select 
                       value={boardTypePref} 
                       onChange={e => setBoardTypePref(e.target.value)}
-                      className="w-full bg-slate-900 border border-slate-500 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500 text-sm sm:text-base"
+                      className="w-full bg-slate-900 border border-slate-500 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
                     >
                       <option value="random">🎲 隨機抽取</option>
                       <option value="classic">🔲 九宮格 (9格)</option>
@@ -777,44 +788,51 @@
                     </select>
                   </div>
 
-                  <div className="flex flex-col space-y-3 sm:space-y-4 w-full">
-                    <button onClick={() => initGame('single')} className="flex items-center justify-center space-x-3 w-full py-3 sm:py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold transition-all shadow-lg text-sm sm:text-base"><User className="w-5 h-5 sm:w-6 sm:h-6" /><span>單人遊戲 (對戰電腦)</span></button>
-                    <button onClick={() => initGame('multi')} className="flex items-center justify-center space-x-3 w-full py-3 sm:py-4 bg-rose-800 hover:bg-rose-700 text-white border border-rose-500/50 rounded-xl font-bold transition-all text-sm sm:text-base"><Users className="w-5 h-5 sm:w-6 sm:h-6" /><span>雙人遊戲 (本地同機)</span></button>
-                    <button onClick={() => { audioManager.init(); setGameState(prev => ({...prev, mode: 'lobby'})); }} className="flex items-center justify-center space-x-3 w-full py-3 sm:py-4 bg-emerald-700 hover:bg-emerald-600 text-white border border-emerald-500/50 rounded-xl font-bold transition-all text-sm sm:text-base"><Globe className="w-5 h-5 sm:w-6 sm:h-6" /><span>連線對戰 (線上雙人)</span></button>
+                  <div className="flex flex-col space-y-4 w-full">
+                    <button onClick={() => initGame('single')} className="flex items-center justify-center space-x-3 w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold transition-all shadow-lg"><User className="w-6 h-6" /><span>單人遊戲 (對戰電腦)</span></button>
+                    <button onClick={() => initGame('multi')} className="flex items-center justify-center space-x-3 w-full py-4 bg-rose-800 hover:bg-rose-700 text-white border border-rose-500/50 rounded-xl font-bold transition-all"><Users className="w-6 h-6" /><span>雙人遊戲 (本地同機)</span></button>
+                    <button onClick={() => { audioManager.init(); setGameState(prev => ({...prev, mode: 'lobby'})); }} className="flex items-center justify-center space-x-3 w-full py-4 bg-emerald-700 hover:bg-emerald-600 text-white border border-emerald-500/50 rounded-xl font-bold transition-all"><Globe className="w-6 h-6" /><span>連線對戰 (線上雙人)</span></button>
                   </div>
                 </React.Fragment>
               )}
 
               {gameState.mode === 'lobby' && (
                 <React.Fragment>
-                  <h1 className="text-2xl sm:text-3xl font-extrabold mb-6 sm:mb-8 tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-yellow-200 to-yellow-500 drop-shadow-lg text-center mt-4">線上連線大廳</h1>
+                  <h1 className="text-3xl font-extrabold mb-8 tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-yellow-200 to-yellow-500 drop-shadow-lg text-center mt-4">線上連線大廳</h1>
                   {!user ? ( <p className="text-indigo-200 animate-pulse">連線伺服器中...</p> ) : (
-                     <div className="w-full flex flex-col space-y-4 sm:space-y-6">
-                       <div className="text-xs sm:text-sm text-slate-300 mb-2 text-center">
-                         建立房間將使用「{boardTypePref === 'random' ? '隨機抽取' : BOARDS[boardTypePref].name}」設定
+                     <div className="w-full flex flex-col space-y-6">
+                       <div className="text-sm text-slate-300 mb-2 text-center">
+                         建立房間將使用主畫面的「{boardTypePref === 'random' ? '隨機抽取' : BOARDS[boardTypePref].name}」設定
                        </div>
-                       <button onClick={createRoom} className="w-full py-3 sm:py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold shadow-lg text-sm sm:text-base">建立新房間</button>
+                       <button onClick={createRoom} className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold shadow-lg">建立新房間</button>
                        <div className="relative flex items-center py-2">
                          <div className="flex-grow border-t border-slate-600"></div>
-                         <span className="flex-shrink-0 mx-4 text-slate-400 text-sm">或</span>
+                         <span className="flex-shrink-0 mx-4 text-slate-400">或</span>
                          <div className="flex-grow border-t border-slate-600"></div>
                        </div>
-                       <div className="flex space-x-2">
-                         <input type="text" placeholder="輸入房間代碼" value={joinCode} onChange={(e) => setJoinCode(e.target.value.toUpperCase())} className="flex-1 bg-slate-800 border border-slate-600 rounded-xl px-3 sm:px-4 text-center font-bold tracking-widest text-white uppercase outline-none focus:border-indigo-400 w-full text-sm sm:text-base"/>
-                         <button onClick={() => joinRoom(joinCode)} className="py-3 px-4 sm:py-4 sm:px-6 bg-rose-700 hover:bg-rose-600 text-white rounded-xl font-bold text-sm sm:text-base whitespace-nowrap">加入</button>
+                       <div className="flex flex-col space-y-2">
+                         <input 
+                            type="text" 
+                            maxLength="6"
+                            placeholder="輸入六位數字代碼" 
+                            value={joinCode} 
+                            onChange={(e) => setJoinCode(e.target.value.replace(/\D/g, ''))} 
+                            className="w-full bg-slate-800 border border-slate-600 rounded-xl py-3 px-4 text-center text-2xl font-mono tracking-[0.2em] text-white outline-none focus:border-indigo-400"
+                         />
+                         <button onClick={() => joinRoom(joinCode)} className="w-full py-4 bg-rose-700 hover:bg-rose-600 text-white rounded-xl font-bold">加入</button>
                        </div>
                      </div>
                   )}
-                  <button onClick={() => setGameState(prev => ({ ...prev, mode: 'menu' }))} className="mt-6 sm:mt-8 text-slate-400 hover:text-white flex items-center space-x-2 text-sm"><Home className="w-4 h-4" /> <span>返回首頁</span></button>
+                  <button onClick={() => setGameState(prev => ({ ...prev, mode: 'menu' }))} className="mt-8 text-slate-400 hover:text-white flex items-center space-x-2"><Home className="w-4 h-4" /> <span>返回首頁</span></button>
                 </React.Fragment>
               )}
 
               {gameState.mode === 'waiting' && (
                  <React.Fragment>
-                   <h2 className="text-xl sm:text-2xl font-bold mb-4 text-indigo-200 mt-4">你的房間代碼</h2>
-                   <div className="text-5xl sm:text-6xl font-black tracking-widest text-yellow-400 mb-8 drop-shadow-[0_0_15px_rgba(250,204,21,0.5)]">{roomId}</div>
-                   <p className="text-slate-300 animate-pulse mb-8 text-sm sm:text-base">等待對手加入...</p>
-                   <button onClick={() => setGameState(prev => ({ ...prev, mode: 'menu' }))} className="text-slate-400 hover:text-white flex items-center space-x-2 text-sm"><RotateCcw className="w-4 h-4" /> <span>取消並返回</span></button>
+                   <h2 className="text-2xl font-bold mb-4 text-indigo-200 mt-4">你的房間代碼</h2>
+                   <div className="text-6xl font-black font-mono tracking-widest text-yellow-400 mb-8 drop-shadow-[0_0_15px_rgba(250,204,21,0.5)]">{roomId}</div>
+                   <p className="text-slate-300 animate-pulse mb-8">等待對手加入...</p>
+                   <button onClick={() => setGameState(prev => ({ ...prev, mode: 'menu' }))} className="text-slate-400 hover:text-white flex items-center space-x-2"><RotateCcw className="w-4 h-4" /> <span>取消並返回</span></button>
                  </React.Fragment>
               )}
             </div>
@@ -822,33 +840,31 @@
         );
       }
 
-      // --- 遊戲進行中畫面 ---
       const currentBoardConfig = BOARDS[gameState.boardType];
 
       return (
-        <div className={wrapperClass}>
+        <div className={`${wrapperClass} p-2 sm:p-4`}>
           <StarryBackground />
           <style>{`
             @keyframes score-pulse {
               0% { transform: scale(1); filter: brightness(1); box-shadow: none; }
-              20% { transform: scale(1.15); filter: brightness(1.3); box-shadow: 0 0 30px rgba(254,240,138,1); }
-              80% { transform: scale(1.15); filter: brightness(1.3); box-shadow: 0 0 30px rgba(254,240,138,1); }
+              20% { transform: scale(1.15); filter: brightness(1.3); box-shadow: 0 0 40px rgba(254,240,138,1); }
+              80% { transform: scale(1.15); filter: brightness(1.3); box-shadow: 0 0 40px rgba(254,240,138,1); }
               100% { transform: scale(1); filter: brightness(1); box-shadow: none; }
             }
             .animate-score-pulse { animation: score-pulse 1.5s ease-in-out forwards; }
             @keyframes float-score {
-              0% { opacity: 0; transform: translateY(15px) scale(0.8); }
-              15% { opacity: 1; transform: translateY(0) scale(1.1); }
-              85% { opacity: 1; transform: translateY(0) scale(1.1); }
-              100% { opacity: 0; transform: translateY(-15px) scale(0.8); }
+              0% { opacity: 0; transform: translateY(20px) scale(0.8); }
+              15% { opacity: 1; transform: translateY(0) scale(1.2); }
+              85% { opacity: 1; transform: translateY(0) scale(1.2); }
+              100% { opacity: 0; transform: translateY(-20px) scale(0.8); }
             }
             .animate-float-score { animation: float-score 1.5s ease-in-out forwards; }
           `}</style>
 
-          {/* 結算覆蓋層 */}
           {(gameState.tallyState === 'start' || gameState.tallyState === 'p1' || gameState.tallyState === 'p2') && (
             <div className="absolute inset-0 z-[100] flex items-center justify-center pointer-events-none">
-               <div className="bg-slate-900/90 text-white px-6 sm:px-8 py-4 sm:py-5 rounded-full text-lg sm:text-2xl font-bold animate-bounce shadow-2xl border border-slate-500 text-center">
+               <div className="bg-slate-900/90 text-white px-6 sm:px-8 py-4 sm:py-5 rounded-full text-xl sm:text-2xl font-bold animate-bounce shadow-2xl border border-slate-500">
                   {gameState.tallyState === 'start' && '遊戲結束！開始結算領地...'}
                   {gameState.tallyState === 'p1' && '結算 玩家 1 領地...'}
                   {gameState.tallyState === 'p2' && `結算 ${getPlayerLabel(2).split(' ')[0]} 領地...`}
@@ -857,94 +873,87 @@
           )}
 
           {gameState.tallyState === 'done' && (
-            <div className="absolute inset-0 z-[200] flex items-center justify-center bg-slate-950/80 backdrop-blur-sm px-4">
-              <div className="bg-slate-900 border border-indigo-500/50 p-6 sm:p-10 rounded-3xl shadow-[0_0_50px_rgba(99,102,241,0.2)] flex flex-col items-center text-center max-w-sm sm:max-w-md w-full mx-4">
+            <div className="absolute inset-0 z-[200] flex items-center justify-center bg-slate-950/80 backdrop-blur-sm">
+              <div className="bg-slate-900 border border-indigo-500/50 p-6 sm:p-10 rounded-3xl shadow-[0_0_50px_rgba(99,102,241,0.2)] flex flex-col items-center text-center max-w-xs sm:max-w-md w-full mx-4">
                 <Trophy className="w-12 h-12 sm:w-16 sm:h-16 text-yellow-400 mb-4 drop-shadow-[0_0_15px_rgba(250,204,21,0.5)]" />
-                <h2 className="text-2xl sm:text-4xl font-black mb-4 sm:mb-6 text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-yellow-500">遊戲結束</h2>
+                <h2 className="text-3xl sm:text-4xl font-black mb-6 text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-yellow-500">遊戲結束</h2>
                 
-                <div className="flex w-full justify-around mb-6 sm:mb-8">
+                <div className="flex w-full justify-around mb-8">
                   <div className="flex flex-col items-center">
-                    <span className="text-indigo-300 font-bold mb-1 sm:mb-2 text-sm sm:text-base">{getPlayerLabel(1)}</span>
+                    <span className="text-indigo-300 font-bold mb-2">{getPlayerLabel(1)}</span>
                     <span className="text-4xl sm:text-5xl font-black text-indigo-100">{gameState.comboScores[1]}</span>
                   </div>
                   <div className="flex flex-col items-center">
-                    <span className="text-rose-300 font-bold mb-1 sm:mb-2 text-sm sm:text-base">{getPlayerLabel(2)}</span>
+                    <span className="text-rose-300 font-bold mb-2">{getPlayerLabel(2)}</span>
                     <span className="text-4xl sm:text-5xl font-black text-rose-100">{gameState.comboScores[2]}</span>
                   </div>
                 </div>
                 
-                <div className="text-lg sm:text-2xl font-bold mb-6 sm:mb-8 text-white">
+                <div className="text-lg sm:text-2xl font-bold mb-8 text-white">
                   {gameState.comboScores[1] > gameState.comboScores[2] ? `🏆 ${getPlayerLabel(1)} 獲勝！` : 
                    gameState.comboScores[2] > gameState.comboScores[1] ? `🏆 ${getPlayerLabel(2)} 獲勝！` : '🤝 雙方平手！'}
                 </div>
                 
                 <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4 w-full">
-                  <button onClick={handlePlayAgain} className="flex-1 px-4 py-3 sm:py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold transition-all shadow-lg flex items-center justify-center space-x-2 text-sm sm:text-base">
-                    <RotateCcw className="w-5 h-5" /> <span>再打一場</span>
-                  </button>
-                  <button onClick={() => setGameState(prev => ({ ...prev, mode: 'menu' }))} className="flex-1 px-4 py-3 sm:py-4 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-bold transition-all flex items-center justify-center space-x-2 text-sm sm:text-base">
-                    <Home className="w-5 h-5" /> <span>回主畫面</span>
-                  </button>
+                  <button onClick={handlePlayAgain} className="flex-1 px-4 py-3 sm:py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold transition-all shadow-lg flex items-center justify-center space-x-2"><RotateCcw className="w-5 h-5" /> <span>再打一場</span></button>
+                  <button onClick={() => setGameState(prev => ({ ...prev, mode: 'menu' }))} className="flex-1 px-4 py-3 sm:py-4 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-bold transition-all flex items-center justify-center space-x-2"><Home className="w-5 h-5" /> <span>回主畫面</span></button>
                 </div>
               </div>
             </div>
           )}
 
-          {/* 遊戲主要畫面結構 (Flex Column 完全塞滿 100dvh) */}
-          <div className="flex flex-col w-full h-full max-w-4xl p-2 sm:p-4 justify-between relative z-10">
-            
-            {/* 頂端工具列 */}
-            <div className="w-full flex justify-between items-center shrink-0 mb-1">
-              <div className="flex space-x-2">
-                <button onClick={() => setGameState(prev => ({ ...prev, mode: 'menu' }))} className="flex items-center justify-center p-2 sm:px-3 text-indigo-300 hover:text-white bg-slate-900/50 rounded-full border border-white/10 transition-colors"><Home className="w-4 h-4 sm:w-5 sm:h-5" /> <span className="text-xs sm:text-sm font-bold hidden sm:inline sm:ml-2">退出</span></button>
-                <button onClick={toggleMute} className="flex items-center justify-center p-2 text-indigo-300 hover:text-white bg-slate-900/50 rounded-full border border-white/10 transition-colors"><VolumeIcon className="w-4 h-4 sm:w-5 sm:h-5" /></button>
-                <button onClick={toggleFullscreen} className="flex items-center justify-center p-2 text-indigo-300 hover:text-white bg-slate-900/50 rounded-full border border-white/10 transition-colors"><FullscreenIcon className="w-4 h-4 sm:w-5 sm:h-5" /></button>
-              </div>
-              <div className="flex flex-col items-end">
-                {gameState.mode === 'online' && ( <span className={`text-[10px] sm:text-xs font-bold px-2 sm:px-4 py-1 sm:py-2 rounded-full border mb-1 sm:mb-2 border-emerald-500/30 ${gameState.turn === myPlayerId ? 'bg-emerald-900 text-emerald-300 shadow-lg animate-pulse' : 'bg-slate-800 text-slate-400'}`}>{gameState.turn === myPlayerId ? '輪到你了！' : '等待對手...'} <span className="hidden sm:inline">(房號: {roomId})</span></span> )}
-                <span className="text-[10px] sm:text-xs text-indigo-200/50 uppercase tracking-widest">{currentBoardConfig.name}</span>
-              </div>
+          {/* 頂部導覽列 */}
+          <div className="z-10 w-full max-w-lg lg:max-w-4xl flex justify-between items-center mb-2 px-2 shrink-0 h-[8%] min-h-[40px]">
+            <div className="flex space-x-2">
+              <button onClick={() => setGameState(prev => ({ ...prev, mode: 'menu' }))} className="flex items-center justify-center p-2 text-indigo-300 hover:text-white bg-slate-900/50 rounded-full border border-white/10 transition-colors"><Home className="w-5 h-5" /></button>
+              <button onClick={toggleMute} className="flex items-center justify-center p-2 text-indigo-300 hover:text-white bg-slate-900/50 rounded-full border border-white/10 transition-colors"><VolumeIcon className="w-5 h-5" /></button>
+              <button onClick={toggleFullscreen} className="flex items-center justify-center p-2 text-indigo-300 hover:text-white bg-slate-900/50 rounded-full border border-white/10 transition-colors hidden sm:flex"><FullscreenIcon className="w-5 h-5" /></button>
             </div>
+            <div className="flex flex-col items-end">
+              {gameState.mode === 'online' && ( <span className={`text-xs sm:text-sm font-bold px-3 py-1 rounded-full border mb-1 border-emerald-500/30 ${gameState.turn === myPlayerId ? 'bg-emerald-900 text-emerald-300 shadow-lg animate-pulse' : 'bg-slate-800 text-slate-400'}`}>{gameState.turn === myPlayerId ? '輪到你了！' : '等待對手...'} (房號: <span className="font-mono">{roomId}</span>)</span> )}
+              <span className="text-[10px] sm:text-xs text-indigo-200/50 uppercase tracking-widest">{currentBoardConfig.name}</span>
+            </div>
+          </div>
 
-            {/* 上方玩家 (Top Player) */}
-            <div className={`flex flex-col items-center w-full p-2 sm:p-3 rounded-2xl shrink-0 transition-colors ${getPlayerContainerStyle(topPlayer)}`}>
-              <div className="flex justify-between w-full px-2 sm:px-6 mb-1 sm:mb-2 items-center">
+          {/* 遊戲主區塊：佔滿剩下的所有高度並垂直排列 */}
+          <div className="z-10 flex flex-col w-full max-w-lg items-center flex-1 justify-between pb-2 min-h-0">
+            
+            {/* 上方玩家手牌區 */}
+            <div className={`flex flex-col items-center w-full p-2 sm:p-3 rounded-2xl sm:rounded-3xl transition-colors shrink-0 ${getPlayerContainerStyle(topPlayer)}`}>
+              <div className="flex justify-between w-full px-4 mb-2 items-center">
                 <span className={`text-sm sm:text-base font-bold ${topPlayer === 1 ? 'text-indigo-300' : 'text-rose-300'}`}>{getPlayerLabel(topPlayer)}</span>
-                <span className={`text-xl sm:text-2xl font-black transition-all duration-300 flex items-baseline ${topPlayer === 1 ? 'text-indigo-100' : 'text-rose-100'}`}>{gameState.comboScores[topPlayer]}<span className={`text-xs font-normal ml-1 ${topPlayer === 1 ? 'text-indigo-400' : 'text-rose-400'}`}>分</span></span>
+                <span className={`text-xl sm:text-2xl font-black transition-all duration-300 flex items-baseline ${topPlayer === 1 ? 'text-indigo-100' : 'text-rose-100'}`}>{gameState.comboScores[topPlayer]}<span className={`text-xs sm:text-sm font-normal ml-1 ${topPlayer === 1 ? 'text-indigo-400' : 'text-rose-400'}`}>分</span></span>
               </div>
-              <div className="flex justify-center space-x-2 sm:space-x-4 w-full">{(topPlayer === 1 ? gameState.p1Hand : gameState.p2Hand).map((phase, i) => renderCard(phase, i, topPlayer))}</div>
+              {/* 高度彈性的手牌容器 */}
+              <div className="flex space-x-2 sm:space-x-4 h-[11vh] min-h-[60px] max-h-[100px] w-full justify-center">
+                {(topPlayer === 1 ? gameState.p1Hand : gameState.p2Hand).map((phase, i) => renderCard(phase, i, topPlayer))}
+              </div>
             </div>
             
-            {/* 中間棋盤區域 (自動填滿剩餘空間，保持方形) */}
-            <div className="flex-1 w-full flex items-center justify-center min-h-0 relative py-1 sm:py-2">
-              <div 
-                className="relative aspect-square w-full bg-slate-900/60 rounded-3xl sm:rounded-[2.5rem] backdrop-blur-lg border border-slate-700/50 shadow-2xl"
-                style={{ maxWidth: 'min(85vw, 42vh)', maxHeight: 'min(85vw, 42vh)' }} // 嚴格鎖定自適應最大尺寸，防止撐破
-              >
+            {/* 中間棋盤區塊 (自適應正方形，確保不破版) */}
+            <div className="flex-1 w-full flex items-center justify-center min-h-0 my-1">
+              <div className="relative w-full aspect-[1/1] max-w-[min(100%,_50vh)] bg-slate-900/60 rounded-[1.5rem] sm:rounded-[2rem] backdrop-blur-lg border border-slate-700/50 shadow-2xl">
                 
-                {/* 得分特效浮動字 */}
                 {gameState.currentScoringEvent && (
                   <div key={gameState.currentScoringEvent.id} className="absolute inset-0 flex items-center justify-center pointer-events-none z-[100]">
                     <div className="animate-float-score flex flex-col items-center">
-                      <span className="text-3xl sm:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-t from-yellow-300 to-white drop-shadow-[0_0_15px_rgba(250,204,21,1)]" style={{ WebkitTextStroke: '1px #854d0e' }}>
+                      <span className="text-3xl sm:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-t from-yellow-300 to-white drop-shadow-[0_0_15px_rgba(250,204,21,1)]" style={{ WebkitTextStroke: '2px #854d0e' }}>
                         {gameState.currentScoringEvent.name}
                       </span>
-                      <span className="text-2xl sm:text-4xl font-black text-yellow-300 drop-shadow-[0_0_15px_rgba(250,204,21,1)] mt-1 sm:mt-2">
+                      <span className="text-2xl sm:text-4xl font-black text-yellow-300 drop-shadow-[0_0_15px_rgba(250,204,21,1)] mt-2">
                         +{gameState.currentScoringEvent.points}
                       </span>
                     </div>
                   </div>
                 )}
 
-                {/* SVG 連線底層 */}
                 <svg className="absolute inset-0 w-full h-full pointer-events-none z-0 overflow-visible">
                   {currentBoardConfig.edges.map((edge, i) => {
                     const n1 = currentBoardConfig.nodes[edge[0]];
                     const n2 = currentBoardConfig.nodes[edge[1]];
                     const isScoringEdge = gameState.currentScoringEvent && gameState.currentScoringEvent.cells.includes(edge[0]) && gameState.currentScoringEvent.cells.includes(edge[1]);
-                    
                     let strokeColor = "rgba(71, 85, 105, 0.3)";
-                    let strokeWidth = "2"; // 微調線條適應小螢幕
+                    let strokeWidth = "3";
                     
                     if (isScoringEdge) {
                       strokeColor = gameState.turn === 1 ? "rgba(99, 102, 241, 0.9)" : "rgba(244, 63, 94, 0.9)";
@@ -960,22 +969,26 @@
                         strokeWidth={strokeWidth} 
                         strokeLinecap="round" 
                         className="transition-all duration-500"
-                        style={isScoringEdge ? { filter: `drop-shadow(0px 0px 6px ${strokeColor})` } : {}}
+                        style={isScoringEdge ? { filter: `drop-shadow(0px 0px 8px ${strokeColor})` } : {}}
                       />
                     );
                   })}
                 </svg>
 
-                {/* 棋盤上的卡牌節點 */}
                 {gameState.board.map((cell, idx) => {
                   const node = currentBoardConfig.nodes[idx];
-                  const sizeClass = currentBoardConfig.cardClass; // 現在這是一個百分比的 class
+                  // 根據父層設定的百分比寬高繪製
+                  const sizeClass = currentBoardConfig.cardClass;
 
                   return (
                     <div 
                       key={`node-${idx}`} 
                       className={`absolute z-10 flex items-center justify-center rounded-xl sm:rounded-2xl transition-colors ${sizeClass} ${cell === null ? 'border-2 border-dashed border-slate-500/50 bg-slate-800/30 hover:bg-slate-700/60 cursor-pointer backdrop-blur-sm shadow-inner' : ''}`}
-                      style={{ left: `${node.x}%`, top: `${node.y}%`, transform: 'translate(-50%, -50%)' }}
+                      style={{ 
+                        left: `${node.x}%`, 
+                        top: `${node.y}%`, 
+                        transform: 'translate(-50%, -50%)'
+                      }}
                       onClick={(e) => { 
                         e.stopPropagation();
                         if (cell === null && gameState.selectedCardIdx !== null && (!gameState.isAnimating)) { 
@@ -991,12 +1004,15 @@
               </div>
             </div>
 
-            {/* 下方玩家 (Bottom Player) */}
-            <div className={`flex flex-col items-center w-full p-2 sm:p-3 rounded-2xl shrink-0 transition-colors ${getPlayerContainerStyle(bottomPlayer)}`}>
-              <div className="flex justify-center space-x-2 sm:space-x-4 w-full">{(bottomPlayer === 1 ? gameState.p1Hand : gameState.p2Hand).map((phase, i) => renderCard(phase, i, bottomPlayer))}</div>
-              <div className="flex justify-between w-full px-2 sm:px-6 mt-1 sm:mt-2 items-center">
+            {/* 下方玩家手牌區 */}
+            <div className={`flex flex-col items-center w-full p-2 sm:p-3 rounded-2xl sm:rounded-3xl transition-colors shrink-0 ${getPlayerContainerStyle(bottomPlayer)}`}>
+              {/* 高度彈性的手牌容器 */}
+              <div className="flex space-x-2 sm:space-x-4 h-[11vh] min-h-[60px] max-h-[100px] w-full justify-center">
+                {(bottomPlayer === 1 ? gameState.p1Hand : gameState.p2Hand).map((phase, i) => renderCard(phase, i, bottomPlayer))}
+              </div>
+              <div className="flex justify-between w-full px-4 mt-2 items-center">
                 <span className={`text-sm sm:text-base font-bold ${bottomPlayer === 1 ? 'text-indigo-300' : 'text-rose-300'}`}>{getPlayerLabel(bottomPlayer)}</span>
-                <span className={`text-xl sm:text-2xl font-black transition-all duration-300 flex items-baseline ${bottomPlayer === 1 ? 'text-indigo-100' : 'text-rose-100'}`}>{gameState.comboScores[bottomPlayer]}<span className={`text-xs font-normal ml-1 ${bottomPlayer === 1 ? 'text-indigo-400' : 'text-rose-400'}`}>分</span></span>
+                <span className={`text-xl sm:text-2xl font-black transition-all duration-300 flex items-baseline ${bottomPlayer === 1 ? 'text-indigo-100' : 'text-rose-100'}`}>{gameState.comboScores[bottomPlayer]}<span className={`text-xs sm:text-sm font-normal ml-1 ${bottomPlayer === 1 ? 'text-indigo-400' : 'text-rose-400'}`}>分</span></span>
               </div>
             </div>
 
