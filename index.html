@@ -12,15 +12,15 @@
   <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
   
-  <!-- 引入 Babel 用於在瀏覽器編譯 JSX -->
+  <!-- 引入 Babel -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
   <style>
     body, html { 
       margin: 0; padding: 0; 
-      background-color: #020617; /* slate-950 */
-      overflow: hidden; /* 鎖定畫面，防止滑動導致跑版 */
-      touch-action: none; /* 防止手機瀏覽器下拉刷新 */
+      background-color: #020617;
+      overflow: hidden; 
+      touch-action: none;
     }
   </style>
 </head>
@@ -29,18 +29,14 @@
 
   <!-- 主程式邏輯 -->
   <script type="text/babel" data-type="module">
-    // --- Firebase 雲端資料庫模組 (使用 ES Module CDN) ---
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js';
     import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js';
     import { getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
 
     const { useState, useEffect, useCallback, useRef } = React;
 
-    // ⚠️ 部署到 GitHub Pages 時：
-    // 如果你要啟用「連線對戰」，請在下方填入你自己的 Firebase 專案設定。
-    // 單人對戰電腦 / 雙人同機模式 則不需要設定即可運作。
     const myFirebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
-      apiKey: "AIzaSyDs8L6uD0SvtUYn4A6iC2jGB_uHLYXS-1o",
+     apiKey: "AIzaSyDs8L6uD0SvtUYn4A6iC2jGB_uHLYXS-1o",
       authDomain: "moonphasegame.firebaseapp.com",
       projectId: "moonphasegame",
       storageBucket: "moonphasegame.firebasestorage.app",
@@ -60,11 +56,7 @@
     const appId = typeof __app_id !== 'undefined' ? __app_id : 'moonphase-github-pages';
 
     // --- 內建 Icons ---
-    const IconBase = ({ children, className = "" }) => (
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-        {children}
-      </svg>
-    );
+    const IconBase = ({ children, className = "" }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>{children}</svg>;
     const User = ({ className }) => <IconBase className={className}><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></IconBase>;
     const Users = ({ className }) => <IconBase className={className}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></IconBase>;
     const RotateCcw = ({ className }) => <IconBase className={className}><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></IconBase>;
@@ -80,111 +72,60 @@
     // --- 音效與音樂引擎 ---
     class AudioManager {
       constructor() {
-        this.ctx = null;
-        this.masterGain = null;
-        this.bgmGain = null;
-        this.isMuted = false;
-        this.bgmPlaying = false;
+        this.ctx = null; this.masterGain = null; this.bgmGain = null;
+        this.isMuted = false; this.bgmPlaying = false;
       }
       init() {
-        if (this.ctx) {
-          if (this.ctx.state === 'suspended') this.ctx.resume();
-          return;
-        }
+        if (this.ctx) { if (this.ctx.state === 'suspended') this.ctx.resume(); return; }
         const AudioContext = window.AudioContext || window.webkitAudioContext;
         this.ctx = new AudioContext();
-        this.masterGain = this.ctx.createGain();
-        this.masterGain.gain.value = 0.5;
+        this.masterGain = this.ctx.createGain(); this.masterGain.gain.value = 0.5;
         this.masterGain.connect(this.ctx.destination);
         this.startBGM();
       }
       toggleMute() {
         this.isMuted = !this.isMuted;
-        if (this.masterGain) {
-          this.masterGain.gain.setTargetAtTime(this.isMuted ? 0 : 0.5, this.ctx.currentTime, 0.1);
-        }
+        if (this.masterGain) this.masterGain.gain.setTargetAtTime(this.isMuted ? 0 : 0.5, this.ctx.currentTime, 0.1);
       }
       playTone(freq, type, duration, vol = 1, slideTo = null) {
         if (!this.ctx || this.isMuted) return;
-        const osc = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
-        osc.type = type;
-        osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+        const osc = this.ctx.createOscillator(); const gain = this.ctx.createGain();
+        osc.type = type; osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
         if (slideTo) osc.frequency.exponentialRampToValueAtTime(slideTo, this.ctx.currentTime + duration);
-        
         gain.gain.setValueAtTime(0, this.ctx.currentTime);
         gain.gain.linearRampToValueAtTime(vol, this.ctx.currentTime + 0.05);
         gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
-
-        osc.connect(gain);
-        gain.connect(this.masterGain);
-        osc.start();
-        osc.stop(this.ctx.currentTime + duration);
+        osc.connect(gain); gain.connect(this.masterGain);
+        osc.start(); osc.stop(this.ctx.currentTime + duration);
       }
       playPlaceCard() { this.playTone(150, 'sine', 0.15, 0.6, 50); }
-      playIdentical() { 
-        this.playTone(523.25, 'sine', 0.4, 0.4); 
-        setTimeout(() => this.playTone(659.25, 'sine', 0.6, 0.4), 100);
-      }
-      playComplementary() { 
-        this.playTone(440, 'triangle', 0.3, 0.4);
-        setTimeout(() => this.playTone(659.25, 'triangle', 0.4, 0.4), 150);
-        setTimeout(() => this.playTone(880, 'triangle', 0.8, 0.4), 300);
-      }
-      playSequence() { 
-        [261.63, 329.63, 392.00, 523.25].forEach((freq, i) => {
-          setTimeout(() => this.playTone(freq, 'sine', 0.6, 0.3), i * 150);
-        });
-      }
-      playWin() { 
-        [523.25, 659.25, 783.99, 1046.50].forEach((freq, i) => {
-          setTimeout(() => this.playTone(freq, 'square', 0.5, 0.2), i * 200);
-        });
-        setTimeout(() => this.playTone(1046.50, 'square', 1.5, 0.2), 800);
-      }
+      playIdentical() { this.playTone(523.25, 'sine', 0.4, 0.4); setTimeout(() => this.playTone(659.25, 'sine', 0.6, 0.4), 100); }
+      playComplementary() { this.playTone(440, 'triangle', 0.3, 0.4); setTimeout(() => this.playTone(659.25, 'triangle', 0.4, 0.4), 150); setTimeout(() => this.playTone(880, 'triangle', 0.8, 0.4), 300); }
+      playSequence() { [261.63, 329.63, 392.00, 523.25].forEach((freq, i) => setTimeout(() => this.playTone(freq, 'sine', 0.6, 0.3), i * 150)); }
+      playWin() { [523.25, 659.25, 783.99, 1046.50].forEach((freq, i) => setTimeout(() => this.playTone(freq, 'square', 0.5, 0.2), i * 200)); setTimeout(() => this.playTone(1046.50, 'square', 1.5, 0.2), 800); }
       startBGM() {
         if (this.bgmPlaying || !this.ctx) return;
         this.bgmPlaying = true;
-        
-        const delay = this.ctx.createDelay();
-        delay.delayTime.value = 0.8;
-        const feedback = this.ctx.createGain();
-        feedback.gain.value = 0.5;
-        const filter = this.ctx.createBiquadFilter();
-        filter.type = 'lowpass';
-        filter.frequency.value = 800;
-
-        delay.connect(feedback);
-        feedback.connect(filter);
-        filter.connect(delay);
-
-        this.bgmGain = this.ctx.createGain();
-        this.bgmGain.gain.value = 0.15;
-        this.bgmGain.connect(this.masterGain);
-        delay.connect(this.bgmGain);
-
+        const delay = this.ctx.createDelay(); delay.delayTime.value = 0.8;
+        const feedback = this.ctx.createGain(); feedback.gain.value = 0.5;
+        const filter = this.ctx.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 800;
+        delay.connect(feedback); feedback.connect(filter); filter.connect(delay);
+        this.bgmGain = this.ctx.createGain(); this.bgmGain.gain.value = 0.15;
+        this.bgmGain.connect(this.masterGain); delay.connect(this.bgmGain);
         const scale = [261.63, 293.66, 329.63, 392.00, 440.00]; 
         const playNextNote = () => {
           if (!this.bgmPlaying) return;
-          const osc = this.ctx.createOscillator();
-          const gain = this.ctx.createGain();
+          const osc = this.ctx.createOscillator(); const gain = this.ctx.createGain();
           osc.type = Math.random() > 0.5 ? 'sine' : 'triangle';
           osc.frequency.value = scale[Math.floor(Math.random() * scale.length)] * (Math.random() > 0.5 ? 0.5 : 1);
-          
           gain.gain.setValueAtTime(0, this.ctx.currentTime);
           gain.gain.linearRampToValueAtTime(0.2, this.ctx.currentTime + 2);
           gain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 6);
-
-          osc.connect(gain);
-          gain.connect(this.bgmGain); 
-          gain.connect(delay); 
-
-          osc.start(this.ctx.currentTime);
-          osc.stop(this.ctx.currentTime + 6);
+          osc.connect(gain); gain.connect(this.bgmGain); gain.connect(delay); 
+          osc.start(this.ctx.currentTime); osc.stop(this.ctx.currentTime + 6);
           setTimeout(playNextNote, 2000 + Math.random() * 3000);
         };
-        playNextNote();
-        setTimeout(playNextNote, 2500); 
+        playNextNote(); setTimeout(playNextNote, 2500); 
       }
     }
     const audioManager = new AudioManager();
@@ -197,59 +138,34 @@
 
     const BOARDS = {
       classic: {
-        id: 'classic',
-        name: '九宮格 (9格)',
-        cardClass: 'w-[28%] aspect-[4/5]', // 使用百分比與等比例縮放
+        id: 'classic', name: '九宮格 (9格)', cardClass: 'w-[24%] aspect-[4/5]',
         nodes: [
           { x: 16.6, y: 16.6 }, { x: 50, y: 16.6 }, { x: 83.3, y: 16.6 },
           { x: 16.6, y: 50 },   { x: 50, y: 50 },   { x: 83.3, y: 50 },
           { x: 16.6, y: 83.3 }, { x: 50, y: 83.3 }, { x: 83.3, y: 83.3 }
         ],
-        edges: [
-          [0,1], [1,2], [3,4], [4,5], [6,7], [7,8], // 橫向
-          [0,3], [3,6], [1,4], [4,7], [2,5], [5,8]  // 縱向
-        ]
+        edges: [ [0,1], [1,2], [3,4], [4,5], [6,7], [7,8], [0,3], [3,6], [1,4], [4,7], [2,5], [5,8] ]
       },
       owl: {
-        id: 'owl',
-        name: '貓頭鷹臉型 (12格)',
-        cardClass: 'w-[20%] aspect-[4/5]',
+        id: 'owl', name: '貓頭鷹臉型 (12格)', cardClass: 'w-[18%] aspect-[4/5]',
         nodes: [
           {x: 35, y: 15}, {x: 65, y: 15},
-          {x: 15, y: 35}, {x: 40, y: 35}, {x: 60, y: 35}, {x: 85, y: 35},
-          {x: 15, y: 65}, {x: 40, y: 65}, {x: 60, y: 65}, {x: 85, y: 65},
+          {x: 15, y: 38}, {x: 38, y: 38}, {x: 62, y: 38}, {x: 85, y: 38},
+          {x: 15, y: 62}, {x: 38, y: 62}, {x: 62, y: 62}, {x: 85, y: 62},
           {x: 35, y: 85}, {x: 65, y: 85}
         ],
-        edges: [
-          [0,1],
-          [0,2], [0,3], [1,4], [1,5],
-          [2,6], [3,7], [4,8], [5,9],
-          [6,10], [7,10], [8,11], [9,11],
-          [10,11],
-          [2,3], [4,5], [6,7], [8,9]
-        ]
+        edges: [ [0,1], [0,2], [0,3], [1,4], [1,5], [2,6], [3,7], [4,8], [5,9], [6,10], [7,10], [8,11], [9,11], [10,11], [2,3], [4,5], [6,7], [8,9] ]
       },
       tree: {
-        id: 'tree',
-        name: '拱門神木 (13格)',
-        cardClass: 'w-[18%] aspect-[4/5]',
+        id: 'tree', name: '拱門神木 (13格)', cardClass: 'w-[15%] aspect-[4/5]',
         nodes: [
           {x: 50, y: 10},
-          {x: 25, y: 28}, {x: 50, y: 28}, {x: 75, y: 28},
-          {x: 10, y: 50}, {x: 35, y: 50}, {x: 65, y: 50}, {x: 90, y: 50},
-          {x: 25, y: 72}, {x: 50, y: 72}, {x: 75, y: 72},
+          {x: 25, y: 30}, {x: 50, y: 30}, {x: 75, y: 30},
+          {x: 12.5, y: 50}, {x: 37.5, y: 50}, {x: 62.5, y: 50}, {x: 87.5, y: 50},
+          {x: 25, y: 70}, {x: 50, y: 70}, {x: 75, y: 70},
           {x: 35, y: 90}, {x: 65, y: 90}
         ],
-        edges: [
-          [0,1], [0,2], [0,3],
-          [1,2], [2,3],
-          [1,4], [1,5], [2,5], [2,6], [3,6], [3,7],
-          [4,5], [5,6], [6,7],
-          [4,8], [5,8], [5,9], [6,9], [6,10], [7,10],
-          [8,9], [9,10],
-          [8,11], [9,11], [9,12], [10,12],
-          [11,12]
-        ]
+        edges: [ [0,1], [0,2], [0,3], [1,2], [2,3], [1,4], [1,5], [2,5], [2,6], [3,6], [3,7], [4,5], [5,6], [6,7], [4,8], [5,8], [5,9], [6,9], [6,10], [7,10], [8,9], [9,10], [8,11], [9,11], [9,12], [10,12], [11,12] ]
       }
     };
 
@@ -258,44 +174,28 @@
 
     const getNeighbors = (idx, edges) => {
       const neighbors = [];
-      edges.forEach(edge => {
-        if (edge[0] === idx) neighbors.push(edge[1]);
-        if (edge[1] === idx) neighbors.push(edge[0]);
-      });
+      edges.forEach(edge => { if (edge[0] === idx) neighbors.push(edge[1]); if (edge[1] === idx) neighbors.push(edge[0]); });
       return neighbors;
     };
 
     const findSequences = (boardArray, startIdx, edges) => {
       const getPaths = (currIdx, step, visited) => {
-        let paths = [];
-        let expectedPhase = (boardArray[currIdx].phase + step + 8) % 8;
-        let hasNext = false;
+        let paths = []; let expectedPhase = (boardArray[currIdx].phase + step + 8) % 8; let hasNext = false;
         getNeighbors(currIdx, edges).forEach(n => {
           if (boardArray[n] && boardArray[n].phase === expectedPhase && !visited.has(n)) {
-            hasNext = true;
-            let subPaths = getPaths(n, step, new Set([...visited, n]));
+            hasNext = true; let subPaths = getPaths(n, step, new Set([...visited, n]));
             subPaths.forEach(p => paths.push([currIdx, ...p]));
           }
         });
-        if (!hasNext) {
-          paths.push([currIdx]);
-        }
+        if (!hasNext) paths.push([currIdx]);
         return paths;
       };
-
       const pathsUp = getPaths(startIdx, 1, new Set([startIdx]));
       const pathsDown = getPaths(startIdx, -1, new Set([startIdx]));
       let sequences = [];
-
       pathsDown.forEach(pDown => {
-        pathsUp.forEach(pUp => {
-          const combined = [...pDown].reverse().concat(pUp.slice(1));
-          if (combined.length >= 3) {
-            sequences.push(combined);
-          }
-        });
+        pathsUp.forEach(pUp => { const combined = [...pDown].reverse().concat(pUp.slice(1)); if (combined.length >= 3) sequences.push(combined); });
       });
-
       return sequences;
     };
 
@@ -333,16 +233,11 @@
       const roomIdRef = useRef('');
 
       const [gameState, setGameState] = useState({
-        mode: 'menu', 
-        boardType: 'classic', 
-        board: Array(9).fill(null),
+        mode: 'menu', boardType: 'classic', board: Array(9).fill(null),
         p1Deck: [], p2Deck: [], p1Hand: [], p2Hand: [],
         turn: 1, comboScores: { 1: 0, 2: 0 },
         isAnimating: false, gameOver: false, tallyState: 'none', 
-        selectedCardIdx: null, round: 1,
-        scoringQueue: [],
-        currentScoringEvent: null,
-        pendingResolveInfo: null
+        selectedCardIdx: null, round: 1, scoringQueue: [], currentScoringEvent: null, pendingResolveInfo: null
       });
 
       useEffect(() => { roomIdRef.current = roomId; }, [roomId]);
@@ -353,33 +248,22 @@
           setNativeFs(isNowFs);
           if (!isNowFs) setIsPseudoFs(false);
         };
-        document.addEventListener('fullscreenchange', handleFsChange);
-        document.addEventListener('webkitfullscreenchange', handleFsChange);
-        return () => {
-          document.removeEventListener('fullscreenchange', handleFsChange);
-          document.removeEventListener('webkitfullscreenchange', handleFsChange);
-        };
+        document.addEventListener('fullscreenchange', handleFsChange); document.addEventListener('webkitfullscreenchange', handleFsChange);
+        return () => { document.removeEventListener('fullscreenchange', handleFsChange); document.removeEventListener('webkitfullscreenchange', handleFsChange); };
       }, []);
 
       const toggleFullscreen = () => {
-        const docElem = document.documentElement;
-        const isNowFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+        const docElem = document.documentElement; const isNowFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
         if (!isNowFs && !isPseudoFs) {
           const req = docElem.requestFullscreen || docElem.webkitRequestFullscreen;
-          if (req) req.call(docElem).catch(() => setIsPseudoFs(true));
-          else setIsPseudoFs(true);
+          if (req) req.call(docElem).catch(() => setIsPseudoFs(true)); else setIsPseudoFs(true);
         } else {
           const exit = document.exitFullscreen || document.webkitExitFullscreen;
-          if (isNowFs && exit) exit.call(document).catch(() => setIsPseudoFs(false));
-          setIsPseudoFs(false);
+          if (isNowFs && exit) exit.call(document).catch(() => setIsPseudoFs(false)); setIsPseudoFs(false);
         }
       };
 
-      const toggleMute = () => {
-        audioManager.init();
-        audioManager.toggleMute();
-        setIsMuted(!isMuted);
-      };
+      const toggleMute = () => { audioManager.init(); audioManager.toggleMute(); setIsMuted(!isMuted); };
 
       useEffect(() => {
         const initAuth = async () => {
@@ -391,12 +275,10 @@
           } catch (e) { console.error("Auth Error:", e); }
         };
         initAuth();
-        if (auth) {
-          const unsubscribe = onAuthStateChanged(auth, setUser);
-          return () => unsubscribe();
-        }
+        if (auth) { const unsubscribe = onAuthStateChanged(auth, setUser); return () => unsubscribe(); }
       }, []);
 
+      // 監聽 Firebase 同步更新
       useEffect(() => {
         if (!roomId || !user || !db) return;
         const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'moonphase_rooms', roomId);
@@ -405,25 +287,17 @@
           const data = snap.data();
           setGameState(prev => {
             let nextState = { ...prev };
-            if (data.status === 'playing' && (nextState.mode === 'waiting' || (data.round && data.round !== nextState.round))) {
+            // 修正點：放寬連線進入條件，只要狀態是 playing 且還沒進入 online，就觸發切換
+            if (data.status === 'playing' && (nextState.mode !== 'online' || (data.round && data.round !== nextState.round))) {
               lastProcessedMoveTs.current = 0; 
-              nextState = {
-                ...nextState, 
-                mode: 'online', 
-                boardType: data.initialState.boardType || 'classic',
-                ...data.initialState,
-                turn: 1, comboScores: { 1: 0, 2: 0 }, isAnimating: false, gameOver: false, tallyState: 'none', 
-                selectedCardIdx: null, scoringQueue: [], currentScoringEvent: null, pendingResolveInfo: null, round: data.round || 1
-              };
+              nextState = { ...nextState, mode: 'online', boardType: data.initialState.boardType || 'classic', ...data.initialState, turn: 1, comboScores: { 1: 0, 2: 0 }, isAnimating: false, gameOver: false, tallyState: 'none', selectedCardIdx: null, scoringQueue: [], currentScoringEvent: null, pendingResolveInfo: null, round: data.round || 1 };
             }
             return nextState;
           }, (err) => console.error("Firestore sync error:", err));
           
-          if (data.lastMove && data.lastMove.player !== myPlayerId) {
-            if (data.lastMove.ts > lastProcessedMoveTs.current) {
-              lastProcessedMoveTs.current = data.lastMove.ts;
-              playCard(data.lastMove.cardIdx, data.lastMove.boardIdx, true);
-            }
+          if (data.lastMove && data.lastMove.player !== myPlayerId && data.lastMove.ts > lastProcessedMoveTs.current) {
+            lastProcessedMoveTs.current = data.lastMove.ts;
+            playCard(data.lastMove.cardIdx, data.lastMove.boardIdx, true);
           }
         });
         return () => unsubscribe();
@@ -431,25 +305,18 @@
 
       const getActualBoardId = () => {
         if (boardTypePref !== 'random') return boardTypePref;
-        const choices = ['classic', 'owl', 'tree'];
-        return choices[Math.floor(Math.random() * choices.length)];
+        const choices = ['classic', 'owl', 'tree']; return choices[Math.floor(Math.random() * choices.length)];
       };
 
       const initGame = (mode) => {
         audioManager.init();
-        const actualBoardId = getActualBoardId();
-        const boardConfig = BOARDS[actualBoardId];
-        
-        const generateDeck = () => {
-          let deck = []; for(let i=0; i<3; i++) deck.push(0, 1, 2, 3, 4, 5, 6, 7);
-          return deck.sort(() => Math.random() - 0.5);
-        };
+        const actualBoardId = getActualBoardId(); const boardConfig = BOARDS[actualBoardId];
+        const generateDeck = () => { let deck = []; for(let i=0; i<3; i++) deck.push(0, 1, 2, 3, 4, 5, 6, 7); return deck.sort(() => Math.random() - 0.5); };
         let deck1 = generateDeck(), deck2 = generateDeck();
         setGameState(prev => ({
           ...prev, mode, boardType: actualBoardId, board: Array(boardConfig.nodes.length).fill(null),
           p1Deck: deck1.slice(3), p2Deck: deck2.slice(3), p1Hand: deck1.slice(0, 3), p2Hand: deck2.slice(0, 3),
-          turn: 1, comboScores: { 1: 0, 2: 0 }, isAnimating: false, gameOver: false, tallyState: 'none', selectedCardIdx: null,
-          scoringQueue: [], currentScoringEvent: null, pendingResolveInfo: null
+          turn: 1, comboScores: { 1: 0, 2: 0 }, isAnimating: false, gameOver: false, tallyState: 'none', selectedCardIdx: null, scoringQueue: [], currentScoringEvent: null, pendingResolveInfo: null
         }));
       };
 
@@ -458,74 +325,42 @@
       const applyResolveTurn = (prevState, captured, newHand, turn) => {
         let newBoard = [...prevState.board];
         captured.forEach(idx => { if (newBoard[idx]) newBoard[idx].player = turn; });
-        
-        const isP1 = turn === 1;
-        const currentDeck = isP1 ? prevState.p1Deck : prevState.p2Deck;
+        const isP1 = turn === 1; const currentDeck = isP1 ? prevState.p1Deck : prevState.p2Deck;
         const { newDeck, finalHand } = drawCard(currentDeck, newHand);
-        const nextP1Hand = isP1 ? finalHand : prevState.p1Hand;
-        const nextP2Hand = isP1 ? prevState.p2Hand : finalHand;
-        
+        const nextP1Hand = isP1 ? finalHand : prevState.p1Hand; const nextP2Hand = isP1 ? prevState.p2Hand : finalHand;
         const isBoardFull = !newBoard.includes(null);
         const gameOver = (nextP1Hand.length === 0 && nextP2Hand.length === 0) || isBoardFull;
-        
-        return {
-          board: newBoard, p1Deck: isP1 ? newDeck : prevState.p1Deck, p2Deck: isP1 ? prevState.p2Deck : newDeck,
-          p1Hand: nextP1Hand, p2Hand: nextP2Hand, isAnimating: false, turn: turn === 1 ? 2 : 1, gameOver,
-          tallyState: gameOver ? 'start' : 'none', scoringQueue: [], currentScoringEvent: null, pendingResolveInfo: null
-        };
+        return { board: newBoard, p1Deck: isP1 ? newDeck : prevState.p1Deck, p2Deck: isP1 ? prevState.p2Deck : newDeck, p1Hand: nextP1Hand, p2Hand: nextP2Hand, isAnimating: false, turn: turn === 1 ? 2 : 1, gameOver, tallyState: gameOver ? 'start' : 'none', scoringQueue: [], currentScoringEvent: null, pendingResolveInfo: null };
       };
 
       const playCard = useCallback((cardIdx, boardIdx, isRemote = false) => {
-        audioManager.init();
-        audioManager.playPlaceCard();
-
+        audioManager.init(); audioManager.playPlaceCard();
         setGameState(prev => {
           if (prev.isAnimating || prev.gameOver || prev.board[boardIdx] !== null) return prev;
-          const isP1 = prev.turn === 1;
-          const hand = isP1 ? prev.p1Hand : prev.p2Hand;
+          const isP1 = prev.turn === 1; const hand = isP1 ? prev.p1Hand : prev.p2Hand;
           if (hand[cardIdx] === undefined) return prev;
           
           const playedPhase = hand[cardIdx];
           let newHand = [...hand]; newHand.splice(cardIdx, 1);
-          let newBoard = [...prev.board];
-          newBoard[boardIdx] = { phase: playedPhase, player: 0 };
+          let newBoard = [...prev.board]; newBoard[boardIdx] = { phase: playedPhase, player: 0 };
 
           if (!isRemote && prev.mode === 'online' && roomIdRef.current && db) {
             const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'moonphase_rooms', roomIdRef.current);
             updateDoc(roomRef, { lastMove: { cardIdx, boardIdx, player: prev.turn, ts: Date.now() } }).catch(console.error);
           }
 
-          const edges = BOARDS[prev.boardType].edges;
-          let events = [];
-          let totalCaptured = new Set();
-          
+          const edges = BOARDS[prev.boardType].edges; let events = []; let totalCaptured = new Set();
           getNeighbors(boardIdx, edges).forEach(n => {
             const neighbor = newBoard[n];
             if (neighbor) {
-              if (isIdentical(playedPhase, neighbor.phase)) {
-                events.push({ id: `ev-${Date.now()}-${n}`, type: 'identical', cells: [boardIdx, n], points: 1, name: '相同月相' });
-                totalCaptured.add(boardIdx); totalCaptured.add(n);
-              } else if (isMatch(playedPhase, neighbor.phase)) {
-                events.push({ id: `ev-${Date.now()}-${n}`, type: 'complementary', cells: [boardIdx, n], points: 2, name: '互補滿月' });
-                totalCaptured.add(boardIdx); totalCaptured.add(n);
-              }
+              if (isIdentical(playedPhase, neighbor.phase)) { events.push({ id: `ev-${Date.now()}-${n}`, type: 'identical', cells: [boardIdx, n], points: 1, name: '相同月相' }); totalCaptured.add(boardIdx); totalCaptured.add(n); } 
+              else if (isMatch(playedPhase, neighbor.phase)) { events.push({ id: `ev-${Date.now()}-${n}`, type: 'complementary', cells: [boardIdx, n], points: 2, name: '互補滿月' }); totalCaptured.add(boardIdx); totalCaptured.add(n); }
             }
           });
-          
           const sequencesList = findSequences(newBoard, boardIdx, edges);
-          sequencesList.forEach((seq, i) => {
-            events.push({ id: `seq-${Date.now()}-${i}`, type: 'sequence', cells: seq, points: seq.length, name: '月相變化' });
-            seq.forEach(n => totalCaptured.add(n));
-          });
+          sequencesList.forEach((seq, i) => { events.push({ id: `seq-${Date.now()}-${i}`, type: 'sequence', cells: seq, points: seq.length, name: '月相變化' }); seq.forEach(n => totalCaptured.add(n)); });
 
-          return {
-            ...prev, 
-            board: newBoard, p1Hand: isP1 ? newHand : prev.p1Hand, p2Hand: isP1 ? prev.p2Hand : newHand,
-            selectedCardIdx: null, isAnimating: true, 
-            scoringQueue: events.length > 0 ? events.slice(1) : [], 
-            currentScoringEvent: events.length > 0 ? events[0] : null,
-            pendingResolveInfo: { captured: Array.from(totalCaptured), newHand, turn: prev.turn }
-          };
+          return { ...prev, board: newBoard, p1Hand: isP1 ? newHand : prev.p1Hand, p2Hand: isP1 ? prev.p2Hand : newHand, selectedCardIdx: null, isAnimating: true, scoringQueue: events.length > 0 ? events.slice(1) : [], currentScoringEvent: events.length > 0 ? events[0] : null, pendingResolveInfo: { captured: Array.from(totalCaptured), newHand, turn: prev.turn } };
         });
       }, []);
 
@@ -533,53 +368,26 @@
         if (!gameState.isAnimating) return;
         if (gameState.currentScoringEvent) {
           const type = gameState.currentScoringEvent.type;
-          if (type === 'identical') audioManager.playIdentical();
-          else if (type === 'complementary') audioManager.playComplementary();
-          else if (type === 'sequence') audioManager.playSequence();
-
+          if (type === 'identical') audioManager.playIdentical(); else if (type === 'complementary') audioManager.playComplementary(); else if (type === 'sequence') audioManager.playSequence();
           const timer = setTimeout(() => {
-            setGameState(prev => {
-              let newScores = { ...prev.comboScores };
-              newScores[prev.pendingResolveInfo.turn] += prev.currentScoringEvent.points;
-              return { ...prev, comboScores: newScores, currentScoringEvent: null };
-            });
+            setGameState(prev => { let newScores = { ...prev.comboScores }; newScores[prev.pendingResolveInfo.turn] += prev.currentScoringEvent.points; return { ...prev, comboScores: newScores, currentScoringEvent: null }; });
           }, 1500);
           return () => clearTimeout(timer);
-        } 
-        else if (gameState.pendingResolveInfo) {
+        } else if (gameState.pendingResolveInfo) {
           if (gameState.scoringQueue.length > 0) {
-            const gapTimer = setTimeout(() => {
-              setGameState(prev => ({
-                ...prev, currentScoringEvent: prev.scoringQueue[0], scoringQueue: prev.scoringQueue.slice(1)
-              }));
-            }, 100);
-            return () => clearTimeout(gapTimer);
+            const gapTimer = setTimeout(() => { setGameState(prev => ({ ...prev, currentScoringEvent: prev.scoringQueue[0], scoringQueue: prev.scoringQueue.slice(1) })); }, 100); return () => clearTimeout(gapTimer);
           } else {
             const finishTimer = setTimeout(() => {
-              setGameState(prev => {
-                if (!prev.pendingResolveInfo) return prev;
-                const resolvedState = applyResolveTurn(prev, prev.pendingResolveInfo.captured, prev.pendingResolveInfo.newHand, prev.pendingResolveInfo.turn);
-                return { ...prev, ...resolvedState };
-              });
-            }, 200);
-            return () => clearTimeout(finishTimer);
+              setGameState(prev => { if (!prev.pendingResolveInfo) return prev; return { ...prev, ...applyResolveTurn(prev, prev.pendingResolveInfo.captured, prev.pendingResolveInfo.newHand, prev.pendingResolveInfo.turn) }; });
+            }, 200); return () => clearTimeout(finishTimer);
           }
         }
       }, [gameState.currentScoringEvent, gameState.isAnimating, gameState.scoringQueue.length, gameState.pendingResolveInfo]);
 
       useEffect(() => {
-        if (gameState.tallyState === 'start') {
-          setTimeout(() => setGameState(p => ({ ...p, tallyState: 'p1' })), 1200);
-        } else if (gameState.tallyState === 'p1') {
-          audioManager.playTone(880, 'sine', 0.1, 0.2);
-          setTimeout(() => setGameState(p => ({ ...p, tallyState: 'p2' })), 1500);
-        } else if (gameState.tallyState === 'p2') {
-          audioManager.playTone(880, 'sine', 0.1, 0.2);
-          setTimeout(() => {
-            setGameState(p => ({ ...p, tallyState: 'done' }));
-            audioManager.playWin();
-          }, 1500);
-        }
+        if (gameState.tallyState === 'start') { setTimeout(() => setGameState(p => ({ ...p, tallyState: 'p1' })), 1200); } 
+        else if (gameState.tallyState === 'p1') { audioManager.playTone(880, 'sine', 0.1, 0.2); setTimeout(() => setGameState(p => ({ ...p, tallyState: 'p2' })), 1500); } 
+        else if (gameState.tallyState === 'p2') { audioManager.playTone(880, 'sine', 0.1, 0.2); setTimeout(() => { setGameState(p => ({ ...p, tallyState: 'done' })); audioManager.playWin(); }, 1500); }
       }, [gameState.tallyState]);
 
       useEffect(() => {
@@ -587,7 +395,6 @@
           const timer = setTimeout(() => {
             const edges = BOARDS[gameState.boardType].edges;
             const emptyCells = gameState.board.map((c, i) => c === null ? i : -1).filter(i => i !== -1);
-            
             if (gameState.p2Hand.length > 0 && emptyCells.length > 0) {
               let bestMove = null; let maxPoints = -1;
               gameState.p2Hand.forEach((phase, cardIdx) => {
@@ -602,12 +409,7 @@
                     }
                   });
                   const seqCellsList = findSequences(simBoard, boardIdx, edges);
-                  if (seqCellsList.length > 0) {
-                    seqCellsList.forEach(seqCells => {
-                       seqCells.forEach(n => simCapture.add(n));
-                       comboPts += seqCells.length;
-                    });
-                  }
+                  if (seqCellsList.length > 0) { seqCellsList.forEach(seqCells => { seqCells.forEach(n => simCapture.add(n)); comboPts += seqCells.length; }); }
                   let pts = comboPts;
                   simCapture.forEach(idx => { if (gameState.board[idx] && gameState.board[idx].player === 1) pts += 1.5; });
                   pts += Math.random() * 0.5;
@@ -623,23 +425,14 @@
 
       const createRoom = async () => {
         if (!user || !db) return alert("無法連接 Firebase，請檢查設定。");
-        // 生成 6 位數房間代碼
         const newRoomId = Math.floor(100000 + Math.random() * 900000).toString();
         const actualBoardId = getActualBoardId();
         const generateDeck = () => { let d = []; for(let i=0; i<3; i++) d.push(0,1,2,3,4,5,6,7); return d.sort(()=>Math.random()-0.5); };
         let d1 = generateDeck(), d2 = generateDeck();
-        
-        const initData = {
-          boardType: actualBoardId, board: Array(BOARDS[actualBoardId].nodes.length).fill(null),
-          p1Deck: d1.slice(3), p2Deck: d2.slice(3), p1Hand: d1.slice(0, 3), p2Hand: d2.slice(0, 3)
-        };
-        
+        const initData = { boardType: actualBoardId, board: Array(BOARDS[actualBoardId].nodes.length).fill(null), p1Deck: d1.slice(3), p2Deck: d2.slice(3), p1Hand: d1.slice(0, 3), p2Hand: d2.slice(0, 3) };
         try {
-          await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'moonphase_rooms', newRoomId), {
-            status: 'waiting', createdAt: Date.now(), host: user.uid, initialState: initData, round: 1
-          });
-          setRoomId(newRoomId); setMyPlayerId(1);
-          setGameState(prev => ({ ...prev, mode: 'waiting', boardType: actualBoardId }));
+          await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'moonphase_rooms', newRoomId), { status: 'waiting', createdAt: Date.now(), host: user.uid, initialState: initData, round: 1 });
+          setRoomId(newRoomId); setMyPlayerId(1); setGameState(prev => ({ ...prev, mode: 'waiting', boardType: actualBoardId }));
         } catch (e) { console.error("Create room failed:", e); }
       };
 
@@ -649,11 +442,11 @@
           const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'moonphase_rooms', code);
           const snap = await getDoc(roomRef);
           if (snap.exists() && snap.data().status === 'waiting') {
-            await updateDoc(roomRef, { status: 'playing', guest: user.uid });
+            await updateDoc(roomRef, { status: 'playing', guest: user.uid }); 
             setRoomId(code); setMyPlayerId(2);
-          } else {
-            alert("找不到房間，或遊戲已開始");
-          }
+            // 修正點：加入房間後，立刻先幫本地狀態切為 waiting，作為雙重保險
+            setGameState(prev => ({ ...prev, mode: 'waiting' }));
+          } else { alert("找不到房間，或遊戲已開始"); }
         } catch (e) { console.error("Join room failed:", e); }
       };
 
@@ -662,21 +455,12 @@
           const actualBoardId = getActualBoardId();
           const generateDeck = () => { let d = []; for(let i=0; i<3; i++) d.push(0,1,2,3,4,5,6,7); return d.sort(()=>Math.random()-0.5); };
           let d1 = generateDeck(), d2 = generateDeck();
-          const initData = {
-            boardType: actualBoardId, board: Array(BOARDS[actualBoardId].nodes.length).fill(null),
-            p1Deck: d1.slice(3), p2Deck: d2.slice(3), p1Hand: d1.slice(0, 3), p2Hand: d2.slice(0, 3)
-          };
+          const initData = { boardType: actualBoardId, board: Array(BOARDS[actualBoardId].nodes.length).fill(null), p1Deck: d1.slice(3), p2Deck: d2.slice(3), p1Hand: d1.slice(0, 3), p2Hand: d2.slice(0, 3) };
           try {
             const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'moonphase_rooms', roomIdRef.current);
-            await updateDoc(roomRef, { 
-              initialState: initData,
-              round: (gameState.round || 1) + 1,
-              lastMove: null
-            });
+            await updateDoc(roomRef, { initialState: initData, round: (gameState.round || 1) + 1, lastMove: null });
           } catch (e) { console.error("Play again failed:", e); }
-        } else {
-          initGame(gameState.mode);
-        }
+        } else { initGame(gameState.mode); }
       };
 
       const getPlayerLabel = (playerId) => {
@@ -688,10 +472,7 @@
       let bottomPlayer = 1, topPlayer = 2;
       if (gameState.mode === 'online') { bottomPlayer = myPlayerId; topPlayer = myPlayerId === 1 ? 2 : 1; }
 
-      // 確保畫面在任何裝置都不會超出 100dvh 高度
-      const wrapperClass = `flex flex-col items-center font-sans text-slate-100 selection:bg-indigo-500/30 transition-all duration-300 ${
-        isPseudoFs ? 'fixed inset-0 z-[9999] bg-slate-950 w-screen h-[100dvh] overflow-hidden' : 'w-full h-[100dvh] relative overflow-hidden'
-      }`;
+      const wrapperClass = `flex flex-col items-center font-sans text-slate-100 selection:bg-indigo-500/30 transition-all duration-300 ${isPseudoFs ? 'fixed inset-0 z-[9999] bg-slate-950 w-screen h-[100dvh] overflow-hidden' : 'w-full h-[100dvh] relative overflow-hidden'}`;
       const FullscreenIcon = (nativeFs || isPseudoFs) ? Minimize : Maximize;
       const VolumeIcon = isMuted ? VolumeX : Volume2;
 
@@ -722,8 +503,7 @@
         else if (isTallyingP2) animClasses = 'scale-110 shadow-[0_0_40px_rgba(251,113,133,1)] z-20 ring-[3px] ring-rose-300 transition-all duration-300';
         else if (isDimmed) animClasses = 'opacity-30 grayscale transition-all duration-500';
 
-        // 卡片大小透過父層自適應或是套用百分比與 Aspect Ratio
-        let sizeClass = isBoard ? BOARDS[gameState.boardType].cardClass : 'h-[90%] aspect-[4/5] max-w-[30%]';
+        let sizeClass = isBoard ? 'w-full h-full' : BOARDS[gameState.boardType].cardClass;
 
         return (
           <div 
@@ -734,19 +514,15 @@
               if (!isBoard && isMyTurn && !gameState.isAnimating && gameState.tallyState === 'none') {
                 setGameState(prev => ({ ...prev, selectedCardIdx: prev.selectedCardIdx === index ? null : index }));
               }
-              if (isBoard && gameState.selectedCardIdx !== null) {
-                const canPlay = gameState.mode === 'single' ? gameState.turn === 1 : (gameState.mode === 'multi' ? true : (gameState.mode === 'online' ? gameState.turn === myPlayerId : false));
-                if (canPlay) playCard(gameState.selectedCardIdx, boardIdx, false);
-              }
             }}
-            className={`relative flex flex-col items-center justify-center rounded-xl sm:rounded-2xl transition-all duration-300 ${sizeClass} cursor-pointer border ${colorClasses} ${isSelected ? 'ring-2 ring-yellow-400 -translate-y-2 shadow-[0_10px_20px_rgba(250,204,21,0.4)]' : ''} ${animClasses}`}
+            className={`relative flex flex-col items-center justify-center rounded-lg sm:rounded-xl md:rounded-2xl transition-all duration-300 ${sizeClass} cursor-pointer border ${colorClasses} ${isSelected ? 'ring-2 ring-yellow-400 -translate-y-2 shadow-[0_10px_20px_rgba(250,204,21,0.4)]' : ''} ${animClasses}`}
           >
             {!isHidden ? (
               <React.Fragment>
-                <MoonSvg phase={phase} className="w-[50%] h-[50%] mb-1" />
-                <span className={`text-[10px] sm:text-xs font-medium tracking-wide ${isNeutral ? 'text-slate-300' : player === 1 ? 'text-indigo-200' : 'text-rose-200'}`}>{PHASES[phase].name}</span>
+                <MoonSvg phase={phase} className="w-[50%] h-[50%] mb-[2%]" />
+                <span className={`text-[8px] sm:text-[10px] md:text-xs font-medium tracking-wide ${isNeutral ? 'text-slate-300' : player === 1 ? 'text-indigo-200' : 'text-rose-200'}`}>{PHASES[phase].name}</span>
               </React.Fragment>
-            ) : ( <div className="w-[60%] h-[60%] rounded-full bg-slate-700/50 border border-slate-600/50 flex items-center justify-center"><span className="text-slate-400 opacity-50 font-bold">?</span></div> )}
+            ) : ( <div className="w-[60%] h-[60%] rounded-full bg-slate-700/50 border border-slate-600/50 flex items-center justify-center"><span className="text-[10px] sm:text-xs text-slate-400 opacity-50 font-bold">?</span></div> )}
           </div>
         );
       };
@@ -762,8 +538,8 @@
             <StarryBackground />
             <div className="z-10 flex flex-col items-center p-8 bg-slate-900/60 backdrop-blur-xl rounded-3xl border border-indigo-500/30 shadow-2xl relative w-full max-w-md my-10 mx-4">
               <div className="absolute top-4 right-4 flex space-x-2">
-                <button onClick={toggleMute} className="p-2 text-indigo-300 hover:text-white bg-slate-800/50 rounded-full border border-white/10 transition-colors" title="切換音效"><VolumeIcon className="w-5 h-5" /></button>
-                <button onClick={toggleFullscreen} className="p-2 text-indigo-300 hover:text-white bg-slate-800/50 rounded-full border border-white/10 transition-colors" title="切換全螢幕"><FullscreenIcon className="w-5 h-5" /></button>
+                <button onClick={toggleMute} className="p-2 text-indigo-300 hover:text-white bg-slate-800/50 rounded-full border border-white/10 transition-colors"><VolumeIcon className="w-5 h-5" /></button>
+                <button onClick={toggleFullscreen} className="p-2 text-indigo-300 hover:text-white bg-slate-800/50 rounded-full border border-white/10 transition-colors"><FullscreenIcon className="w-5 h-5" /></button>
               </div>
               
               {gameState.mode === 'menu' && (
@@ -801,24 +577,10 @@
                   <h1 className="text-3xl font-extrabold mb-8 tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-yellow-200 to-yellow-500 drop-shadow-lg text-center mt-4">線上連線大廳</h1>
                   {!user ? ( <p className="text-indigo-200 animate-pulse">連線伺服器中...</p> ) : (
                      <div className="w-full flex flex-col space-y-6">
-                       <div className="text-sm text-slate-300 mb-2 text-center">
-                         建立房間將使用主畫面的「{boardTypePref === 'random' ? '隨機抽取' : BOARDS[boardTypePref].name}」設定
-                       </div>
                        <button onClick={createRoom} className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold shadow-lg">建立新房間</button>
-                       <div className="relative flex items-center py-2">
-                         <div className="flex-grow border-t border-slate-600"></div>
-                         <span className="flex-shrink-0 mx-4 text-slate-400">或</span>
-                         <div className="flex-grow border-t border-slate-600"></div>
-                       </div>
+                       <div className="relative flex items-center py-2"><div className="flex-grow border-t border-slate-600"></div><span className="flex-shrink-0 mx-4 text-slate-400">或</span><div className="flex-grow border-t border-slate-600"></div></div>
                        <div className="flex flex-col space-y-2">
-                         <input 
-                            type="text" 
-                            maxLength="6"
-                            placeholder="輸入六位數字代碼" 
-                            value={joinCode} 
-                            onChange={(e) => setJoinCode(e.target.value.replace(/\D/g, ''))} 
-                            className="w-full bg-slate-800 border border-slate-600 rounded-xl py-3 px-4 text-center text-2xl font-mono tracking-[0.2em] text-white outline-none focus:border-indigo-400"
-                         />
+                         <input type="text" maxLength="6" placeholder="輸入六位數字代碼" value={joinCode} onChange={(e) => setJoinCode(e.target.value.replace(/\D/g, ''))} className="w-full bg-slate-800 border border-slate-600 rounded-xl py-3 px-4 text-center text-2xl font-mono tracking-[0.2em] text-white outline-none focus:border-indigo-400" />
                          <button onClick={() => joinRoom(joinCode)} className="w-full py-4 bg-rose-700 hover:bg-rose-600 text-white rounded-xl font-bold">加入</button>
                        </div>
                      </div>
@@ -843,176 +605,113 @@
       const currentBoardConfig = BOARDS[gameState.boardType];
 
       return (
-        <div className={`${wrapperClass} p-2 sm:p-4`}>
+        <div className={`${wrapperClass} p-2 flex flex-col justify-between items-center`}>
           <StarryBackground />
           <style>{`
-            @keyframes score-pulse {
-              0% { transform: scale(1); filter: brightness(1); box-shadow: none; }
-              20% { transform: scale(1.15); filter: brightness(1.3); box-shadow: 0 0 40px rgba(254,240,138,1); }
-              80% { transform: scale(1.15); filter: brightness(1.3); box-shadow: 0 0 40px rgba(254,240,138,1); }
-              100% { transform: scale(1); filter: brightness(1); box-shadow: none; }
-            }
+            @keyframes score-pulse { 0% { transform: scale(1); filter: brightness(1); box-shadow: none; } 20%, 80% { transform: scale(1.15); filter: brightness(1.3); box-shadow: 0 0 40px rgba(254,240,138,1); } 100% { transform: scale(1); filter: brightness(1); box-shadow: none; } }
             .animate-score-pulse { animation: score-pulse 1.5s ease-in-out forwards; }
-            @keyframes float-score {
-              0% { opacity: 0; transform: translateY(20px) scale(0.8); }
-              15% { opacity: 1; transform: translateY(0) scale(1.2); }
-              85% { opacity: 1; transform: translateY(0) scale(1.2); }
-              100% { opacity: 0; transform: translateY(-20px) scale(0.8); }
-            }
+            @keyframes float-score { 0% { opacity: 0; transform: translateY(20px) scale(0.8); } 15%, 85% { opacity: 1; transform: translateY(0) scale(1.2); } 100% { opacity: 0; transform: translateY(-20px) scale(0.8); } }
             .animate-float-score { animation: float-score 1.5s ease-in-out forwards; }
           `}</style>
 
           {(gameState.tallyState === 'start' || gameState.tallyState === 'p1' || gameState.tallyState === 'p2') && (
             <div className="absolute inset-0 z-[100] flex items-center justify-center pointer-events-none">
-               <div className="bg-slate-900/90 text-white px-6 sm:px-8 py-4 sm:py-5 rounded-full text-xl sm:text-2xl font-bold animate-bounce shadow-2xl border border-slate-500">
+               <div className="bg-slate-900/90 text-white px-6 py-4 rounded-full text-xl sm:text-2xl font-bold animate-bounce shadow-2xl border border-slate-500">
                   {gameState.tallyState === 'start' && '遊戲結束！開始結算領地...'}
                   {gameState.tallyState === 'p1' && '結算 玩家 1 領地...'}
                   {gameState.tallyState === 'p2' && `結算 ${getPlayerLabel(2).split(' ')[0]} 領地...`}
                </div>
             </div>
           )}
-
           {gameState.tallyState === 'done' && (
             <div className="absolute inset-0 z-[200] flex items-center justify-center bg-slate-950/80 backdrop-blur-sm">
-              <div className="bg-slate-900 border border-indigo-500/50 p-6 sm:p-10 rounded-3xl shadow-[0_0_50px_rgba(99,102,241,0.2)] flex flex-col items-center text-center max-w-xs sm:max-w-md w-full mx-4">
-                <Trophy className="w-12 h-12 sm:w-16 sm:h-16 text-yellow-400 mb-4 drop-shadow-[0_0_15px_rgba(250,204,21,0.5)]" />
+              <div className="bg-slate-900 border border-indigo-500/50 p-6 sm:p-10 rounded-3xl shadow-[0_0_50px_rgba(99,102,241,0.2)] flex flex-col items-center text-center w-full max-w-md mx-4">
+                <Trophy className="w-16 h-16 text-yellow-400 mb-4 drop-shadow-[0_0_15px_rgba(250,204,21,0.5)]" />
                 <h2 className="text-3xl sm:text-4xl font-black mb-6 text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-yellow-500">遊戲結束</h2>
-                
                 <div className="flex w-full justify-around mb-8">
-                  <div className="flex flex-col items-center">
-                    <span className="text-indigo-300 font-bold mb-2">{getPlayerLabel(1)}</span>
-                    <span className="text-4xl sm:text-5xl font-black text-indigo-100">{gameState.comboScores[1]}</span>
-                  </div>
-                  <div className="flex flex-col items-center">
-                    <span className="text-rose-300 font-bold mb-2">{getPlayerLabel(2)}</span>
-                    <span className="text-4xl sm:text-5xl font-black text-rose-100">{gameState.comboScores[2]}</span>
-                  </div>
+                  <div className="flex flex-col items-center"><span className="text-indigo-300 font-bold mb-2">{getPlayerLabel(1)}</span><span className="text-4xl sm:text-5xl font-black text-indigo-100">{gameState.comboScores[1]}</span></div>
+                  <div className="flex flex-col items-center"><span className="text-rose-300 font-bold mb-2">{getPlayerLabel(2)}</span><span className="text-4xl sm:text-5xl font-black text-rose-100">{gameState.comboScores[2]}</span></div>
                 </div>
-                
-                <div className="text-lg sm:text-2xl font-bold mb-8 text-white">
-                  {gameState.comboScores[1] > gameState.comboScores[2] ? `🏆 ${getPlayerLabel(1)} 獲勝！` : 
-                   gameState.comboScores[2] > gameState.comboScores[1] ? `🏆 ${getPlayerLabel(2)} 獲勝！` : '🤝 雙方平手！'}
+                <div className="text-xl sm:text-2xl font-bold mb-8 text-white">
+                  {gameState.comboScores[1] > gameState.comboScores[2] ? `🏆 ${getPlayerLabel(1)} 獲勝！` : gameState.comboScores[2] > gameState.comboScores[1] ? `🏆 ${getPlayerLabel(2)} 獲勝！` : '🤝 雙方平手！'}
                 </div>
-                
-                <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4 w-full">
-                  <button onClick={handlePlayAgain} className="flex-1 px-4 py-3 sm:py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold transition-all shadow-lg flex items-center justify-center space-x-2"><RotateCcw className="w-5 h-5" /> <span>再打一場</span></button>
-                  <button onClick={() => setGameState(prev => ({ ...prev, mode: 'menu' }))} className="flex-1 px-4 py-3 sm:py-4 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-bold transition-all flex items-center justify-center space-x-2"><Home className="w-5 h-5" /> <span>回主畫面</span></button>
+                <div className="flex w-full space-x-4">
+                  <button onClick={handlePlayAgain} className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold flex items-center justify-center space-x-2"><RotateCcw className="w-5 h-5" /> <span>再打一場</span></button>
+                  <button onClick={() => setGameState(prev => ({ ...prev, mode: 'menu' }))} className="flex-1 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-bold flex items-center justify-center space-x-2"><Home className="w-5 h-5" /> <span>回主畫面</span></button>
                 </div>
               </div>
             </div>
           )}
 
-          {/* 頂部導覽列 */}
-          <div className="z-10 w-full max-w-lg lg:max-w-4xl flex justify-between items-center mb-2 px-2 shrink-0 h-[8%] min-h-[40px]">
+          <div className="z-10 w-full max-w-2xl flex justify-between items-center px-4 py-2 shrink-0">
             <div className="flex space-x-2">
-              <button onClick={() => setGameState(prev => ({ ...prev, mode: 'menu' }))} className="flex items-center justify-center p-2 text-indigo-300 hover:text-white bg-slate-900/50 rounded-full border border-white/10 transition-colors"><Home className="w-5 h-5" /></button>
-              <button onClick={toggleMute} className="flex items-center justify-center p-2 text-indigo-300 hover:text-white bg-slate-900/50 rounded-full border border-white/10 transition-colors"><VolumeIcon className="w-5 h-5" /></button>
-              <button onClick={toggleFullscreen} className="flex items-center justify-center p-2 text-indigo-300 hover:text-white bg-slate-900/50 rounded-full border border-white/10 transition-colors hidden sm:flex"><FullscreenIcon className="w-5 h-5" /></button>
+              <button onClick={() => setGameState(prev => ({ ...prev, mode: 'menu' }))} className="p-2 text-indigo-300 hover:text-white bg-slate-900/50 rounded-full border border-white/10"><Home className="w-5 h-5" /></button>
+              <button onClick={toggleMute} className="p-2 text-indigo-300 hover:text-white bg-slate-900/50 rounded-full border border-white/10"><VolumeIcon className="w-5 h-5" /></button>
             </div>
             <div className="flex flex-col items-end">
-              {gameState.mode === 'online' && ( <span className={`text-xs sm:text-sm font-bold px-3 py-1 rounded-full border mb-1 border-emerald-500/30 ${gameState.turn === myPlayerId ? 'bg-emerald-900 text-emerald-300 shadow-lg animate-pulse' : 'bg-slate-800 text-slate-400'}`}>{gameState.turn === myPlayerId ? '輪到你了！' : '等待對手...'} (房號: <span className="font-mono">{roomId}</span>)</span> )}
-              <span className="text-[10px] sm:text-xs text-indigo-200/50 uppercase tracking-widest">{currentBoardConfig.name}</span>
+              {gameState.mode === 'online' && ( <span className={`text-xs sm:text-sm font-bold px-3 py-1 rounded-full border mb-1 ${gameState.turn === myPlayerId ? 'bg-emerald-900 border-emerald-500/30 text-emerald-300 animate-pulse' : 'bg-slate-800 border-slate-600 text-slate-400'}`}>{gameState.turn === myPlayerId ? '輪到你了！' : '等待對手...'} ({roomId})</span> )}
+              <span className="text-xs text-indigo-200/50 uppercase tracking-widest">{currentBoardConfig.name}</span>
             </div>
           </div>
 
-          {/* 遊戲主區塊：佔滿剩下的所有高度並垂直排列 */}
-          <div className="z-10 flex flex-col w-full max-w-lg items-center flex-1 justify-between pb-2 min-h-0">
+          <div className="z-10 w-full max-w-[min(100vw,_58vh)] flex flex-col justify-between items-center flex-1 min-h-0 pb-4">
             
-            {/* 上方玩家手牌區 */}
-            <div className={`flex flex-col items-center w-full p-2 sm:p-3 rounded-2xl sm:rounded-3xl transition-colors shrink-0 ${getPlayerContainerStyle(topPlayer)}`}>
+            <div className={`flex flex-col items-center w-full py-2 sm:py-3 rounded-2xl sm:rounded-3xl transition-colors shrink-0 ${getPlayerContainerStyle(topPlayer)}`}>
               <div className="flex justify-between w-full px-4 mb-2 items-center">
                 <span className={`text-sm sm:text-base font-bold ${topPlayer === 1 ? 'text-indigo-300' : 'text-rose-300'}`}>{getPlayerLabel(topPlayer)}</span>
-                <span className={`text-xl sm:text-2xl font-black transition-all duration-300 flex items-baseline ${topPlayer === 1 ? 'text-indigo-100' : 'text-rose-100'}`}>{gameState.comboScores[topPlayer]}<span className={`text-xs sm:text-sm font-normal ml-1 ${topPlayer === 1 ? 'text-indigo-400' : 'text-rose-400'}`}>分</span></span>
+                <span className={`text-xl sm:text-2xl font-black ${topPlayer === 1 ? 'text-indigo-100' : 'text-rose-100'}`}>{gameState.comboScores[topPlayer]}分</span>
               </div>
-              {/* 高度彈性的手牌容器 */}
-              <div className="flex space-x-2 sm:space-x-4 h-[11vh] min-h-[60px] max-h-[100px] w-full justify-center">
+              <div className="flex justify-center gap-3 sm:gap-5 w-full">
                 {(topPlayer === 1 ? gameState.p1Hand : gameState.p2Hand).map((phase, i) => renderCard(phase, i, topPlayer))}
               </div>
             </div>
             
-            {/* 中間棋盤區塊 (自適應正方形，確保不破版) */}
-            <div className="flex-1 w-full flex items-center justify-center min-h-0 my-1">
-              <div className="relative w-full aspect-[1/1] max-w-[min(100%,_50vh)] bg-slate-900/60 rounded-[1.5rem] sm:rounded-[2rem] backdrop-blur-lg border border-slate-700/50 shadow-2xl">
-                
-                {gameState.currentScoringEvent && (
-                  <div key={gameState.currentScoringEvent.id} className="absolute inset-0 flex items-center justify-center pointer-events-none z-[100]">
-                    <div className="animate-float-score flex flex-col items-center">
-                      <span className="text-3xl sm:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-t from-yellow-300 to-white drop-shadow-[0_0_15px_rgba(250,204,21,1)]" style={{ WebkitTextStroke: '2px #854d0e' }}>
-                        {gameState.currentScoringEvent.name}
-                      </span>
-                      <span className="text-2xl sm:text-4xl font-black text-yellow-300 drop-shadow-[0_0_15px_rgba(250,204,21,1)] mt-2">
-                        +{gameState.currentScoringEvent.points}
-                      </span>
-                    </div>
+            <div className="w-full aspect-square relative bg-slate-900/60 rounded-[1.5rem] sm:rounded-[2rem] backdrop-blur-lg border border-slate-700/50 shadow-2xl my-2 shrink-0">
+              {gameState.currentScoringEvent && (
+                <div key={gameState.currentScoringEvent.id} className="absolute inset-0 flex items-center justify-center pointer-events-none z-[100]">
+                  <div className="animate-float-score flex flex-col items-center">
+                    <span className="text-3xl sm:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-t from-yellow-300 to-white drop-shadow-[0_0_15px_rgba(250,204,21,1)]" style={{ WebkitTextStroke: '2px #854d0e' }}>{gameState.currentScoringEvent.name}</span>
+                    <span className="text-2xl sm:text-4xl font-black text-yellow-300 mt-2">+{gameState.currentScoringEvent.points}</span>
                   </div>
-                )}
-
-                <svg className="absolute inset-0 w-full h-full pointer-events-none z-0 overflow-visible">
-                  {currentBoardConfig.edges.map((edge, i) => {
-                    const n1 = currentBoardConfig.nodes[edge[0]];
-                    const n2 = currentBoardConfig.nodes[edge[1]];
-                    const isScoringEdge = gameState.currentScoringEvent && gameState.currentScoringEvent.cells.includes(edge[0]) && gameState.currentScoringEvent.cells.includes(edge[1]);
-                    let strokeColor = "rgba(71, 85, 105, 0.3)";
-                    let strokeWidth = "3";
-                    
-                    if (isScoringEdge) {
-                      strokeColor = gameState.turn === 1 ? "rgba(99, 102, 241, 0.9)" : "rgba(244, 63, 94, 0.9)";
-                      strokeWidth = "5";
-                    }
-
-                    return (
-                      <line 
-                        key={`edge-${i}`} 
-                        x1={`${n1.x}%`} y1={`${n1.y}%`} 
-                        x2={`${n2.x}%`} y2={`${n2.y}%`}
-                        stroke={strokeColor} 
-                        strokeWidth={strokeWidth} 
-                        strokeLinecap="round" 
-                        className="transition-all duration-500"
-                        style={isScoringEdge ? { filter: `drop-shadow(0px 0px 8px ${strokeColor})` } : {}}
-                      />
-                    );
-                  })}
-                </svg>
-
-                {gameState.board.map((cell, idx) => {
-                  const node = currentBoardConfig.nodes[idx];
-                  // 根據父層設定的百分比寬高繪製
-                  const sizeClass = currentBoardConfig.cardClass;
-
-                  return (
-                    <div 
-                      key={`node-${idx}`} 
-                      className={`absolute z-10 flex items-center justify-center rounded-xl sm:rounded-2xl transition-colors ${sizeClass} ${cell === null ? 'border-2 border-dashed border-slate-500/50 bg-slate-800/30 hover:bg-slate-700/60 cursor-pointer backdrop-blur-sm shadow-inner' : ''}`}
-                      style={{ 
-                        left: `${node.x}%`, 
-                        top: `${node.y}%`, 
-                        transform: 'translate(-50%, -50%)'
-                      }}
-                      onClick={(e) => { 
-                        e.stopPropagation();
-                        if (cell === null && gameState.selectedCardIdx !== null && (!gameState.isAnimating)) { 
-                          const canPlay = gameState.mode === 'single' ? gameState.turn === 1 : (gameState.mode === 'multi' ? true : (gameState.mode === 'online' ? gameState.turn === myPlayerId : false)); 
-                          if (canPlay) playCard(gameState.selectedCardIdx, idx, false); 
-                        } 
-                      }} 
-                    >
-                      {cell && renderCard(cell.phase, -1, cell.player, true, idx)}
-                    </div>
-                  );
+                </div>
+              )}
+              <svg className="absolute inset-0 w-full h-full pointer-events-none z-0 overflow-visible">
+                {currentBoardConfig.edges.map((edge, i) => {
+                  const n1 = currentBoardConfig.nodes[edge[0]]; const n2 = currentBoardConfig.nodes[edge[1]];
+                  const isScoringEdge = gameState.currentScoringEvent && gameState.currentScoringEvent.cells.includes(edge[0]) && gameState.currentScoringEvent.cells.includes(edge[1]);
+                  let strokeColor = "rgba(71, 85, 105, 0.3)"; let strokeWidth = "3";
+                  if (isScoringEdge) { strokeColor = gameState.turn === 1 ? "rgba(99, 102, 241, 0.9)" : "rgba(244, 63, 94, 0.9)"; strokeWidth = "5"; }
+                  return <line key={`edge-${i}`} x1={`${n1.x}%`} y1={`${n1.y}%`} x2={`${n2.x}%`} y2={`${n2.y}%`} stroke={strokeColor} strokeWidth={strokeWidth} strokeLinecap="round" className="transition-all duration-500" style={isScoringEdge ? { filter: `drop-shadow(0px 0px 8px ${strokeColor})` } : {}} />;
                 })}
-              </div>
+              </svg>
+              {gameState.board.map((cell, idx) => {
+                const node = currentBoardConfig.nodes[idx];
+                return (
+                  <div 
+                    key={`node-${idx}`} 
+                    className={`absolute z-10 flex items-center justify-center transition-colors ${currentBoardConfig.cardClass} ${cell === null ? 'border-2 border-dashed border-slate-500/50 bg-slate-800/30 hover:bg-slate-700/60 cursor-pointer backdrop-blur-sm shadow-inner rounded-lg sm:rounded-xl md:rounded-2xl' : ''}`}
+                    style={{ left: `${node.x}%`, top: `${node.y}%`, transform: 'translate(-50%, -50%)' }}
+                    onClick={(e) => { 
+                      e.stopPropagation();
+                      if (cell === null && gameState.selectedCardIdx !== null && (!gameState.isAnimating)) { 
+                        const canPlay = gameState.mode === 'single' ? gameState.turn === 1 : (gameState.mode === 'multi' ? true : (gameState.mode === 'online' ? gameState.turn === myPlayerId : false)); 
+                        if (canPlay) playCard(gameState.selectedCardIdx, idx, false); 
+                      } 
+                    }} 
+                  >
+                    {cell && renderCard(cell.phase, -1, cell.player, true, idx)}
+                  </div>
+                );
+              })}
             </div>
 
-            {/* 下方玩家手牌區 */}
-            <div className={`flex flex-col items-center w-full p-2 sm:p-3 rounded-2xl sm:rounded-3xl transition-colors shrink-0 ${getPlayerContainerStyle(bottomPlayer)}`}>
-              {/* 高度彈性的手牌容器 */}
-              <div className="flex space-x-2 sm:space-x-4 h-[11vh] min-h-[60px] max-h-[100px] w-full justify-center">
+            <div className={`flex flex-col items-center w-full py-2 sm:py-3 rounded-2xl sm:rounded-3xl transition-colors shrink-0 ${getPlayerContainerStyle(bottomPlayer)}`}>
+              <div className="flex justify-center gap-3 sm:gap-5 w-full mb-2">
                 {(bottomPlayer === 1 ? gameState.p1Hand : gameState.p2Hand).map((phase, i) => renderCard(phase, i, bottomPlayer))}
               </div>
-              <div className="flex justify-between w-full px-4 mt-2 items-center">
+              <div className="flex justify-between w-full px-4 items-center">
                 <span className={`text-sm sm:text-base font-bold ${bottomPlayer === 1 ? 'text-indigo-300' : 'text-rose-300'}`}>{getPlayerLabel(bottomPlayer)}</span>
-                <span className={`text-xl sm:text-2xl font-black transition-all duration-300 flex items-baseline ${bottomPlayer === 1 ? 'text-indigo-100' : 'text-rose-100'}`}>{gameState.comboScores[bottomPlayer]}<span className={`text-xs sm:text-sm font-normal ml-1 ${bottomPlayer === 1 ? 'text-indigo-400' : 'text-rose-400'}`}>分</span></span>
+                <span className={`text-xl sm:text-2xl font-black ${bottomPlayer === 1 ? 'text-indigo-100' : 'text-rose-100'}`}>{gameState.comboScores[bottomPlayer]}分</span>
               </div>
             </div>
 
