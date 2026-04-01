@@ -15,6 +15,9 @@
   <!-- 引入 Babel -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
+  <!-- 引入 Google Fonts (用於結算字體美化) -->
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@900&family=Zen+Maru+Gothic:wght@900&display=swap" rel="stylesheet">
+
   <style>
     body, html { 
       margin: 0; padding: 0; 
@@ -22,6 +25,49 @@
       overflow: hidden; 
       touch-action: none;
     }
+
+    /* === 結算特效字體樣式 === */
+    .scoring-text {
+      font-family: 'Zen Maru Gothic', 'Noto Sans TC', sans-serif;
+      paint-order: stroke fill;
+      line-height: 1.2;
+    }
+    
+    /* 相同月相 (藍色系) */
+    .score-identical {
+      background: linear-gradient(180deg, #a5f3fc 0%, #06b6d4 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      -webkit-text-stroke: 4px #164e63; /* 深青色對比邊框 */
+      filter: drop-shadow(0px 0px 12px rgba(6,182,212,0.9)) drop-shadow(0px 6px 6px rgba(0,0,0,0.6));
+    }
+    .score-num-identical { color: #22d3ee; -webkit-text-stroke: 3px #164e63; }
+
+    /* 互補滿月 (黃色系) */
+    .score-complementary {
+      background: linear-gradient(180deg, #fef08a 0%, #eab308 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      -webkit-text-stroke: 4px #713f12; /* 深棕色對比邊框 */
+      filter: drop-shadow(0px 0px 12px rgba(234,179,8,0.9)) drop-shadow(0px 6px 6px rgba(0,0,0,0.6));
+    }
+    .score-num-complementary { color: #facc15; -webkit-text-stroke: 3px #713f12; }
+
+    /* 月相變化 (紫色系) */
+    .score-sequence {
+      background: linear-gradient(180deg, #f5d0fe 0%, #d946ef 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      -webkit-text-stroke: 4px #4a044e; /* 深紫色對比邊框 */
+      filter: drop-shadow(0px 0px 12px rgba(217,70,239,0.9)) drop-shadow(0px 6px 6px rgba(0,0,0,0.6));
+    }
+    .score-num-sequence { color: #e879f9; -webkit-text-stroke: 3px #4a044e; }
+
+    @keyframes score-pulse { 0% { transform: scale(1); filter: brightness(1); box-shadow: none; } 20%, 80% { transform: scale(1.15); filter: brightness(1.3); box-shadow: 0 0 40px rgba(254,240,138,1); } 100% { transform: scale(1); filter: brightness(1); box-shadow: none; } }
+    .animate-score-pulse { animation: score-pulse 1.5s ease-in-out forwards; }
+    
+    @keyframes float-score { 0% { opacity: 0; transform: translateY(30px) scale(0.5); } 15%, 85% { opacity: 1; transform: translateY(0) scale(1.1); } 100% { opacity: 0; transform: translateY(-30px) scale(0.8); } }
+    .animate-float-score { animation: float-score 1.5s ease-in-out forwards; }
   </style>
 </head>
 <body class="text-slate-100 selection:bg-indigo-500/30">
@@ -68,6 +114,7 @@
     const Volume2 = ({ className }) => <IconBase className={className}><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></IconBase>;
     const VolumeX = ({ className }) => <IconBase className={className}><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" x2="17" y1="9" y2="15"/><line x1="17" x2="23" y1="9" y2="15"/></IconBase>;
     const Settings2 = ({ className }) => <IconBase className={className}><path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="7" r="3"/><circle cx="7" cy="17" r="3"/></IconBase>;
+    const Brain = ({ className }) => <IconBase className={className}><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"/><path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"/><path d="M15 13a4.5 4.5 0 0 1-3-4 4.5 4.5 0 0 1-3 4"/><path d="M17.599 6.5a3 3 0 0 0 .399-1.375"/><path d="M6.002 5.125A3 3 0 0 0 6.401 6.5"/><path d="M3.477 10.896a4 4 0 0 1 .585-.396"/><path d="M19.938 10.5a4 4 0 0 1 .585.396"/><path d="M6 18a4 4 0 0 1-1.967-.516"/><path d="M19.967 17.484A4 4 0 0 1 18 18"/></IconBase>;
 
     // --- 音效與音樂引擎 ---
     class AudioManager {
@@ -130,7 +177,7 @@
     }
     const audioManager = new AudioManager();
 
-    // --- 遊戲資料定義 ---
+    // --- 遊戲資料定義 (擴充至10個棋盤) ---
     const PHASES = [
       { id: 0, name: '新月' }, { id: 1, name: '眉月' }, { id: 2, name: '上弦月' }, { id: 3, name: '盈凸月' },
       { id: 4, name: '滿月' }, { id: 5, name: '虧凸月' }, { id: 6, name: '下弦月' }, { id: 7, name: '殘月' },
@@ -139,33 +186,53 @@
     const BOARDS = {
       classic: {
         id: 'classic', name: '九宮格 (9格)', cardClass: 'w-[24%] aspect-[4/5]',
-        nodes: [
-          { x: 16.6, y: 16.6 }, { x: 50, y: 16.6 }, { x: 83.3, y: 16.6 },
-          { x: 16.6, y: 50 },   { x: 50, y: 50 },   { x: 83.3, y: 50 },
-          { x: 16.6, y: 83.3 }, { x: 50, y: 83.3 }, { x: 83.3, y: 83.3 }
-        ],
+        nodes: [ {x:16.6,y:16.6}, {x:50,y:16.6}, {x:83.3,y:16.6}, {x:16.6,y:50}, {x:50,y:50}, {x:83.3,y:50}, {x:16.6,y:83.3}, {x:50,y:83.3}, {x:83.3,y:83.3} ],
         edges: [ [0,1], [1,2], [3,4], [4,5], [6,7], [7,8], [0,3], [3,6], [1,4], [4,7], [2,5], [5,8] ]
       },
       owl: {
-        id: 'owl', name: '貓頭鷹臉型 (12格)', cardClass: 'w-[18%] aspect-[4/5]',
-        nodes: [
-          {x: 35, y: 15}, {x: 65, y: 15},
-          {x: 15, y: 38}, {x: 38, y: 38}, {x: 62, y: 38}, {x: 85, y: 38},
-          {x: 15, y: 62}, {x: 38, y: 62}, {x: 62, y: 62}, {x: 85, y: 62},
-          {x: 35, y: 85}, {x: 65, y: 85}
-        ],
+        id: 'owl', name: '貓頭鷹型 (12格)', cardClass: 'w-[18%] aspect-[4/5]',
+        nodes: [ {x:35,y:15}, {x:65,y:15}, {x:15,y:38}, {x:38,y:38}, {x:62,y:38}, {x:85,y:38}, {x:15,y:62}, {x:38,y:62}, {x:62,y:62}, {x:85,y:62}, {x:35,y:85}, {x:65,y:85} ],
         edges: [ [0,1], [0,2], [0,3], [1,4], [1,5], [2,6], [3,7], [4,8], [5,9], [6,10], [7,10], [8,11], [9,11], [10,11], [2,3], [4,5], [6,7], [8,9] ]
       },
       tree: {
         id: 'tree', name: '拱門神木 (13格)', cardClass: 'w-[15%] aspect-[4/5]',
-        nodes: [
-          {x: 50, y: 10},
-          {x: 25, y: 30}, {x: 50, y: 30}, {x: 75, y: 30},
-          {x: 12.5, y: 50}, {x: 37.5, y: 50}, {x: 62.5, y: 50}, {x: 87.5, y: 50},
-          {x: 25, y: 70}, {x: 50, y: 70}, {x: 75, y: 70},
-          {x: 35, y: 90}, {x: 65, y: 90}
-        ],
+        nodes: [ {x:50,y:10}, {x:25,y:30}, {x:50,y:30}, {x:75,y:30}, {x:12.5,y:50}, {x:37.5,y:50}, {x:62.5,y:50}, {x:87.5,y:50}, {x:25,y:70}, {x:50,y:70}, {x:75,y:70}, {x:35,y:90}, {x:65,y:90} ],
         edges: [ [0,1], [0,2], [0,3], [1,2], [2,3], [1,4], [1,5], [2,5], [2,6], [3,6], [3,7], [4,5], [5,6], [6,7], [4,8], [5,8], [5,9], [6,9], [6,10], [7,10], [8,9], [9,10], [8,11], [9,11], [9,12], [10,12], [11,12] ]
+      },
+      nova: {
+        id: 'nova', name: '宇宙新星 (13格)', cardClass: 'w-[15%] aspect-[4/5]',
+        nodes: [ {x:50,y:50}, {x:50,y:28}, {x:72,y:50}, {x:50,y:72}, {x:28,y:50}, {x:50,y:8}, {x:92,y:50}, {x:50,y:92}, {x:8,y:50}, {x:22,y:22}, {x:78,y:22}, {x:78,y:78}, {x:22,y:78} ],
+        edges: [ [0,1], [0,2], [0,3], [0,4], [1,2], [2,3], [3,4], [4,1], [1,5], [2,6], [3,7], [4,8], [1,9], [4,9], [1,10], [2,10], [2,11], [3,11], [3,12], [4,12] ]
+      },
+      hexagon: {
+        id: 'hexagon', name: '蜂巢核心 (7格)', cardClass: 'w-[22%] aspect-[4/5]',
+        nodes: [ {x:50,y:50}, {x:50,y:18}, {x:78,y:34}, {x:78,y:66}, {x:50,y:82}, {x:22,y:66}, {x:22,y:34} ],
+        edges: [ [0,1], [0,2], [0,3], [0,4], [0,5], [0,6], [1,2], [2,3], [3,4], [4,5], [5,6], [6,1] ]
+      },
+      pyramid: {
+        id: 'pyramid', name: '星際金字塔 (10格)', cardClass: 'w-[18%] aspect-[4/5]',
+        nodes: [ {x:50,y:15}, {x:36.6,y:40}, {x:63.3,y:40}, {x:23.3,y:65}, {x:50,y:65}, {x:76.6,y:65}, {x:10,y:90}, {x:36.6,y:90}, {x:63.3,y:90}, {x:90,y:90} ],
+        edges: [ [0,1], [0,2], [1,2], [1,3], [1,4], [2,4], [2,5], [3,4], [4,5], [3,6], [3,7], [4,7], [4,8], [5,8], [5,9], [6,7], [7,8], [8,9] ]
+      },
+      cross: {
+        id: 'cross', name: '十字星芒 (13格)', cardClass: 'w-[16%] aspect-[4/5]',
+        nodes: [ {x:50,y:10}, {x:50,y:30}, {x:50,y:50}, {x:50,y:70}, {x:50,y:90}, {x:10,y:50}, {x:30,y:50}, {x:70,y:50}, {x:90,y:50}, {x:30,y:30}, {x:70,y:30}, {x:30,y:70}, {x:70,y:70} ],
+        edges: [ [0,1], [1,2], [2,3], [3,4], [5,6], [6,2], [2,7], [7,8], [9,1], [9,6], [10,1], [10,7], [11,6], [11,3], [12,7], [12,3], [9,2], [10,2], [11,2], [12,2] ]
+      },
+      diamond: {
+        id: 'diamond', name: '八面體晶石 (9格)', cardClass: 'w-[20%] aspect-[4/5]',
+        nodes: [ {x:50,y:10}, {x:28,y:32}, {x:72,y:32}, {x:10,y:50}, {x:50,y:50}, {x:90,y:50}, {x:28,y:68}, {x:72,y:68}, {x:50,y:90} ],
+        edges: [ [0,1], [0,2], [1,3], [1,4], [2,4], [2,5], [3,6], [4,6], [4,7], [5,7], [6,8], [7,8], [1,2], [3,4], [4,5], [6,7] ]
+      },
+      hourglass: {
+        id: 'hourglass', name: '時空沙漏 (11格)', cardClass: 'w-[18%] aspect-[4/5]',
+        nodes: [ {x:20,y:15}, {x:50,y:15}, {x:80,y:15}, {x:35,y:35}, {x:65,y:35}, {x:50,y:50}, {x:35,y:65}, {x:65,y:65}, {x:20,y:85}, {x:50,y:85}, {x:80,y:85} ],
+        edges: [ [0,1], [1,2], [0,3], [1,3], [1,4], [2,4], [3,4], [3,5], [4,5], [5,6], [5,7], [6,7], [6,8], [6,9], [7,9], [7,10], [8,9], [9,10] ]
+      },
+      ring: {
+        id: 'ring', name: '星空軌道環 (9格)', cardClass: 'w-[18%] aspect-[4/5]',
+        nodes: [ {x:50,y:50}, {x:50,y:15}, {x:75,y:25}, {x:85,y:50}, {x:75,y:75}, {x:50,y:85}, {x:25,y:75}, {x:15,y:50}, {x:25,y:25} ],
+        edges: [ [0,1], [0,2], [0,3], [0,4], [0,5], [0,6], [0,7], [0,8], [1,2], [2,3], [3,4], [4,5], [5,6], [6,7], [7,8], [8,1] ]
       }
     };
 
@@ -227,7 +294,9 @@
       const [isPseudoFs, setIsPseudoFs] = useState(false);
       const [nativeFs, setNativeFs] = useState(false);
       const [isMuted, setIsMuted] = useState(false);
+      
       const [boardTypePref, setBoardTypePref] = useState('random');
+      const [aiDifficulty, setAiDifficulty] = useState('medium'); 
 
       const lastProcessedMoveTs = useRef(0);
       const roomIdRef = useRef('');
@@ -278,7 +347,6 @@
         if (auth) { const unsubscribe = onAuthStateChanged(auth, setUser); return () => unsubscribe(); }
       }, []);
 
-      // 監聽 Firebase 同步更新
       useEffect(() => {
         if (!roomId || !user || !db) return;
         const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'moonphase_rooms', roomId);
@@ -287,7 +355,6 @@
           const data = snap.data();
           setGameState(prev => {
             let nextState = { ...prev };
-            // 修正點：放寬連線進入條件，只要狀態是 playing 且還沒進入 online，就觸發切換
             if (data.status === 'playing' && (nextState.mode !== 'online' || (data.round && data.round !== nextState.round))) {
               lastProcessedMoveTs.current = 0; 
               nextState = { ...nextState, mode: 'online', boardType: data.initialState.boardType || 'classic', ...data.initialState, turn: 1, comboScores: { 1: 0, 2: 0 }, isAnimating: false, gameOver: false, tallyState: 'none', selectedCardIdx: null, scoringQueue: [], currentScoringEvent: null, pendingResolveInfo: null, round: data.round || 1 };
@@ -305,7 +372,8 @@
 
       const getActualBoardId = () => {
         if (boardTypePref !== 'random') return boardTypePref;
-        const choices = ['classic', 'owl', 'tree']; return choices[Math.floor(Math.random() * choices.length)];
+        const choices = Object.keys(BOARDS);
+        return choices[Math.floor(Math.random() * choices.length)];
       };
 
       const initGame = (mode) => {
@@ -395,12 +463,14 @@
           const timer = setTimeout(() => {
             const edges = BOARDS[gameState.boardType].edges;
             const emptyCells = gameState.board.map((c, i) => c === null ? i : -1).filter(i => i !== -1);
+            
             if (gameState.p2Hand.length > 0 && emptyCells.length > 0) {
-              let bestMove = null; let maxPoints = -1;
+              let allMoves = [];
               gameState.p2Hand.forEach((phase, cardIdx) => {
                 emptyCells.forEach(boardIdx => {
                   let simBoard = [...gameState.board]; simBoard[boardIdx] = { phase, player: 0 };
                   let simCapture = new Set(); let comboPts = 0;
+                  
                   getNeighbors(boardIdx, edges).forEach(n => {
                     const neighbor = simBoard[n];
                     if (neighbor) {
@@ -408,20 +478,46 @@
                       else if (isMatch(phase, neighbor.phase)) { simCapture.add(boardIdx); simCapture.add(n); comboPts += 2; }
                     }
                   });
+                  
                   const seqCellsList = findSequences(simBoard, boardIdx, edges);
                   if (seqCellsList.length > 0) { seqCellsList.forEach(seqCells => { seqCells.forEach(n => simCapture.add(n)); comboPts += seqCells.length; }); }
+                  
                   let pts = comboPts;
                   simCapture.forEach(idx => { if (gameState.board[idx] && gameState.board[idx].player === 1) pts += 1.5; });
-                  pts += Math.random() * 0.5;
-                  if (pts > maxPoints) { maxPoints = pts; bestMove = { cardIdx, boardIdx }; }
+                  
+                  allMoves.push({ cardIdx, boardIdx, score: pts });
                 });
               });
-              if (bestMove) playCard(bestMove.cardIdx, bestMove.boardIdx);
+
+              if (allMoves.length > 0) {
+                let selectedMove = null;
+                if (aiDifficulty === 'low') {
+                  selectedMove = allMoves[Math.floor(Math.random() * allMoves.length)];
+                } 
+                else if (aiDifficulty === 'medium') {
+                  if (Math.random() < 0.5) {
+                    allMoves.sort((a, b) => b.score - a.score);
+                    const bestScore = allMoves[0].score;
+                    const bestMoves = allMoves.filter(m => m.score === bestScore);
+                    selectedMove = bestMoves[Math.floor(Math.random() * bestMoves.length)];
+                  } else {
+                    selectedMove = allMoves[Math.floor(Math.random() * allMoves.length)];
+                  }
+                } 
+                else {
+                  allMoves.sort((a, b) => b.score - a.score);
+                  const bestScore = allMoves[0].score;
+                  const bestMoves = allMoves.filter(m => m.score === bestScore);
+                  selectedMove = bestMoves[Math.floor(Math.random() * bestMoves.length)];
+                }
+
+                if (selectedMove) playCard(selectedMove.cardIdx, selectedMove.boardIdx);
+              }
             }
-          }, 1000);
+          }, 1000); 
           return () => clearTimeout(timer);
         }
-      }, [gameState.turn, gameState.mode, gameState.isAnimating, gameState.gameOver, gameState.board, gameState.p2Hand, gameState.boardType, playCard]);
+      }, [gameState.turn, gameState.mode, gameState.isAnimating, gameState.gameOver, gameState.board, gameState.p2Hand, gameState.boardType, playCard, aiDifficulty]); 
 
       const createRoom = async () => {
         if (!user || !db) return alert("無法連接 Firebase，請檢查設定。");
@@ -444,7 +540,6 @@
           if (snap.exists() && snap.data().status === 'waiting') {
             await updateDoc(roomRef, { status: 'playing', guest: user.uid }); 
             setRoomId(code); setMyPlayerId(2);
-            // 修正點：加入房間後，立刻先幫本地狀態切為 waiting，作為雙重保險
             setGameState(prev => ({ ...prev, mode: 'waiting' }));
           } else { alert("找不到房間，或遊戲已開始"); }
         } catch (e) { console.error("Join room failed:", e); }
@@ -464,7 +559,16 @@
       };
 
       const getPlayerLabel = (playerId) => {
-        if (gameState.mode === 'single') return playerId === 1 ? '玩家 1' : '電腦 (AI)';
+        let label = '';
+        if (gameState.mode === 'single') {
+           label = playerId === 1 ? '玩家 1' : '電腦 (AI)';
+           if (playerId === 2) {
+             if (aiDifficulty === 'low') label += ' [低]';
+             else if (aiDifficulty === 'medium') label += ' [中]';
+             else label += ' [高]';
+           }
+           return label;
+        }
         if (gameState.mode === 'online') return playerId === myPlayerId ? `玩家 ${playerId} (你)` : `玩家 ${playerId} (對手)`;
         return `玩家 ${playerId}`;
       };
@@ -548,20 +652,44 @@
                   <h1 className="text-4xl md:text-5xl font-extrabold mb-2 tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-yellow-200 to-yellow-500 drop-shadow-lg text-center">月相陣地戰</h1>
                   <p className="mb-6 text-indigo-200 text-lg text-center">配對連鎖，染上你的專屬星際色彩！</p>
                   
-                  <div className="w-full bg-slate-800/50 border border-slate-600/50 rounded-xl p-4 mb-6">
-                    <label className="flex items-center space-x-2 text-sm font-bold text-slate-300 mb-2">
-                      <Settings2 className="w-4 h-4" /> <span>偏好棋盤佈局</span>
-                    </label>
-                    <select 
-                      value={boardTypePref} 
-                      onChange={e => setBoardTypePref(e.target.value)}
-                      className="w-full bg-slate-900 border border-slate-500 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
-                    >
-                      <option value="random">🎲 隨機抽取</option>
-                      <option value="classic">🔲 九宮格 (9格)</option>
-                      <option value="owl">🦉 貓頭鷹型 (12格)</option>
-                      <option value="tree">🌲 拱門神木 (13格)</option>
-                    </select>
+                  <div className="w-full bg-slate-800/50 border border-slate-600/50 rounded-xl p-4 mb-6 flex flex-col space-y-4">
+                    <div>
+                      <label className="flex items-center space-x-2 text-sm font-bold text-slate-300 mb-2">
+                        <Settings2 className="w-4 h-4" /> <span>偏好棋盤佈局 (共 10 種)</span>
+                      </label>
+                      <select 
+                        value={boardTypePref} 
+                        onChange={e => setBoardTypePref(e.target.value)}
+                        className="w-full bg-slate-900 border border-slate-500 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
+                      >
+                        <option value="random">🎲 隨機抽取 (10種隨機變換)</option>
+                        <option value="classic">🔲 九宮格 (9格)</option>
+                        <option value="owl">🦉 貓頭鷹型 (12格)</option>
+                        <option value="tree">🌲 拱門神木 (13格)</option>
+                        <option value="nova">✨ 宇宙新星 (13格)</option>
+                        <option value="hexagon">⬡ 蜂巢核心 (7格)</option>
+                        <option value="pyramid">🔺 星際金字塔 (10格)</option>
+                        <option value="cross">✛ 十字星芒 (13格)</option>
+                        <option value="diamond">♦️ 八面體晶石 (9格)</option>
+                        <option value="hourglass">⏳ 時空沙漏 (11格)</option>
+                        <option value="ring">🪐 星空軌道環 (9格)</option>
+                      </select>
+                    </div>
+
+                    <div className="pt-2 border-t border-slate-600/50">
+                      <label className="flex items-center space-x-2 text-sm font-bold text-slate-300 mb-2">
+                        <Brain className="w-4 h-4" /> <span>單人遊戲 AI 難度</span>
+                      </label>
+                      <select 
+                        value={aiDifficulty} 
+                        onChange={e => setAiDifficulty(e.target.value)}
+                        className="w-full bg-slate-900 border border-slate-500 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
+                      >
+                        <option value="low">🟢 低 (新手友善，隨機出牌)</option>
+                        <option value="medium">🟡 中 (有時聰明，有時隨機)</option>
+                        <option value="high">🔴 高 (全力以赴，最佳策略)</option>
+                      </select>
+                    </div>
                   </div>
 
                   <div className="flex flex-col space-y-4 w-full">
@@ -604,15 +732,18 @@
 
       const currentBoardConfig = BOARDS[gameState.boardType];
 
+      // --- 取得當前計分的字體對應樣式 ---
+      let currentScoreTextClass = '';
+      let currentScoreNumClass = '';
+      if (gameState.currentScoringEvent) {
+        if (gameState.currentScoringEvent.type === 'identical') { currentScoreTextClass = 'score-identical'; currentScoreNumClass = 'score-num-identical'; }
+        else if (gameState.currentScoringEvent.type === 'complementary') { currentScoreTextClass = 'score-complementary'; currentScoreNumClass = 'score-num-complementary'; }
+        else { currentScoreTextClass = 'score-sequence'; currentScoreNumClass = 'score-num-sequence'; }
+      }
+
       return (
         <div className={`${wrapperClass} p-2 flex flex-col justify-between items-center`}>
           <StarryBackground />
-          <style>{`
-            @keyframes score-pulse { 0% { transform: scale(1); filter: brightness(1); box-shadow: none; } 20%, 80% { transform: scale(1.15); filter: brightness(1.3); box-shadow: 0 0 40px rgba(254,240,138,1); } 100% { transform: scale(1); filter: brightness(1); box-shadow: none; } }
-            .animate-score-pulse { animation: score-pulse 1.5s ease-in-out forwards; }
-            @keyframes float-score { 0% { opacity: 0; transform: translateY(20px) scale(0.8); } 15%, 85% { opacity: 1; transform: translateY(0) scale(1.2); } 100% { opacity: 0; transform: translateY(-20px) scale(0.8); } }
-            .animate-float-score { animation: float-score 1.5s ease-in-out forwards; }
-          `}</style>
 
           {(gameState.tallyState === 'start' || gameState.tallyState === 'p1' || gameState.tallyState === 'p2') && (
             <div className="absolute inset-0 z-[100] flex items-center justify-center pointer-events-none">
@@ -629,11 +760,11 @@
                 <Trophy className="w-16 h-16 text-yellow-400 mb-4 drop-shadow-[0_0_15px_rgba(250,204,21,0.5)]" />
                 <h2 className="text-3xl sm:text-4xl font-black mb-6 text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-yellow-500">遊戲結束</h2>
                 <div className="flex w-full justify-around mb-8">
-                  <div className="flex flex-col items-center"><span className="text-indigo-300 font-bold mb-2">{getPlayerLabel(1)}</span><span className="text-4xl sm:text-5xl font-black text-indigo-100">{gameState.comboScores[1]}</span></div>
-                  <div className="flex flex-col items-center"><span className="text-rose-300 font-bold mb-2">{getPlayerLabel(2)}</span><span className="text-4xl sm:text-5xl font-black text-rose-100">{gameState.comboScores[2]}</span></div>
+                  <div className="flex flex-col items-center"><span className="text-indigo-300 font-bold mb-2">{getPlayerLabel(1).split(' ')[0]}</span><span className="text-4xl sm:text-5xl font-black text-indigo-100">{gameState.comboScores[1]}</span></div>
+                  <div className="flex flex-col items-center"><span className="text-rose-300 font-bold mb-2">{getPlayerLabel(2).split(' ')[0]}</span><span className="text-4xl sm:text-5xl font-black text-rose-100">{gameState.comboScores[2]}</span></div>
                 </div>
                 <div className="text-xl sm:text-2xl font-bold mb-8 text-white">
-                  {gameState.comboScores[1] > gameState.comboScores[2] ? `🏆 ${getPlayerLabel(1)} 獲勝！` : gameState.comboScores[2] > gameState.comboScores[1] ? `🏆 ${getPlayerLabel(2)} 獲勝！` : '🤝 雙方平手！'}
+                  {gameState.comboScores[1] > gameState.comboScores[2] ? `🏆 玩家 1 獲勝！` : gameState.comboScores[2] > gameState.comboScores[1] ? `🏆 ${getPlayerLabel(2).split(' ')[0]} 獲勝！` : '🤝 雙方平手！'}
                 </div>
                 <div className="flex w-full space-x-4">
                   <button onClick={handlePlayAgain} className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold flex items-center justify-center space-x-2"><RotateCcw className="w-5 h-5" /> <span>再打一場</span></button>
@@ -670,8 +801,12 @@
               {gameState.currentScoringEvent && (
                 <div key={gameState.currentScoringEvent.id} className="absolute inset-0 flex items-center justify-center pointer-events-none z-[100]">
                   <div className="animate-float-score flex flex-col items-center">
-                    <span className="text-3xl sm:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-t from-yellow-300 to-white drop-shadow-[0_0_15px_rgba(250,204,21,1)]" style={{ WebkitTextStroke: '2px #854d0e' }}>{gameState.currentScoringEvent.name}</span>
-                    <span className="text-2xl sm:text-4xl font-black text-yellow-300 mt-2">+{gameState.currentScoringEvent.points}</span>
+                    <span className={`text-4xl sm:text-6xl font-black tracking-widest scoring-text pb-2 ${currentScoreTextClass}`}>
+                      {gameState.currentScoringEvent.name}
+                    </span>
+                    <span className={`text-4xl sm:text-6xl font-black scoring-text mt-1 drop-shadow-md ${currentScoreNumClass}`}>
+                      +{gameState.currentScoringEvent.points}
+                    </span>
                   </div>
                 </div>
               )}
