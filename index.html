@@ -79,7 +79,7 @@
     const { useState, useEffect, useCallback, useRef } = React;
 
     const myFirebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
-     apiKey: "AIzaSyDs8L6uD0SvtUYn4A6iC2jGB_uHLYXS-1o",
+      apiKey: "AIzaSyDs8L6uD0SvtUYn4A6iC2jGB_uHLYXS-1o",
       authDomain: "moonphasegame.firebaseapp.com",
       projectId: "moonphasegame",
       storageBucket: "moonphasegame.firebasestorage.app",
@@ -118,7 +118,6 @@
       constructor() {
         this.ctx = null; this.masterGain = null; this.bgmGain = null;
         this.isMuted = false; this.bgmPlaying = false;
-        // === 修改點：提升預設基礎音量 ===
         this.baseVolume = 0.8; 
       }
       init() {
@@ -130,7 +129,6 @@
         this.masterGain.connect(this.ctx.destination);
         this.startBGM();
       }
-      // === 新增：設置音量方法 ===
       setVolume(val) {
         this.baseVolume = val;
         if (this.masterGain && !this.isMuted) {
@@ -304,7 +302,6 @@
       const [nativeFs, setNativeFs] = useState(false);
       
       const [isMuted, setIsMuted] = useState(false);
-      // === 新增：管理音量的狀態 ===
       const [volume, setVolumeState] = useState(0.8);
       
       const [boardTypePref, setBoardTypePref] = useState('random');
@@ -350,7 +347,6 @@
         setIsMuted(!isMuted); 
       };
 
-      // === 新增：處理音量滑桿變動 ===
       const handleVolumeChange = (e) => {
         const val = parseFloat(e.target.value);
         setVolumeState(val);
@@ -628,7 +624,6 @@
       const FullscreenIcon = (nativeFs || isPseudoFs) ? Minimize : Maximize;
       const VolumeIcon = isMuted ? VolumeX : Volume2;
 
-      // === 新增：包含滑桿的音量控制組件 ===
       const VolumeControl = () => (
         <div className="flex items-center space-x-2 bg-slate-800/60 backdrop-blur-md rounded-full px-3 py-1.5 border border-white/10 hover:border-white/30 transition-all">
           <button onClick={toggleMute} className="text-indigo-300 hover:text-white transition-colors flex-shrink-0">
@@ -705,7 +700,6 @@
             <StarryBackground />
             <div className="z-10 flex flex-col items-center p-8 bg-slate-900/60 backdrop-blur-xl rounded-3xl border border-indigo-500/30 shadow-2xl relative w-full max-w-md my-10 mx-4">
               
-              {/* === 選單畫面的音量與全螢幕按鈕 === */}
               <div className="absolute top-4 right-4 flex space-x-2 items-center">
                 <VolumeControl />
                 <button onClick={toggleFullscreen} className="p-2 text-indigo-300 hover:text-white bg-slate-800/50 rounded-full border border-white/10 transition-colors flex-shrink-0"><FullscreenIcon className="w-5 h-5" /></button>
@@ -827,8 +821,15 @@
                   <div className="flex flex-col items-center"><span className="text-indigo-300 font-bold mb-2">{getPlayerLabel(1).split(' ')[0]}</span><span className="text-4xl sm:text-5xl font-black text-indigo-100">{gameState.comboScores[1]}</span></div>
                   <div className="flex flex-col items-center"><span className="text-rose-300 font-bold mb-2">{getPlayerLabel(2).split(' ')[0]}</span><span className="text-4xl sm:text-5xl font-black text-rose-100">{gameState.comboScores[2]}</span></div>
                 </div>
-                <div className="text-xl sm:text-2xl font-bold mb-8 text-white">
-                  {gameState.comboScores[1] > gameState.comboScores[2] ? `🏆 玩家 1 獲勝！` : gameState.comboScores[2] > gameState.comboScores[1] ? `🏆 ${getPlayerLabel(2).split(' ')[0]} 獲勝！` : '🤝 雙方平手！'}
+                {/* === 修改點：根據獲勝者顯示藍方或紅方 === */}
+                <div className="text-xl sm:text-2xl font-bold mb-8 text-white flex items-center justify-center">
+                  {gameState.comboScores[1] > gameState.comboScores[2] ? (
+                    <span>🏆 玩家 1 <span className="text-indigo-400">(藍方)</span> 獲勝！</span>
+                  ) : gameState.comboScores[2] > gameState.comboScores[1] ? (
+                    <span>🏆 {getPlayerLabel(2).split(' ')[0]} <span className="text-rose-400">(紅方)</span> 獲勝！</span>
+                  ) : (
+                    <span>🤝 雙方平手！</span>
+                  )}
                 </div>
                 <div className="flex w-full space-x-4">
                   <button onClick={handlePlayAgain} className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold flex items-center justify-center space-x-2"><RotateCcw className="w-5 h-5" /> <span>再打一場</span></button>
@@ -839,7 +840,6 @@
           )}
 
           <div className="z-10 w-full max-w-2xl flex justify-between items-center px-4 py-2 shrink-0">
-            {/* === 遊戲畫面的音量控制區塊 === */}
             <div className="flex space-x-2 items-center">
               <button onClick={() => setGameState(prev => ({ ...prev, mode: 'menu' }))} className="p-2 text-indigo-300 hover:text-white bg-slate-900/50 rounded-full border border-white/10 flex-shrink-0"><Home className="w-5 h-5" /></button>
               <VolumeControl />
