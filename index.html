@@ -36,7 +36,13 @@
     @media (orientation: landscape) { .game-wrapper { --board-size: var(--board-size-landscape); } }
 
     .board-container { width: var(--board-size); height: var(--board-size); }
-    .card-item { width: calc(var(--board-size) * var(--card-scale)); height: calc(var(--board-size) * var(--card-scale) * 1.25); container-type: size; }
+    
+    /* 統一卡牌與棋盤格子的實際大小，確保絕對 1:1 不變形 */
+    .card-item { 
+      width: calc(var(--board-size) * var(--card-scale)); 
+      height: calc(var(--board-size) * var(--card-scale) * 1.25); 
+      container-type: size; 
+    }
     .card-text { font-size: max(10px, 12cqh); }
 
     /* === 結算特效字體樣式 === */
@@ -71,14 +77,13 @@
 
     const { useState, useEffect, useCallback, useRef } = React;
 
-    const myFirebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
-      apiKey: "AIzaSyDs8L6uD0SvtUYn4A6iC2jGB_uHLYXS-1o",
+    const myFirebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {apiKey: "AIzaSyDs8L6uD0SvtUYn4A6iC2jGB_uHLYXS-1o",
       authDomain: "moonphasegame.firebaseapp.com",
       projectId: "moonphasegame",
       storageBucket: "moonphasegame.firebasestorage.app",
       messagingSenderId: "412480594259",
       appId: "1:412480594259:web:b8e31530e807c0c7f4c1a6",
-      measurementId: "G-MEQX9ZZM75"};
+      measurementId: "G-MEQX9ZZM75"};};
     let app, auth, db;
     try { app = initializeApp(myFirebaseConfig); auth = getAuth(app); db = getFirestore(app); } catch (e) { console.warn("Firebase offline"); }
     const appId = typeof __app_id !== 'undefined' ? __app_id : 'moonphase-app';
@@ -145,7 +150,8 @@
     }
     const audioManager = new AudioManager();
 
-    // --- 遊戲資料定義 (擴增至 20 種地圖，包含 10 種不對稱地圖) ---
+    // --- 遊戲資料定義 ---
+    // 將原先所有的 cardClass 移除，一率由外層 CSS 的 `--card-scale` 決定！
     const PHASES = [ { id: 0, name: '新月' }, { id: 1, name: '眉月' }, { id: 2, name: '上弦月' }, { id: 3, name: '盈凸月' }, { id: 4, name: '滿月' }, { id: 5, name: '虧凸月' }, { id: 6, name: '下弦月' }, { id: 7, name: '殘月' } ];
 
     const BOARDS = {
@@ -159,7 +165,6 @@
       diamond: { id: 'diamond', name: '♦️ 八面體晶石 (9格)', cardScale: 0.20, nodes: [ {x:50,y:10}, {x:28,y:32}, {x:72,y:32}, {x:10,y:50}, {x:50,y:50}, {x:90,y:50}, {x:28,y:68}, {x:72,y:68}, {x:50,y:90} ], edges: [ [0,1], [0,2], [1,3], [1,4], [2,4], [2,5], [3,6], [4,6], [4,7], [5,7], [6,8], [7,8], [1,2], [3,4], [4,5], [6,7] ] },
       hourglass: { id: 'hourglass', name: '⏳ 時空沙漏 (11格)', cardScale: 0.18, nodes: [ {x:20,y:15}, {x:50,y:15}, {x:80,y:15}, {x:35,y:35}, {x:65,y:35}, {x:50,y:50}, {x:35,y:65}, {x:65,y:65}, {x:20,y:85}, {x:50,y:85}, {x:80,y:85} ], edges: [ [0,1], [1,2], [0,3], [1,3], [1,4], [2,4], [3,4], [3,5], [4,5], [5,6], [5,7], [6,7], [6,8], [6,9], [7,9], [7,10], [8,9], [9,10] ] },
       orbital: { id: 'orbital', name: '🪐 星空軌道環 (10格)', cardScale: 0.18, nodes: [ {x:50,y:15}, {x:70,y:20}, {x:85,y:40}, {x:85,y:60}, {x:70,y:80}, {x:50,y:85}, {x:30,y:80}, {x:15,y:60}, {x:15,y:40}, {x:30,y:20} ], edges: [ [0,1], [1,2], [2,3], [3,4], [4,5], [5,6], [6,7], [7,8], [8,9], [9,0], [0,2], [2,4], [4,6], [6,8], [8,0] ] },
-      /* --- 以下為 10 種全不對稱地圖 --- */
       meteor: { id: 'meteor', name: '☄️ 不對稱 - 流星 (10格)', cardScale: 0.18, nodes: [ {x:20,y:80}, {x:35,y:85}, {x:15,y:65}, {x:35,y:65}, {x:50,y:50}, {x:65,y:35}, {x:80,y:20}, {x:90,y:10}, {x:55,y:65}, {x:35,y:45} ], edges: [ [0,1], [0,2], [2,3], [1,3], [3,4], [4,5], [5,6], [6,7], [4,8], [4,9] ] },
       dipper: { id: 'dipper', name: '🥄 不對稱 - 北斗七星 (7格)', cardScale: 0.22, nodes: [ {x:85,y:15}, {x:65,y:30}, {x:45,y:45}, {x:25,y:55}, {x:15,y:80}, {x:40,y:85}, {x:45,y:60} ], edges: [ [0,1], [1,2], [2,3], [3,4], [4,5], [5,6], [6,3] ] },
       crescent: { id: 'crescent', name: '🌙 不對稱 - 弦月灣 (8格)', cardScale: 0.22, nodes: [ {x:80,y:15}, {x:60,y:20}, {x:40,y:35}, {x:25,y:55}, {x:30,y:75}, {x:50,y:85}, {x:75,y:85}, {x:55,y:55} ], edges: [ [0,1], [1,2], [2,3], [3,4], [4,5], [5,6], [1,7], [2,7], [3,7], [4,7], [5,7] ] },
@@ -218,19 +223,16 @@
           <h2 className="text-3xl sm:text-4xl font-black mb-8 text-center text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-yellow-500">📖 遊戲玩法與計分規則</h2>
           
           <div className="space-y-10 text-slate-200">
-            {/* Section 1 */}
             <section className="bg-slate-800/40 p-6 rounded-2xl border border-slate-700">
               <h3 className="text-2xl font-bold mb-4 text-indigo-300 flex items-center gap-2">🎯 基礎佔領 (陣地得分)</h3>
               <p className="mb-4 leading-relaxed text-lg">雙方輪流將下方的「月相卡牌」放置於棋盤上的空位。遊戲結束結算時，你在棋盤上佔領的<strong className="text-white">每一個格子都會為你帶來 1 分</strong>的陣地得分！</p>
             </section>
 
-            {/* Section 2 */}
             <section className="bg-slate-800/40 p-6 rounded-2xl border border-slate-700">
               <h3 className="text-2xl font-bold mb-4 text-yellow-300 flex items-center gap-2">⚡ 連線加分機制</h3>
               <p className="mb-4 leading-relaxed text-lg">除了基礎佔領，當你放置卡牌時，只要與<strong className="text-white">有實體白線相連</strong>的卡牌滿足以下任一條件，就會觸發強大的得分連鎖，並<strong className="text-rose-400">直接將對方的牌變為你的領地</strong>！(可同時觸發多個方向)</p>
               
               <div className="space-y-6 mt-6">
-                {/* 規則A */}
                 <div className="bg-slate-900 p-4 rounded-xl border border-cyan-900/50">
                   <h4 className="text-xl font-bold text-cyan-300 mb-2">🔹 相同月相 (+1 分)</h4>
                   <p className="text-slate-400 mb-4">相連的兩張牌，月相完全相同。</p>
@@ -241,7 +243,6 @@
                   </div>
                 </div>
 
-                {/* 規則B */}
                 <div className="bg-slate-900 p-4 rounded-xl border border-yellow-900/50">
                   <h4 className="text-xl font-bold text-yellow-300 mb-2">🔸 互補滿月 (+2 分)</h4>
                   <p className="text-slate-400 mb-4">相連的兩張牌，形狀剛好可以互補拼成一顆滿月。(在循環中相隔 4 個階段)</p>
@@ -252,7 +253,6 @@
                   </div>
                 </div>
 
-                {/* 規則C */}
                 <div className="bg-slate-900 p-4 rounded-xl border border-purple-900/50">
                   <h4 className="text-xl font-bold text-purple-300 mb-2">🟣 月相變化 (+長度 分)</h4>
                   <p className="text-slate-400 mb-4">沿著連線，產生 3 張以上的連續月相 (遞增或遞減循環)。連線越長，獲得的分數越高！</p>
@@ -294,7 +294,7 @@
         mode: 'menu', boardType: 'classic', board: Array(9).fill(null),
         p1Deck: [], p2Deck: [], p1Hand: [], p2Hand: [],
         turn: 1, comboScores: { 1: 0, 2: 0 },
-        finalBaseScores: null, // 用來儲存結算前的「連線總分」
+        finalBaseScores: null, 
         isAnimating: false, gameOver: false, tallyState: 'none', 
         selectedCardIdx: null, round: 1, scoringQueue: [], currentScoringEvent: null, pendingResolveInfo: null
       });
@@ -579,11 +579,11 @@
         else if (isTallyingP2) animClasses = 'scale-110 shadow-[0_0_40px_rgba(251,113,133,1)] z-20 ring-[3px] ring-rose-300 transition-all duration-300';
         else if (isDimmed) animClasses = 'opacity-30 grayscale transition-all duration-500';
 
-        let sizeClass = isBoard ? 'w-full h-full' : BOARDS[gameState.boardType].cardClass;
+        let sizeClass = isBoard ? 'absolute inset-0 w-full h-full' : 'card-item shrink-0';
 
         return (
           <div key={isBoard ? `board-${boardIdx}` : `hand-${player}-${index}`} onClick={(e) => { e.stopPropagation(); const isMyTurn = (gameState.mode === 'online') ? (gameState.turn === myPlayerId && player === myPlayerId) : (player === gameState.turn); if (!isBoard && isMyTurn && !gameState.isAnimating && gameState.tallyState === 'none') { setGameState(prev => ({ ...prev, selectedCardIdx: prev.selectedCardIdx === index ? null : index })); } }}
-            className={`relative flex flex-col items-center justify-center rounded-lg sm:rounded-xl md:rounded-2xl transition-all duration-300 cursor-pointer border ${colorClasses} ${isSelected ? 'ring-2 ring-yellow-400 -translate-y-2 shadow-[0_10px_20px_rgba(250,204,21,0.4)]' : ''} ${animClasses} ${isBoard ? "absolute inset-0" : "card-item shrink-0"}`}
+            className={`relative flex flex-col items-center justify-center rounded-lg sm:rounded-xl md:rounded-2xl transition-all duration-300 cursor-pointer border ${colorClasses} ${isSelected ? 'ring-2 ring-yellow-400 -translate-y-2 shadow-[0_10px_20px_rgba(250,204,21,0.4)]' : ''} ${animClasses} ${sizeClass}`}
           >
             {!isHidden ? (
               <React.Fragment><MoonSvg phase={phase} className="w-[50%] h-[50%] mb-[2%]" /><span className={`card-text font-medium tracking-wide ${isNeutral ? 'text-slate-300' : player === 1 ? 'text-indigo-200' : 'text-rose-200'}`}>{PHASES[phase].name}</span></React.Fragment>
@@ -730,7 +730,6 @@
                 <h2 className="text-3xl sm:text-4xl font-black mb-6 text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-yellow-500">遊戲結算</h2>
                 
                 <div className="flex w-full justify-around mb-8 gap-4">
-                  {/* Player 1 Score Breakdown */}
                   <div className="flex flex-col items-center flex-1 bg-indigo-900/20 p-4 rounded-2xl border border-indigo-500/30">
                     <span className="text-indigo-300 font-bold mb-3">{getPlayerLabel(1).split(' ')[0]}</span>
                     <div className="w-full flex justify-between text-sm text-slate-300 mb-1 px-2">
@@ -745,7 +744,6 @@
                     </div>
                   </div>
                   
-                  {/* Player 2 Score Breakdown */}
                   <div className="flex flex-col items-center flex-1 bg-rose-900/20 p-4 rounded-2xl border border-rose-500/30">
                     <span className="text-rose-300 font-bold mb-3">{getPlayerLabel(2).split(' ')[0]}</span>
                     <div className="w-full flex justify-between text-sm text-slate-300 mb-1 px-2">
@@ -839,17 +837,7 @@
               {gameState.board.map((cell, idx) => {
                 const node = currentBoardConfig.nodes[idx];
                 return (
-                  <div key={`node-${idx}`} 
-                    className={`absolute z-10 flex items-center justify-center transition-colors card-item ${cell === null ? 'border-2 border-dashed border-slate-500/50 bg-slate-800/30 hover:bg-slate-700/60 cursor-pointer backdrop-blur-sm shadow-inner rounded-lg sm:rounded-xl md:rounded-2xl' : ''}`}
-                    style={{ left: `${node.x}%`, top: `${node.y}%`, transform: 'translate(-50%, -50%)' }}
-                    onClick={(e) => { 
-                      e.stopPropagation();
-                      const isMyTurn = (gameState.mode === 'online') ? (gameState.turn === myPlayerId && player === myPlayerId) : (player === gameState.turn);
-                      if (cell === null && gameState.selectedCardIdx !== null && (!gameState.isAnimating)) { 
-                        const canPlay = gameState.mode === 'single' ? gameState.turn === 1 : (gameState.mode === 'multi' ? true : (gameState.mode === 'online' ? gameState.turn === myPlayerId : false)); 
-                        if (canPlay) playCard(gameState.selectedCardIdx, idx, false); 
-                      } 
-                    }}>
+                  <div key={`node-${idx}`} className={`absolute z-10 flex items-center justify-center transition-colors card-item ${cell === null ? 'border-2 border-dashed border-slate-500/50 bg-slate-800/30 hover:bg-slate-700/60 cursor-pointer backdrop-blur-sm shadow-inner rounded-lg sm:rounded-xl md:rounded-2xl' : ''}`} style={{ left: `${node.x}%`, top: `${node.y}%`, transform: 'translate(-50%, -50%)' }} onClick={(e) => { e.stopPropagation(); if (cell === null && gameState.selectedCardIdx !== null && (!gameState.isAnimating)) { const canPlay = gameState.mode === 'single' ? gameState.turn === 1 : (gameState.mode === 'multi' ? true : (gameState.mode === 'online' ? gameState.turn === myPlayerId : false)); if (canPlay) playCard(gameState.selectedCardIdx, idx, false); } }}>
                     {cell && renderCard(cell.phase, -1, cell.player, true, idx)}
                   </div>
                 );
