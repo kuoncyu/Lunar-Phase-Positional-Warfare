@@ -19,12 +19,36 @@
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@900&family=Zen+Maru+Gothic:wght@900&display=swap" rel="stylesheet">
 
   <style>
-    /* 鎖定全螢幕，防止手機上下拖曳重整與畫面破版 */
+    /* 鎖定全螢幕，徹底防止手機上下拖曳重整與畫面破版 */
     body, html { 
       margin: 0; padding: 0; 
       background-color: #020617;
       overflow: hidden; 
       touch-action: none;
+    }
+
+    /* === 響應式完美縮放引擎核心 === */
+    .game-wrapper {
+      /* 扣除周圍安全邊距、頂部選單、名字分數標籤等空間 */
+      --board-size-portrait: min(calc(100vw - 32px), calc((100dvh - 150px) / var(--portrait-mult)));
+      --board-size-landscape: min(calc(100dvh - 90px), calc((100vw - 160px) / var(--landscape-mult)));
+    }
+    @media (orientation: portrait) { .game-wrapper { --board-size: var(--board-size-portrait); } }
+    @media (orientation: landscape) { .game-wrapper { --board-size: var(--board-size-landscape); } }
+
+    .board-container {
+      width: var(--board-size);
+      height: var(--board-size);
+    }
+    
+    .card-item {
+      width: calc(var(--board-size) * var(--card-scale));
+      height: calc(var(--board-size) * var(--card-scale) * 1.25); /* 4/5 比例 */
+      container-type: size;
+    }
+
+    .card-text {
+      font-size: max(10px, 12cqh);
     }
 
     /* === 結算特效字體樣式 === */
@@ -185,7 +209,7 @@
     }
     const audioManager = new AudioManager();
 
-    // --- 遊戲資料定義 (擴充至10個棋盤) ---
+    // --- 遊戲資料定義 (包含精準演算尺寸) ---
     const PHASES = [
       { id: 0, name: '新月' }, { id: 1, name: '眉月' }, { id: 2, name: '上弦月' }, { id: 3, name: '盈凸月' },
       { id: 4, name: '滿月' }, { id: 5, name: '虧凸月' }, { id: 6, name: '下弦月' }, { id: 7, name: '殘月' },
@@ -193,52 +217,52 @@
 
     const BOARDS = {
       classic: {
-        id: 'classic', name: '九宮格 (9格)', cardClass: 'w-[24%] aspect-[4/5]',
+        id: 'classic', name: '九宮格 (9格)', cardScale: 0.24,
         nodes: [ {x:16.6,y:16.6}, {x:50,y:16.6}, {x:83.3,y:16.6}, {x:16.6,y:50}, {x:50,y:50}, {x:83.3,y:50}, {x:16.6,y:83.3}, {x:50,y:83.3}, {x:83.3,y:83.3} ],
         edges: [ [0,1], [1,2], [3,4], [4,5], [6,7], [7,8], [0,3], [3,6], [1,4], [4,7], [2,5], [5,8] ]
       },
       owl: {
-        id: 'owl', name: '貓頭鷹型 (12格)', cardClass: 'w-[18%] aspect-[4/5]',
+        id: 'owl', name: '貓頭鷹型 (12格)', cardScale: 0.18,
         nodes: [ {x:35,y:15}, {x:65,y:15}, {x:15,y:38}, {x:38,y:38}, {x:62,y:38}, {x:85,y:38}, {x:15,y:62}, {x:38,y:62}, {x:62,y:62}, {x:85,y:62}, {x:35,y:85}, {x:65,y:85} ],
         edges: [ [0,1], [0,2], [0,3], [1,4], [1,5], [2,6], [3,7], [4,8], [5,9], [6,10], [7,10], [8,11], [9,11], [10,11], [2,3], [4,5], [6,7], [8,9] ]
       },
       tree: {
-        id: 'tree', name: '拱門神木 (13格)', cardClass: 'w-[15%] aspect-[4/5]',
+        id: 'tree', name: '拱門神木 (13格)', cardScale: 0.15,
         nodes: [ {x:50,y:10}, {x:25,y:30}, {x:50,y:30}, {x:75,y:30}, {x:12.5,y:50}, {x:37.5,y:50}, {x:62.5,y:50}, {x:87.5,y:50}, {x:25,y:70}, {x:50,y:70}, {x:75,y:70}, {x:35,y:90}, {x:65,y:90} ],
         edges: [ [0,1], [0,2], [0,3], [1,2], [2,3], [1,4], [1,5], [2,5], [2,6], [3,6], [3,7], [4,5], [5,6], [6,7], [4,8], [5,8], [5,9], [6,9], [6,10], [7,10], [8,9], [9,10], [8,11], [9,11], [9,12], [10,12], [11,12] ]
       },
       nova: {
-        id: 'nova', name: '宇宙新星 (13格)', cardClass: 'w-[15%] aspect-[4/5]',
+        id: 'nova', name: '宇宙新星 (13格)', cardScale: 0.14,
         nodes: [ {x:50,y:50}, {x:50,y:28}, {x:72,y:50}, {x:50,y:72}, {x:28,y:50}, {x:50,y:8}, {x:92,y:50}, {x:50,y:92}, {x:8,y:50}, {x:22,y:22}, {x:78,y:22}, {x:78,y:78}, {x:22,y:78} ],
         edges: [ [0,1], [0,2], [0,3], [0,4], [1,2], [2,3], [3,4], [4,1], [1,5], [2,6], [3,7], [4,8], [1,9], [4,9], [1,10], [2,10], [2,11], [3,11], [3,12], [4,12] ]
       },
       hexagon: {
-        id: 'hexagon', name: '蜂巢核心 (7格)', cardClass: 'w-[22%] aspect-[4/5]',
+        id: 'hexagon', name: '蜂巢核心 (7格)', cardScale: 0.22,
         nodes: [ {x:50,y:50}, {x:50,y:18}, {x:78,y:34}, {x:78,y:66}, {x:50,y:82}, {x:22,y:66}, {x:22,y:34} ],
         edges: [ [0,1], [0,2], [0,3], [0,4], [0,5], [0,6], [1,2], [2,3], [3,4], [4,5], [5,6], [6,1] ]
       },
       pyramid: {
-        id: 'pyramid', name: '星際金字塔 (10格)', cardClass: 'w-[18%] aspect-[4/5]',
+        id: 'pyramid', name: '星際金字塔 (10格)', cardScale: 0.18,
         nodes: [ {x:50,y:15}, {x:36.6,y:40}, {x:63.3,y:40}, {x:23.3,y:65}, {x:50,y:65}, {x:76.6,y:65}, {x:10,y:90}, {x:36.6,y:90}, {x:63.3,y:90}, {x:90,y:90} ],
         edges: [ [0,1], [0,2], [1,2], [1,3], [1,4], [2,4], [2,5], [3,4], [4,5], [3,6], [3,7], [4,7], [4,8], [5,8], [5,9], [6,7], [7,8], [8,9] ]
       },
       cross: {
-        id: 'cross', name: '十字星芒 (13格)', cardClass: 'w-[16%] aspect-[4/5]',
+        id: 'cross', name: '十字星芒 (13格)', cardScale: 0.16,
         nodes: [ {x:50,y:10}, {x:50,y:30}, {x:50,y:50}, {x:50,y:70}, {x:50,y:90}, {x:10,y:50}, {x:30,y:50}, {x:70,y:50}, {x:90,y:50}, {x:30,y:30}, {x:70,y:30}, {x:30,y:70}, {x:70,y:70} ],
         edges: [ [0,1], [1,2], [2,3], [3,4], [5,6], [6,2], [2,7], [7,8], [9,1], [9,6], [10,1], [10,7], [11,6], [11,3], [12,7], [12,3], [9,2], [10,2], [11,2], [12,2] ]
       },
       diamond: {
-        id: 'diamond', name: '八面體晶石 (9格)', cardClass: 'w-[20%] aspect-[4/5]',
+        id: 'diamond', name: '八面體晶石 (9格)', cardScale: 0.20,
         nodes: [ {x:50,y:10}, {x:28,y:32}, {x:72,y:32}, {x:10,y:50}, {x:50,y:50}, {x:90,y:50}, {x:28,y:68}, {x:72,y:68}, {x:50,y:90} ],
         edges: [ [0,1], [0,2], [1,3], [1,4], [2,4], [2,5], [3,6], [4,6], [4,7], [5,7], [6,8], [7,8], [1,2], [3,4], [4,5], [6,7] ]
       },
       hourglass: {
-        id: 'hourglass', name: '時空沙漏 (11格)', cardClass: 'w-[18%] aspect-[4/5]',
+        id: 'hourglass', name: '時空沙漏 (11格)', cardScale: 0.18,
         nodes: [ {x:20,y:15}, {x:50,y:15}, {x:80,y:15}, {x:35,y:35}, {x:65,y:35}, {x:50,y:50}, {x:35,y:65}, {x:65,y:65}, {x:20,y:85}, {x:50,y:85}, {x:80,y:85} ],
         edges: [ [0,1], [1,2], [0,3], [1,3], [1,4], [2,4], [3,4], [3,5], [4,5], [5,6], [5,7], [6,7], [6,8], [6,9], [7,9], [7,10], [8,9], [9,10] ]
       },
       ring: {
-        id: 'ring', name: '星空軌道環 (9格)', cardClass: 'w-[18%] aspect-[4/5]',
+        id: 'ring', name: '星空軌道環 (9格)', cardScale: 0.18,
         nodes: [ {x:50,y:50}, {x:50,y:15}, {x:75,y:25}, {x:85,y:50}, {x:75,y:75}, {x:50,y:85}, {x:25,y:75}, {x:15,y:50}, {x:25,y:25} ],
         edges: [ [0,1], [0,2], [0,3], [0,4], [0,5], [0,6], [0,7], [0,8], [1,2], [2,3], [3,4], [4,5], [5,6], [6,7], [7,8], [8,1] ]
       }
@@ -639,6 +663,7 @@
         </div>
       );
 
+      // --- 渲染卡牌 (統外套用 .card-item，保證大小絕對一致) ---
       const renderCard = (phase, index, player, isBoard = false, boardIdx = -1) => {
         if (phase === undefined || phase === null) return null;
         const isNeutral = !isBoard || player === 0;
@@ -666,9 +691,10 @@
         else if (isTallyingP2) animClasses = 'scale-110 shadow-[0_0_40px_rgba(251,113,133,1)] z-20 ring-[3px] ring-rose-300 transition-all duration-300';
         else if (isDimmed) animClasses = 'opacity-30 grayscale transition-all duration-500';
 
-        let sizeClass = isBoard 
-          ? BOARDS[gameState.boardType].cardClass 
-          : 'portrait:h-[85%] portrait:w-auto landscape:w-[85%] landscape:h-auto aspect-[4/5] shrink-0 max-h-full max-w-full';
+        // 判斷是否為棋盤底槽 (這確保手牌與放置後的卡牌大小完全綁定一致)
+        const elementClass = isBoard 
+          ? "absolute inset-0 w-full h-full" 
+          : "card-item shrink-0";
 
         return (
           <div 
@@ -680,14 +706,14 @@
                 setGameState(prev => ({ ...prev, selectedCardIdx: prev.selectedCardIdx === index ? null : index }));
               }
             }}
-            className={`relative flex flex-col items-center justify-center rounded-lg sm:rounded-xl md:rounded-2xl transition-all duration-300 ${sizeClass} cursor-pointer border ${colorClasses} ${isSelected ? 'ring-2 ring-yellow-400 -translate-y-2 shadow-[0_10px_20px_rgba(250,204,21,0.4)]' : ''} ${animClasses}`}
+            className={`relative flex flex-col items-center justify-center rounded-lg sm:rounded-xl md:rounded-2xl transition-all duration-300 cursor-pointer border ${colorClasses} ${isSelected ? 'ring-2 ring-yellow-400 -translate-y-2 shadow-[0_10px_20px_rgba(250,204,21,0.4)]' : ''} ${animClasses} ${elementClass}`}
           >
             {!isHidden ? (
               <React.Fragment>
                 <MoonSvg phase={phase} className="w-[50%] h-[50%] mb-[2%]" />
-                <span className={`text-[length:clamp(8px,1.5vmin,14px)] font-medium tracking-wide ${isNeutral ? 'text-slate-300' : player === 1 ? 'text-indigo-200' : 'text-rose-200'}`}>{PHASES[phase].name}</span>
+                <span className={`card-text font-medium tracking-wide ${isNeutral ? 'text-slate-300' : player === 1 ? 'text-indigo-200' : 'text-rose-200'}`}>{PHASES[phase].name}</span>
               </React.Fragment>
-            ) : ( <div className="w-[60%] h-[60%] rounded-full bg-slate-700/50 border border-slate-600/50 flex items-center justify-center"><span className="text-[length:clamp(8px,1.5vmin,14px)] text-slate-400 opacity-50 font-bold">?</span></div> )}
+            ) : ( <div className="w-[60%] h-[60%] rounded-full bg-slate-700/50 border border-slate-600/50 flex items-center justify-center"><span className="card-text text-slate-400 opacity-50 font-bold">?</span></div> )}
           </div>
         );
       };
@@ -802,8 +828,12 @@
         else { currentScoreTextClass = 'score-sequence'; currentScoreNumClass = 'score-num-sequence'; }
       }
 
+      // 動態注入 CSS 變數來實現完美的等比縮放
+      const portraitMult = 1.1 + 2 * (currentBoardConfig.cardScale * 1.25);
+      const landscapeMult = 1.1 + 2 * currentBoardConfig.cardScale;
+
       return (
-        <div className={`${wrapperClass} flex flex-col`}>
+        <div className={`game-wrapper ${wrapperClass} flex flex-col`} style={{ '--card-scale': currentBoardConfig.cardScale, '--portrait-mult': portraitMult, '--landscape-mult': landscapeMult }}>
           <StarryBackground />
 
           {(gameState.tallyState === 'start' || gameState.tallyState === 'p1' || gameState.tallyState === 'p2') && (
@@ -854,86 +884,86 @@
           </div>
 
           {/* ⭐ 遊戲主核心區塊 (依據方向動態響應) ⭐ */}
-          <div className="z-10 w-full max-w-[1400px] mx-auto flex portrait:flex-col landscape:flex-row justify-between items-center flex-1 min-h-0 pb-2 px-2 gap-2 sm:gap-6 shrink-0">
+          <div className="z-10 w-full max-w-[1400px] mx-auto flex portrait:flex-col landscape:flex-row justify-center items-center flex-1 min-h-0 pb-2 px-2 gap-4 sm:gap-8 shrink-0">
             
             {/* Player 2 (直式: 頂部 / 橫式: 左側) */}
-            <div className={`flex portrait:flex-col landscape:flex-col items-center justify-center py-2 sm:py-3 rounded-2xl sm:rounded-3xl transition-colors shrink-0 portrait:w-full portrait:h-[14vh] portrait:min-h-[70px] landscape:h-full landscape:w-[15vw] landscape:min-w-[110px] ${getPlayerContainerStyle(topPlayer)}`}>
-              <div className="flex portrait:flex-row landscape:flex-col justify-between landscape:justify-start w-full portrait:px-4 landscape:py-4 mb-2 landscape:mb-0 items-center shrink-0 order-1 landscape:gap-4">
+            <div className={`flex portrait:flex-col landscape:flex-col items-center justify-center p-3 sm:p-4 rounded-2xl sm:rounded-3xl transition-colors shrink-0 ${getPlayerContainerStyle(topPlayer)}`}>
+              <div className="flex portrait:flex-row landscape:flex-col justify-between w-full portrait:px-2 landscape:py-2 mb-2 landscape:mb-0 portrait:order-1 landscape:order-1 items-center gap-2">
                 <span className={`text-sm sm:text-base font-bold ${topPlayer === 1 ? 'text-indigo-300' : 'text-rose-300'}`}>{getPlayerLabel(topPlayer)}</span>
                 <span className={`text-xl sm:text-2xl font-black ${topPlayer === 1 ? 'text-indigo-100' : 'text-rose-100'}`}>{gameState.comboScores[topPlayer]}分</span>
               </div>
-              <div className="flex portrait:flex-row landscape:flex-col justify-center gap-2 sm:gap-4 w-full h-full min-h-0 min-w-0 items-center px-2 order-2">
+              <div className="flex portrait:flex-row landscape:flex-col justify-center gap-2 sm:gap-4 w-full portrait:order-2 landscape:order-2">
                 {(topPlayer === 1 ? gameState.p1Hand : gameState.p2Hand).map((phase, i) => renderCard(phase, i, topPlayer))}
               </div>
             </div>
             
-            {/* 中間棋盤區 (自動生成最大正方形) */}
-            <div className="flex-1 w-full h-full flex items-center justify-center min-h-0 min-w-0 portrait:py-2 landscape:px-2">
-              <div className="relative bg-slate-900/60 rounded-[1.5rem] sm:rounded-[2rem] backdrop-blur-lg border border-slate-700/50 shadow-2xl shrink-0 flex items-center justify-center aspect-square portrait:w-full portrait:max-h-full landscape:h-full landscape:max-w-full">
-                
-                {gameState.currentScoringEvent && (
-                  <div key={gameState.currentScoringEvent.id} className="absolute inset-0 flex items-center justify-center pointer-events-none z-[100]">
-                    <div className="animate-float-score flex flex-col items-center">
-                      <span className={`text-[length:clamp(2rem,6vmin,4rem)] font-black tracking-widest scoring-text pb-2 ${currentScoreTextClass}`}>
-                        {gameState.currentScoringEvent.name}
-                      </span>
-                      <span className={`text-[length:clamp(2.5rem,7vmin,5rem)] font-black scoring-text mt-1 drop-shadow-md ${currentScoreNumClass}`}>
-                        +{gameState.currentScoringEvent.points}
-                      </span>
-                    </div>
+            {/* 中間棋盤區 (透過 CSS Variable 強制縮放與對齊) */}
+            <div className="relative bg-slate-900/60 rounded-[1.5rem] sm:rounded-[2rem] backdrop-blur-lg border border-slate-700/50 shadow-2xl shrink-0 board-container flex items-center justify-center">
+              
+              {gameState.currentScoringEvent && (
+                <div key={gameState.currentScoringEvent.id} className="absolute inset-0 flex items-center justify-center pointer-events-none z-[100]">
+                  <div className="animate-float-score flex flex-col items-center">
+                    <span className={`text-[length:clamp(2rem,6vmin,4rem)] font-black tracking-widest scoring-text pb-2 ${currentScoreTextClass}`}>
+                      {gameState.currentScoringEvent.name}
+                    </span>
+                    <span className={`text-[length:clamp(2.5rem,7vmin,5rem)] font-black scoring-text mt-1 drop-shadow-md ${currentScoreNumClass}`}>
+                      +{gameState.currentScoringEvent.points}
+                    </span>
                   </div>
-                )}
-                <svg className="absolute inset-0 w-full h-full pointer-events-none z-0 overflow-visible">
-                  {currentBoardConfig.edges.map((edge, i) => {
-                    const n1 = currentBoardConfig.nodes[edge[0]]; const n2 = currentBoardConfig.nodes[edge[1]];
-                    
-                    let isScoringEdge = false;
-                    if (gameState.currentScoringEvent) {
-                      const ev = gameState.currentScoringEvent;
-                      if (ev.type === 'sequence') {
-                        const idx1 = ev.cells.indexOf(edge[0]);
-                        const idx2 = ev.cells.indexOf(edge[1]);
-                        if (idx1 !== -1 && idx2 !== -1 && Math.abs(idx1 - idx2) === 1) {
-                          isScoringEdge = true;
-                        }
-                      } else {
-                        isScoringEdge = ev.cells.includes(edge[0]) && ev.cells.includes(edge[1]);
+                </div>
+              )}
+              
+              <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full pointer-events-none z-0 overflow-visible">
+                {currentBoardConfig.edges.map((edge, i) => {
+                  const n1 = currentBoardConfig.nodes[edge[0]]; const n2 = currentBoardConfig.nodes[edge[1]];
+                  
+                  let isScoringEdge = false;
+                  if (gameState.currentScoringEvent) {
+                    const ev = gameState.currentScoringEvent;
+                    if (ev.type === 'sequence') {
+                      const idx1 = ev.cells.indexOf(edge[0]);
+                      const idx2 = ev.cells.indexOf(edge[1]);
+                      if (idx1 !== -1 && idx2 !== -1 && Math.abs(idx1 - idx2) === 1) {
+                        isScoringEdge = true;
                       }
+                    } else {
+                      isScoringEdge = ev.cells.includes(edge[0]) && ev.cells.includes(edge[1]);
                     }
+                  }
 
-                    let strokeColor = "rgba(71, 85, 105, 0.3)"; let strokeW = "1.5%";
-                    if (isScoringEdge) { strokeColor = gameState.turn === 1 ? "rgba(99, 102, 241, 0.9)" : "rgba(244, 63, 94, 0.9)"; strokeW = "2.5%"; }
-                    return <line key={`edge-${i}`} x1={`${n1.x}%`} y1={`${n1.y}%`} x2={`${n2.x}%`} y2={`${n2.y}%`} stroke={strokeColor} strokeWidth={strokeW} strokeLinecap="round" className="transition-all duration-500" style={isScoringEdge ? { filter: `drop-shadow(0px 0px 8px ${strokeColor})` } : {}} />;
-                  })}
-                </svg>
-                {gameState.board.map((cell, idx) => {
-                  const node = currentBoardConfig.nodes[idx];
-                  return (
-                    <div 
-                      key={`node-${idx}`} 
-                      className={`absolute z-10 flex items-center justify-center transition-colors ${currentBoardConfig.cardClass} ${cell === null ? 'border-2 border-dashed border-slate-500/50 bg-slate-800/30 hover:bg-slate-700/60 cursor-pointer backdrop-blur-sm shadow-inner rounded-lg sm:rounded-xl md:rounded-2xl' : ''}`}
-                      style={{ left: `${node.x}%`, top: `${node.y}%`, transform: 'translate(-50%, -50%)' }}
-                      onClick={(e) => { 
-                        e.stopPropagation();
-                        if (cell === null && gameState.selectedCardIdx !== null && (!gameState.isAnimating)) { 
-                          const canPlay = gameState.mode === 'single' ? gameState.turn === 1 : (gameState.mode === 'multi' ? true : (gameState.mode === 'online' ? gameState.turn === myPlayerId : false)); 
-                          if (canPlay) playCard(gameState.selectedCardIdx, idx, false); 
-                        } 
-                      }} 
-                    >
-                      {cell && renderCard(cell.phase, -1, cell.player, true, idx)}
-                    </div>
-                  );
+                  let strokeColor = "rgba(71, 85, 105, 0.3)"; let strokeW = "1.2";
+                  if (isScoringEdge) { strokeColor = gameState.turn === 1 ? "rgba(99, 102, 241, 0.9)" : "rgba(244, 63, 94, 0.9)"; strokeW = "2.5"; }
+                  return <line key={`edge-${i}`} x1={n1.x} y1={n1.y} x2={n2.x} y2={n2.y} stroke={strokeColor} strokeWidth={strokeW} strokeLinecap="round" className="transition-all duration-500" style={isScoringEdge ? { filter: `drop-shadow(0px 0px 4px ${strokeColor})` } : {}} />;
                 })}
-              </div>
+              </svg>
+              
+              {gameState.board.map((cell, idx) => {
+                const node = currentBoardConfig.nodes[idx];
+                return (
+                  <div 
+                    key={`node-${idx}`} 
+                    className={`absolute z-10 flex items-center justify-center transition-colors card-item ${cell === null ? 'border-2 border-dashed border-slate-500/50 bg-slate-800/30 hover:bg-slate-700/60 cursor-pointer backdrop-blur-sm shadow-inner rounded-lg sm:rounded-xl md:rounded-2xl' : ''}`}
+                    style={{ left: `${node.x}%`, top: `${node.y}%`, transform: 'translate(-50%, -50%)' }}
+                    onClick={(e) => { 
+                      e.stopPropagation();
+                      if (cell === null && gameState.selectedCardIdx !== null && (!gameState.isAnimating)) { 
+                        const canPlay = gameState.mode === 'single' ? gameState.turn === 1 : (gameState.mode === 'multi' ? true : (gameState.mode === 'online' ? gameState.turn === myPlayerId : false)); 
+                        if (canPlay) playCard(gameState.selectedCardIdx, idx, false); 
+                      } 
+                    }} 
+                  >
+                    {cell && renderCard(cell.phase, -1, cell.player, true, idx)}
+                  </div>
+                );
+              })}
             </div>
 
             {/* Player 1 (直式: 底部 / 橫式: 右側) */}
-            <div className={`flex portrait:flex-col landscape:flex-col items-center justify-center py-2 sm:py-3 rounded-2xl sm:rounded-3xl transition-colors shrink-0 portrait:w-full portrait:h-[14vh] portrait:min-h-[70px] landscape:h-full landscape:w-[15vw] landscape:min-w-[110px] ${getPlayerContainerStyle(bottomPlayer)}`}>
-              <div className="flex portrait:flex-row landscape:flex-col justify-center gap-2 sm:gap-4 w-full h-full min-h-0 min-w-0 items-center px-2 portrait:order-1 landscape:order-2">
+            <div className={`flex portrait:flex-col landscape:flex-col items-center justify-center p-3 sm:p-4 rounded-2xl sm:rounded-3xl transition-colors shrink-0 ${getPlayerContainerStyle(bottomPlayer)}`}>
+              <div className="flex portrait:flex-row landscape:flex-col justify-center gap-2 sm:gap-4 w-full portrait:order-1 landscape:order-2">
                 {(bottomPlayer === 1 ? gameState.p1Hand : gameState.p2Hand).map((phase, i) => renderCard(phase, i, bottomPlayer))}
               </div>
-              <div className="flex portrait:flex-row landscape:flex-col justify-between landscape:justify-end w-full portrait:px-4 landscape:py-4 mt-2 landscape:mt-0 items-center shrink-0 portrait:order-2 landscape:order-1 landscape:gap-4">
+              <div className="flex portrait:flex-row landscape:flex-col justify-between w-full portrait:px-2 landscape:py-2 mt-2 landscape:mt-0 items-center portrait:order-2 landscape:order-1 gap-2">
                 <span className={`text-sm sm:text-base font-bold ${bottomPlayer === 1 ? 'text-indigo-300' : 'text-rose-300'}`}>{getPlayerLabel(bottomPlayer)}</span>
                 <span className={`text-xl sm:text-2xl font-black ${bottomPlayer === 1 ? 'text-indigo-100' : 'text-rose-100'}`}>{gameState.comboScores[bottomPlayer]}分</span>
               </div>
