@@ -19,6 +19,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@900&family=Zen+Maru+Gothic:wght@900&display=swap" rel="stylesheet">
 
   <style>
+    /* 鎖定全螢幕，防止手機上下拖曳重整與畫面破版 */
     body, html { 
       margin: 0; padding: 0; 
       background-color: #020617;
@@ -620,7 +621,7 @@
       let bottomPlayer = 1, topPlayer = 2;
       if (gameState.mode === 'online') { bottomPlayer = myPlayerId; topPlayer = myPlayerId === 1 ? 2 : 1; }
 
-      const wrapperClass = `flex flex-col items-center font-sans text-slate-100 selection:bg-indigo-500/30 transition-all duration-300 ${isPseudoFs ? 'fixed inset-0 z-[9999] bg-slate-950 w-screen h-[100dvh] overflow-hidden' : 'w-full h-[100dvh] relative overflow-hidden'}`;
+      const wrapperClass = `font-sans text-slate-100 selection:bg-indigo-500/30 transition-all duration-300 ${isPseudoFs ? 'fixed inset-0 z-[9999] bg-slate-950 w-screen h-[100dvh]' : 'w-full h-[100dvh] relative'}`;
       const FullscreenIcon = (nativeFs || isPseudoFs) ? Minimize : Maximize;
       const VolumeIcon = isMuted ? VolumeX : Volume2;
 
@@ -665,7 +666,9 @@
         else if (isTallyingP2) animClasses = 'scale-110 shadow-[0_0_40px_rgba(251,113,133,1)] z-20 ring-[3px] ring-rose-300 transition-all duration-300';
         else if (isDimmed) animClasses = 'opacity-30 grayscale transition-all duration-500';
 
-        let sizeClass = isBoard ? 'w-full h-full' : BOARDS[gameState.boardType].cardClass;
+        let sizeClass = isBoard 
+          ? BOARDS[gameState.boardType].cardClass 
+          : 'portrait:h-[85%] portrait:w-auto landscape:w-[85%] landscape:h-auto aspect-[4/5] shrink-0 max-h-full max-w-full';
 
         return (
           <div 
@@ -682,9 +685,9 @@
             {!isHidden ? (
               <React.Fragment>
                 <MoonSvg phase={phase} className="w-[50%] h-[50%] mb-[2%]" />
-                <span className={`text-[8px] sm:text-[10px] md:text-xs font-medium tracking-wide ${isNeutral ? 'text-slate-300' : player === 1 ? 'text-indigo-200' : 'text-rose-200'}`}>{PHASES[phase].name}</span>
+                <span className={`text-[length:clamp(8px,1.5vmin,14px)] font-medium tracking-wide ${isNeutral ? 'text-slate-300' : player === 1 ? 'text-indigo-200' : 'text-rose-200'}`}>{PHASES[phase].name}</span>
               </React.Fragment>
-            ) : ( <div className="w-[60%] h-[60%] rounded-full bg-slate-700/50 border border-slate-600/50 flex items-center justify-center"><span className="text-[10px] sm:text-xs text-slate-400 opacity-50 font-bold">?</span></div> )}
+            ) : ( <div className="w-[60%] h-[60%] rounded-full bg-slate-700/50 border border-slate-600/50 flex items-center justify-center"><span className="text-[length:clamp(8px,1.5vmin,14px)] text-slate-400 opacity-50 font-bold">?</span></div> )}
           </div>
         );
       };
@@ -696,7 +699,7 @@
 
       if (gameState.mode === 'menu' || gameState.mode === 'lobby' || gameState.mode === 'waiting') {
         return (
-          <div className={`${wrapperClass} justify-center overflow-y-auto`}>
+          <div className={`${wrapperClass} flex flex-col items-center justify-center overflow-y-auto`}>
             <StarryBackground />
             <div className="z-10 flex flex-col items-center p-8 bg-slate-900/60 backdrop-blur-xl rounded-3xl border border-indigo-500/30 shadow-2xl relative w-full max-w-md my-10 mx-4">
               
@@ -800,7 +803,7 @@
       }
 
       return (
-        <div className={`${wrapperClass} p-2 flex flex-col justify-between items-center`}>
+        <div className={`${wrapperClass} flex flex-col`}>
           <StarryBackground />
 
           {(gameState.tallyState === 'start' || gameState.tallyState === 'p1' || gameState.tallyState === 'p2') && (
@@ -821,7 +824,6 @@
                   <div className="flex flex-col items-center"><span className="text-indigo-300 font-bold mb-2">{getPlayerLabel(1).split(' ')[0]}</span><span className="text-4xl sm:text-5xl font-black text-indigo-100">{gameState.comboScores[1]}</span></div>
                   <div className="flex flex-col items-center"><span className="text-rose-300 font-bold mb-2">{getPlayerLabel(2).split(' ')[0]}</span><span className="text-4xl sm:text-5xl font-black text-rose-100">{gameState.comboScores[2]}</span></div>
                 </div>
-                {/* === 修改點：根據獲勝者顯示藍方或紅方 === */}
                 <div className="text-xl sm:text-2xl font-bold mb-8 text-white flex items-center justify-center">
                   {gameState.comboScores[1] > gameState.comboScores[2] ? (
                     <span>🏆 玩家 1 <span className="text-indigo-400">(藍方)</span> 獲勝！</span>
@@ -839,7 +841,8 @@
             </div>
           )}
 
-          <div className="z-10 w-full max-w-2xl flex justify-between items-center px-4 py-2 shrink-0">
+          {/* 頂部系統列 */}
+          <div className="z-10 w-full flex justify-between items-center px-4 py-2 shrink-0 max-w-[1400px] mx-auto">
             <div className="flex space-x-2 items-center">
               <button onClick={() => setGameState(prev => ({ ...prev, mode: 'menu' }))} className="p-2 text-indigo-300 hover:text-white bg-slate-900/50 rounded-full border border-white/10 flex-shrink-0"><Home className="w-5 h-5" /></button>
               <VolumeControl />
@@ -850,80 +853,87 @@
             </div>
           </div>
 
-          <div className="z-10 w-full max-w-[min(100vw,_58vh)] flex flex-col justify-between items-center flex-1 min-h-0 pb-4">
+          {/* ⭐ 遊戲主核心區塊 (依據方向動態響應) ⭐ */}
+          <div className="z-10 w-full max-w-[1400px] mx-auto flex portrait:flex-col landscape:flex-row justify-between items-center flex-1 min-h-0 pb-2 px-2 gap-2 sm:gap-6 shrink-0">
             
-            <div className={`flex flex-col items-center w-full py-2 sm:py-3 rounded-2xl sm:rounded-3xl transition-colors shrink-0 ${getPlayerContainerStyle(topPlayer)}`}>
-              <div className="flex justify-between w-full px-4 mb-2 items-center">
+            {/* Player 2 (直式: 頂部 / 橫式: 左側) */}
+            <div className={`flex portrait:flex-col landscape:flex-col items-center justify-center py-2 sm:py-3 rounded-2xl sm:rounded-3xl transition-colors shrink-0 portrait:w-full portrait:h-[14vh] portrait:min-h-[70px] landscape:h-full landscape:w-[15vw] landscape:min-w-[110px] ${getPlayerContainerStyle(topPlayer)}`}>
+              <div className="flex portrait:flex-row landscape:flex-col justify-between landscape:justify-start w-full portrait:px-4 landscape:py-4 mb-2 landscape:mb-0 items-center shrink-0 order-1 landscape:gap-4">
                 <span className={`text-sm sm:text-base font-bold ${topPlayer === 1 ? 'text-indigo-300' : 'text-rose-300'}`}>{getPlayerLabel(topPlayer)}</span>
                 <span className={`text-xl sm:text-2xl font-black ${topPlayer === 1 ? 'text-indigo-100' : 'text-rose-100'}`}>{gameState.comboScores[topPlayer]}分</span>
               </div>
-              <div className="flex justify-center gap-3 sm:gap-5 w-full">
+              <div className="flex portrait:flex-row landscape:flex-col justify-center gap-2 sm:gap-4 w-full h-full min-h-0 min-w-0 items-center px-2 order-2">
                 {(topPlayer === 1 ? gameState.p1Hand : gameState.p2Hand).map((phase, i) => renderCard(phase, i, topPlayer))}
               </div>
             </div>
             
-            <div className="w-full aspect-square relative bg-slate-900/60 rounded-[1.5rem] sm:rounded-[2rem] backdrop-blur-lg border border-slate-700/50 shadow-2xl my-2 shrink-0">
-              {gameState.currentScoringEvent && (
-                <div key={gameState.currentScoringEvent.id} className="absolute inset-0 flex items-center justify-center pointer-events-none z-[100]">
-                  <div className="animate-float-score flex flex-col items-center">
-                    <span className={`text-4xl sm:text-6xl font-black tracking-widest scoring-text pb-2 ${currentScoreTextClass}`}>
-                      {gameState.currentScoringEvent.name}
-                    </span>
-                    <span className={`text-4xl sm:text-6xl font-black scoring-text mt-1 drop-shadow-md ${currentScoreNumClass}`}>
-                      +{gameState.currentScoringEvent.points}
-                    </span>
+            {/* 中間棋盤區 (自動生成最大正方形) */}
+            <div className="flex-1 w-full h-full flex items-center justify-center min-h-0 min-w-0 portrait:py-2 landscape:px-2">
+              <div className="relative bg-slate-900/60 rounded-[1.5rem] sm:rounded-[2rem] backdrop-blur-lg border border-slate-700/50 shadow-2xl shrink-0 flex items-center justify-center aspect-square portrait:w-full portrait:max-h-full landscape:h-full landscape:max-w-full">
+                
+                {gameState.currentScoringEvent && (
+                  <div key={gameState.currentScoringEvent.id} className="absolute inset-0 flex items-center justify-center pointer-events-none z-[100]">
+                    <div className="animate-float-score flex flex-col items-center">
+                      <span className={`text-[length:clamp(2rem,6vmin,4rem)] font-black tracking-widest scoring-text pb-2 ${currentScoreTextClass}`}>
+                        {gameState.currentScoringEvent.name}
+                      </span>
+                      <span className={`text-[length:clamp(2.5rem,7vmin,5rem)] font-black scoring-text mt-1 drop-shadow-md ${currentScoreNumClass}`}>
+                        +{gameState.currentScoringEvent.points}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              )}
-              <svg className="absolute inset-0 w-full h-full pointer-events-none z-0 overflow-visible">
-                {currentBoardConfig.edges.map((edge, i) => {
-                  const n1 = currentBoardConfig.nodes[edge[0]]; const n2 = currentBoardConfig.nodes[edge[1]];
-                  
-                  let isScoringEdge = false;
-                  if (gameState.currentScoringEvent) {
-                    const ev = gameState.currentScoringEvent;
-                    if (ev.type === 'sequence') {
-                      const idx1 = ev.cells.indexOf(edge[0]);
-                      const idx2 = ev.cells.indexOf(edge[1]);
-                      if (idx1 !== -1 && idx2 !== -1 && Math.abs(idx1 - idx2) === 1) {
-                        isScoringEdge = true;
+                )}
+                <svg className="absolute inset-0 w-full h-full pointer-events-none z-0 overflow-visible">
+                  {currentBoardConfig.edges.map((edge, i) => {
+                    const n1 = currentBoardConfig.nodes[edge[0]]; const n2 = currentBoardConfig.nodes[edge[1]];
+                    
+                    let isScoringEdge = false;
+                    if (gameState.currentScoringEvent) {
+                      const ev = gameState.currentScoringEvent;
+                      if (ev.type === 'sequence') {
+                        const idx1 = ev.cells.indexOf(edge[0]);
+                        const idx2 = ev.cells.indexOf(edge[1]);
+                        if (idx1 !== -1 && idx2 !== -1 && Math.abs(idx1 - idx2) === 1) {
+                          isScoringEdge = true;
+                        }
+                      } else {
+                        isScoringEdge = ev.cells.includes(edge[0]) && ev.cells.includes(edge[1]);
                       }
-                    } else {
-                      isScoringEdge = ev.cells.includes(edge[0]) && ev.cells.includes(edge[1]);
                     }
-                  }
 
-                  let strokeColor = "rgba(71, 85, 105, 0.3)"; let strokeWidth = "3";
-                  if (isScoringEdge) { strokeColor = gameState.turn === 1 ? "rgba(99, 102, 241, 0.9)" : "rgba(244, 63, 94, 0.9)"; strokeWidth = "5"; }
-                  return <line key={`edge-${i}`} x1={`${n1.x}%`} y1={`${n1.y}%`} x2={`${n2.x}%`} y2={`${n2.y}%`} stroke={strokeColor} strokeWidth={strokeWidth} strokeLinecap="round" className="transition-all duration-500" style={isScoringEdge ? { filter: `drop-shadow(0px 0px 8px ${strokeColor})` } : {}} />;
+                    let strokeColor = "rgba(71, 85, 105, 0.3)"; let strokeW = "1.5%";
+                    if (isScoringEdge) { strokeColor = gameState.turn === 1 ? "rgba(99, 102, 241, 0.9)" : "rgba(244, 63, 94, 0.9)"; strokeW = "2.5%"; }
+                    return <line key={`edge-${i}`} x1={`${n1.x}%`} y1={`${n1.y}%`} x2={`${n2.x}%`} y2={`${n2.y}%`} stroke={strokeColor} strokeWidth={strokeW} strokeLinecap="round" className="transition-all duration-500" style={isScoringEdge ? { filter: `drop-shadow(0px 0px 8px ${strokeColor})` } : {}} />;
+                  })}
+                </svg>
+                {gameState.board.map((cell, idx) => {
+                  const node = currentBoardConfig.nodes[idx];
+                  return (
+                    <div 
+                      key={`node-${idx}`} 
+                      className={`absolute z-10 flex items-center justify-center transition-colors ${currentBoardConfig.cardClass} ${cell === null ? 'border-2 border-dashed border-slate-500/50 bg-slate-800/30 hover:bg-slate-700/60 cursor-pointer backdrop-blur-sm shadow-inner rounded-lg sm:rounded-xl md:rounded-2xl' : ''}`}
+                      style={{ left: `${node.x}%`, top: `${node.y}%`, transform: 'translate(-50%, -50%)' }}
+                      onClick={(e) => { 
+                        e.stopPropagation();
+                        if (cell === null && gameState.selectedCardIdx !== null && (!gameState.isAnimating)) { 
+                          const canPlay = gameState.mode === 'single' ? gameState.turn === 1 : (gameState.mode === 'multi' ? true : (gameState.mode === 'online' ? gameState.turn === myPlayerId : false)); 
+                          if (canPlay) playCard(gameState.selectedCardIdx, idx, false); 
+                        } 
+                      }} 
+                    >
+                      {cell && renderCard(cell.phase, -1, cell.player, true, idx)}
+                    </div>
+                  );
                 })}
-              </svg>
-              {gameState.board.map((cell, idx) => {
-                const node = currentBoardConfig.nodes[idx];
-                return (
-                  <div 
-                    key={`node-${idx}`} 
-                    className={`absolute z-10 flex items-center justify-center transition-colors ${currentBoardConfig.cardClass} ${cell === null ? 'border-2 border-dashed border-slate-500/50 bg-slate-800/30 hover:bg-slate-700/60 cursor-pointer backdrop-blur-sm shadow-inner rounded-lg sm:rounded-xl md:rounded-2xl' : ''}`}
-                    style={{ left: `${node.x}%`, top: `${node.y}%`, transform: 'translate(-50%, -50%)' }}
-                    onClick={(e) => { 
-                      e.stopPropagation();
-                      if (cell === null && gameState.selectedCardIdx !== null && (!gameState.isAnimating)) { 
-                        const canPlay = gameState.mode === 'single' ? gameState.turn === 1 : (gameState.mode === 'multi' ? true : (gameState.mode === 'online' ? gameState.turn === myPlayerId : false)); 
-                        if (canPlay) playCard(gameState.selectedCardIdx, idx, false); 
-                      } 
-                    }} 
-                  >
-                    {cell && renderCard(cell.phase, -1, cell.player, true, idx)}
-                  </div>
-                );
-              })}
+              </div>
             </div>
 
-            <div className={`flex flex-col items-center w-full py-2 sm:py-3 rounded-2xl sm:rounded-3xl transition-colors shrink-0 ${getPlayerContainerStyle(bottomPlayer)}`}>
-              <div className="flex justify-center gap-3 sm:gap-5 w-full mb-2">
+            {/* Player 1 (直式: 底部 / 橫式: 右側) */}
+            <div className={`flex portrait:flex-col landscape:flex-col items-center justify-center py-2 sm:py-3 rounded-2xl sm:rounded-3xl transition-colors shrink-0 portrait:w-full portrait:h-[14vh] portrait:min-h-[70px] landscape:h-full landscape:w-[15vw] landscape:min-w-[110px] ${getPlayerContainerStyle(bottomPlayer)}`}>
+              <div className="flex portrait:flex-row landscape:flex-col justify-center gap-2 sm:gap-4 w-full h-full min-h-0 min-w-0 items-center px-2 portrait:order-1 landscape:order-2">
                 {(bottomPlayer === 1 ? gameState.p1Hand : gameState.p2Hand).map((phase, i) => renderCard(phase, i, bottomPlayer))}
               </div>
-              <div className="flex justify-between w-full px-4 items-center">
+              <div className="flex portrait:flex-row landscape:flex-col justify-between landscape:justify-end w-full portrait:px-4 landscape:py-4 mt-2 landscape:mt-0 items-center shrink-0 portrait:order-2 landscape:order-1 landscape:gap-4">
                 <span className={`text-sm sm:text-base font-bold ${bottomPlayer === 1 ? 'text-indigo-300' : 'text-rose-300'}`}>{getPlayerLabel(bottomPlayer)}</span>
                 <span className={`text-xl sm:text-2xl font-black ${bottomPlayer === 1 ? 'text-indigo-100' : 'text-rose-100'}`}>{gameState.comboScores[bottomPlayer]}分</span>
               </div>
