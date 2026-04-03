@@ -47,7 +47,7 @@
     .custom-scroll::-webkit-scrollbar-thumb { background: rgba(99, 102, 241, 0.5); border-radius: 4px; }
     
     .keyboard-btn { transition: all 0.1s; border-bottom-width: 4px; }
-    .keyboard-btn:active { transform: translateY(4px); border-bottom-width: 0px; margin-top: 4px; }
+    .keyboard-btn:active:not(:disabled) { transform: translateY(4px); border-bottom-width: 0px; margin-top: 4px; }
   </style>
 </head>
 <body class="text-slate-100 selection:bg-indigo-500/30">
@@ -79,11 +79,13 @@
         diffLow: '低', diffMed: '中', diffHigh: '高',
         lobbyTitle: '線上連線大廳', lobbyCreate: '建立房間 - 設定總人數', btnCreate: '建立新房間', lobbyOr: '或加入房間', lobbyPlaceholder: '輸入六位數字代碼', btnJoin: '加入',
         roomCode: '房間代碼', roomPlayers: '玩家列表', roomYou: '(你)', roomAI: '(空缺 - 將補 AI)', roomReady: '已準備', roomNotReady: '準備中...', btnWait: '等待其他人準備...', btnStartAll: '全員就緒，開始對戰！', btnCancelReady: '取消準備', btnReady: '我準備好了！', btnLeave: '離開房間',
-        nameInputTitle: '挑戰結束！記錄你的傳奇', nameInputPlaceholder: '請輸入代號', btnSubmit: '確認上傳', btnSkip: '不儲存，直接回首頁',
+        nameInputTitle: '挑戰結束！記錄你的傳奇', nameInputPlaceholder: '請輸入代號', btnSubmit: '確認上傳', btnSkip: '不儲存，直接回首頁', btnBackMenu: '回首頁',
+        btnUploading: '上傳中...', btnUploadDone: '上傳完成', btnRestartChallenge: '重新挑戰',
         lbTitle: '極限闖關排行榜', lbLoading: '載入資料中...', lbEmpty: '目前尚無挑戰紀錄', lbRank: '排名', lbName: '代號',
         challengeSuccess: '挑戰成功！', challengeFail: '挑戰止步於此', txtYou: '你', txtVsAI: 'vs 電腦', btnNextLvl: '繼續深入下一層', btnFinish100: '完成終極挑戰！記錄成績', btnSaveRecord: '記錄本次挑戰成績',
         rankTitle: '結算排行榜', btnPlayAgain: '再打一局',
-        txtLvl: '第', txtLayer: '層', txtRoom: '連線代碼:', txtThinking: '思考中...', txtPerson: '人'
+        txtLvl: '第', txtLayer: '層', txtRoom: '連線代碼:', txtThinking: '思考中...', txtPerson: '人',
+        phases: ['新月', '眉月', '上弦月', '盈凸月', '滿月', '虧凸月', '下弦月', '殘月']
       },
       en: {
         title: 'Moonphase Tactics', subtitle: 'Party & 100-Level Challenge!',
@@ -98,11 +100,13 @@
         diffLow: 'Low', diffMed: 'Med', diffHigh: 'High',
         lobbyTitle: 'Online Lobby', lobbyCreate: 'Create Room (Players)', btnCreate: 'Create Room', lobbyOr: 'OR', lobbyPlaceholder: 'Enter 6-digit Code', btnJoin: 'Join',
         roomCode: 'Room Code', roomPlayers: 'Players', roomYou: '(You)', roomAI: '(AI)', roomReady: 'Ready', roomNotReady: '...', btnWait: 'Waiting for others...', btnStartAll: 'Start Game!', btnCancelReady: 'Cancel', btnReady: 'Ready!', btnLeave: 'Leave Room',
-        nameInputTitle: 'Challenge Over! Save Record', nameInputPlaceholder: 'Enter Name', btnSubmit: 'Submit', btnSkip: 'Skip & Return Home',
+        nameInputTitle: 'Challenge Over! Save Record', nameInputPlaceholder: 'Enter Name', btnSubmit: 'Submit', btnSkip: 'Skip & Return Home', btnBackMenu: 'Main Menu',
+        btnUploading: 'Uploading...', btnUploadDone: 'Upload Complete', btnRestartChallenge: 'Play Again',
         lbTitle: 'Challenge Leaderboard', lbLoading: 'Loading...', lbEmpty: 'No records yet', lbRank: '#', lbName: 'ID',
         challengeSuccess: 'Cleared!', challengeFail: 'Failed!', txtYou: 'You', txtVsAI: 'vs AI', btnNextLvl: 'Next Level', btnFinish100: '100 Lvls Cleared! Save', btnSaveRecord: 'Save Record',
         rankTitle: 'Final Ranking', btnPlayAgain: 'Play Again',
-        txtLvl: 'Lvl', txtLayer: '', txtRoom: 'Room:', txtThinking: 'Thinking...', txtPerson: 'P'
+        txtLvl: 'Lvl', txtLayer: '', txtRoom: 'Room:', txtThinking: 'Thinking...', txtPerson: 'P',
+        phases: ['New', 'Waxing C.', 'First Q.', 'Waxing G.', 'Full', 'Waning G.', 'Last Q.', 'Waning C.']
       },
       ja: {
         title: '月相タクティクス', subtitle: 'パーティー＆100階層チャレンジ！',
@@ -117,11 +121,13 @@
         diffLow: '弱', diffMed: '普通', diffHigh: '強',
         lobbyTitle: 'オンラインロビー', lobbyCreate: 'ルーム作成 (人数)', btnCreate: 'ルーム作成', lobbyOr: 'または', lobbyPlaceholder: '6桁のコードを入力', btnJoin: '参加',
         roomCode: 'ルームコード', roomPlayers: 'プレイヤー', roomYou: '(あなた)', roomAI: '(CPU)', roomReady: '準備完了', roomNotReady: '準備中...', btnWait: '他のプレイヤーを待っています...', btnStartAll: '全員準備完了、開始！', btnCancelReady: 'キャンセル', btnReady: '準備完了！', btnLeave: '退出',
-        nameInputTitle: '挑戦終了！記録を保存', nameInputPlaceholder: '名前を入力', btnSubmit: '送信', btnSkip: '保存せずに戻る',
+        nameInputTitle: '挑戦終了！記録を保存', nameInputPlaceholder: '名前を入力', btnSubmit: '送信', btnSkip: '保存せずに戻る', btnBackMenu: 'メインメニュー',
+        btnUploading: 'アップロード中...', btnUploadDone: 'アップロード完了', btnRestartChallenge: '再挑戦',
         lbTitle: 'チャレンジランキング', lbLoading: '読み込み中...', lbEmpty: '記録がありません', lbRank: '順位', lbName: '名前',
         challengeSuccess: 'クリア！', challengeFail: 'ゲームオーバー', txtYou: 'あなた', txtVsAI: 'vs CPU', btnNextLvl: '次の階層へ', btnFinish100: '100階層クリア！記録を保存', btnSaveRecord: '記録を保存',
         rankTitle: '最終ランキング', btnPlayAgain: 'もう一度',
-        txtLvl: '第', txtLayer: '階', txtRoom: 'ルーム:', txtThinking: '考え中...', txtPerson: '人'
+        txtLvl: '第', txtLayer: '階', txtRoom: 'ルーム:', txtThinking: '考え中...', txtPerson: '人',
+        phases: ['新月', '三日月', '上弦の月', '十三夜', '満月', '寝待月', '下弦の月', '二十六夜']
       }
     };
 
@@ -198,9 +204,9 @@
         delay.connect(this.bgmGain);
 
         const scales = {
-          1: { notes: [261.63, 293.66, 329.63, 392.00, 440.00], type: 'sine', baseTempo: 1500, randTempo: 2000, dur: 4 }, // Ethereal
-          2: { notes: [261.63, 329.63, 392.00, 523.25, 659.25], type: 'triangle', baseTempo: 300, randTempo: 300, dur: 1.5 }, // Gorgeous
-          3: { notes: [220.00, 261.63, 293.66, 329.63, 392.00], type: 'sawtooth', baseTempo: 500, randTempo: 100, dur: 0.8 }  // Adventure
+          1: { notes: [261.63, 293.66, 329.63, 392.00, 440.00], type: 'sine', baseTempo: 1500, randTempo: 2000, dur: 4 }, 
+          2: { notes: [261.63, 329.63, 392.00, 523.25, 659.25], type: 'triangle', baseTempo: 300, randTempo: 300, dur: 1.5 }, 
+          3: { notes: [220.00, 261.63, 293.66, 329.63, 392.00], type: 'sawtooth', baseTempo: 500, randTempo: 100, dur: 0.8 }  
         };
 
         const playNextNote = () => { 
@@ -228,9 +234,6 @@
       }
     }
     const audioManager = new AudioManager();
-
-    // --- GAME DATA COMPRESSED ---
-    const PHASES = [ { id: 0 }, { id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }, { id: 5 }, { id: 6 }, { id: 7 } ];
 
     const B = (cardScale, n, edges) => ({ cardScale, nodes: n.map(([x,y])=>({x,y})), edges });
     const ALL_BOARDS = {
@@ -299,14 +302,34 @@
       </div>
     );
 
-    const VirtualKeyboard = ({ onKeyPress, onDelete, onSubmit, disabledSubmit, t }) => {
+    const VirtualKeyboard = ({ onKeyPress, onDelete, onSubmit, disabledSubmit, uploadStatus, t }) => {
       const rows = [ ['Q','W','E','R','T','Y','U','I','O','P'], ['A','S','D','F','G','H','J','K','L'], ['Z','X','C','V','B','N','M'] ];
+      
+      let btnText = t.btnSubmit;
+      let btnDisabled = disabledSubmit;
+      let btnClass = "bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-900";
+
+      if (uploadStatus === 'uploading') {
+        btnText = t.btnUploading; btnDisabled = true;
+      } else if (uploadStatus === 'success') {
+        btnText = t.btnUploadDone; btnDisabled = true;
+      } else if (uploadStatus === 'restart') {
+        btnText = t.btnRestartChallenge; btnDisabled = false;
+        btnClass = "bg-indigo-600 hover:bg-indigo-500 text-white border-indigo-900";
+      }
+
+      if (btnDisabled) btnClass = "bg-slate-700 text-slate-500 border-slate-800 cursor-not-allowed";
+
       return (
         <div className="w-full max-w-md mx-auto mt-6 bg-slate-800/80 p-4 rounded-2xl border border-slate-600/50 shadow-2xl backdrop-blur-md">
-          {rows.map((r, i) => ( <div key={i} className="flex justify-center mb-2 gap-1 sm:gap-2">{r.map(k => <button key={k} onClick={() => onKeyPress(k)} className="keyboard-btn flex-1 py-3 sm:py-4 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-[Rubik] font-bold text-lg sm:text-xl border-slate-900 shadow-md">{k}</button>)}</div> ))}
+          {rows.map((r, i) => ( 
+            <div key={i} className="flex justify-center mb-2 gap-1 sm:gap-2">
+              {r.map(k => <button key={k} onClick={() => onKeyPress(k)} disabled={uploadStatus !== 'idle'} className={`keyboard-btn flex-1 py-3 sm:py-4 text-white rounded-xl font-[Rubik] font-bold text-lg sm:text-xl border-slate-900 shadow-md ${uploadStatus !== 'idle' ? 'bg-slate-800 text-slate-500 cursor-not-allowed' : 'bg-slate-700 hover:bg-slate-600'}`}>{k}</button>)}
+            </div> 
+          ))}
           <div className="flex justify-center gap-2 mt-4">
-            <button onClick={onDelete} className="keyboard-btn flex-[2] py-3 bg-rose-900/80 hover:bg-rose-800 text-rose-200 rounded-xl font-bold flex items-center justify-center border-rose-950 shadow-md"><DeleteIcon className="w-6 h-6"/></button>
-            <button onClick={onSubmit} disabled={disabledSubmit} className={`keyboard-btn flex-[5] py-3 rounded-xl font-bold text-lg shadow-md transition-all ${disabledSubmit ? 'bg-slate-700 text-slate-500 border-slate-800 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-900'}`}>{t.btnSubmit}</button>
+            <button onClick={onDelete} disabled={uploadStatus !== 'idle'} className={`keyboard-btn flex-[2] py-3 rounded-xl font-bold flex items-center justify-center shadow-md ${uploadStatus !== 'idle' ? 'bg-slate-800 text-rose-900 border-slate-900 cursor-not-allowed' : 'bg-rose-900/80 hover:bg-rose-800 text-rose-200 border-rose-950'}`}><DeleteIcon className="w-6 h-6"/></button>
+            <button onClick={onSubmit} disabled={btnDisabled} className={`keyboard-btn flex-[5] py-3 rounded-xl font-bold text-lg shadow-md transition-all ${btnClass}`}>{btnText}</button>
           </div>
         </div>
       );
@@ -404,6 +427,7 @@
       const [leaderboard, setLeaderboard] = useState([]);
       const [isLoadingLb, setIsLoadingLb] = useState(false);
       const [aiThinkingPlayer, setAiThinkingPlayer] = useState(null);
+      const [uploadStatus, setUploadStatus] = useState('idle'); // idle, uploading, success, restart
 
       const lastProcessedMoveTs = useRef(0);
       const roomIdRef = useRef('');
@@ -429,7 +453,7 @@
       useEffect(() => { audioManager.setSfxVolume(sfxVol); }, [sfxVol]);
       useEffect(() => { audioManager.setTrack(bgmTrack); }, [bgmTrack]);
 
-      useEffect(() => { const initAuth = async () => { try { if (auth) { if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) await signInWithCustomToken(auth, __initial_auth_token); else await signInAnonymously(auth); } } catch (e) { console.error(e); } }; initAuth(); if (auth) { const unsubscribe = onAuthStateChanged(auth, setUser); return () => unsubscribe(); } }, []);
+      useEffect(() => { const initAuth = async () => { try { if (auth) { if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) { await signInWithCustomToken(auth, __initial_auth_token); } else { await signInAnonymously(auth); } } } catch (e) { console.error(e); } }; initAuth(); if (auth) { const unsubscribe = onAuthStateChanged(auth, setUser); return () => unsubscribe(); } }, []);
 
       useEffect(() => {
         if (!roomId || !user || !db || (gameState.mode !== 'online' && gameState.mode !== 'lobby_wait')) return;
@@ -457,6 +481,15 @@
           const snap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'moonphase_leaderboard'));
           let data = []; snap.forEach(doc => data.push({ id: doc.id, ...doc.data() }));
           data.sort((a, b) => { if (b.level !== a.level) return b.level - a.level; return b.totalScore - a.totalScore; });
+          
+          data.forEach((entry, index) => {
+            if (index > 0 && entry.level === data[index - 1].level && entry.totalScore === data[index - 1].totalScore) {
+              entry.rank = data[index - 1].rank;
+            } else {
+              entry.rank = index + 1;
+            }
+          });
+
           setLeaderboard(data.slice(0, 50));
         } catch(e) { console.error(e); } setIsLoadingLb(false);
       };
@@ -496,12 +529,16 @@
         let bId = mode === 'challenge' ? getChallengeBoardId(1) : getActualBoardId(totalP);
         const initData = generateInitData(mode, totalP, humanC, bId);
         setAiThinkingPlayer(null);
+        setUploadStatus('idle');
         setGameState(prev => ({ ...prev, mode, ...initData, turn: 1, finalBaseScores: null, isAnimating: false, gameOver: false, tallyState: 'none', selectedCardIdx: null, scoringQueue: [], currentScoringEvent: null, pendingResolveInfo: null, challengeData: newChallengeData }));
       };
 
       const nextChallengeLevel = () => {
         const nextLevel = gameState.challengeData.currentLevel + 1; const accScore = gameState.challengeData.totalScore + gameState.scores[1];
-        if (nextLevel > 100) { setGameState(prev => ({ ...prev, mode: 'name_input', challengeData: { currentLevel: 100, totalScore: accScore } })); return; }
+        if (nextLevel > 100) { 
+          setUploadStatus('idle');
+          setGameState(prev => ({ ...prev, mode: 'name_input', challengeData: { currentLevel: 100, totalScore: accScore } })); return; 
+        }
         const nextBId = getChallengeBoardId(nextLevel);
         const initData = generateInitData('challenge', 2, 1, nextBId);
         initData.playersInfo[2].difficulty = getChallengeAiDifficulty(nextLevel);
@@ -510,8 +547,28 @@
       };
 
       const submitChallengeScore = async () => {
-        if (!user || !db || playerName.trim().length < 3) return;
-        try { await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'moonphase_leaderboard'), { name: playerName.toUpperCase(), level: gameState.challengeData.currentLevel, totalScore: gameState.challengeData.totalScore, uid: user.uid, ts: Date.now() }); setPlayerName(''); setGameState(prev => ({...prev, mode: 'leaderboard'})); } catch(e) { console.error(e); }
+        if (!user || !db || playerName.trim().length < 3 || uploadStatus !== 'idle') return;
+        setUploadStatus('uploading');
+        try { 
+          await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'moonphase_leaderboard'), { name: playerName.toUpperCase(), level: gameState.challengeData.currentLevel, totalScore: gameState.challengeData.totalScore, uid: user.uid, ts: Date.now() }); 
+          setUploadStatus('success');
+          setTimeout(() => {
+            setUploadStatus('restart');
+          }, 2000);
+        } catch(e) { 
+          console.error(e); 
+          setUploadStatus('idle');
+        }
+      };
+
+      const handleKeyboardAction = () => {
+        if (uploadStatus === 'restart') {
+           setUploadStatus('idle');
+           setPlayerName('');
+           initGame('challenge');
+        } else {
+           submitChallengeScore();
+        }
       };
 
       const createRoom = async () => {
@@ -714,7 +771,7 @@
         return (
           <div key={isBoard ? `board-${boardIdx}` : `hand-${player}-${index}`} onClick={(e) => { e.stopPropagation(); const canSelect = (gameState.mode === 'online') ? (gameState.turn === myPlayerId && player === myPlayerId) : (player === gameState.turn && gameState.playersInfo[player].type !== 'ai'); if (!isBoard && canSelect && !gameState.isAnimating && gameState.tallyState === 'none') { setGameState(prev => ({ ...prev, selectedCardIdx: prev.selectedCardIdx === index ? null : index })); } }}
             className={`relative flex flex-col items-center justify-center rounded-lg sm:rounded-xl md:rounded-2xl transition-all duration-300 cursor-pointer border ${colorClasses} ${isSelected ? 'ring-2 ring-yellow-400 -translate-y-2 shadow-[0_10px_20px_rgba(250,204,21,0.4)]' : ''} ${animClasses} ${isBoard ? 'absolute inset-0 w-full h-full' : 'card-item shrink-0'}`}>
-            {!isHidden ? ( <React.Fragment><MoonSvg phase={phase} className="w-[50%] h-[50%] mb-[2%]" /><span className={`card-text font-medium tracking-wide ${isNeutral ? 'text-slate-300' : cInfo.bgText}`}>{PHASES[phase]?.name || ''}</span></React.Fragment> ) : ( <div className="w-[60%] h-[60%] rounded-full bg-slate-700/50 border border-slate-600/50 flex items-center justify-center"><span className="card-text text-slate-400 opacity-50 font-bold">?</span></div> )}
+            {!isHidden ? ( <React.Fragment><MoonSvg phase={phase} className="w-[50%] h-[50%] mb-[2%]" /><span className={`card-text font-medium tracking-wide ${isNeutral ? 'text-slate-300' : cInfo.bgText}`}>{t.phases[phase] || ''}</span></React.Fragment> ) : ( <div className="w-[60%] h-[60%] rounded-full bg-slate-700/50 border border-slate-600/50 flex items-center justify-center"><span className="card-text text-slate-400 opacity-50 font-bold">?</span></div> )}
           </div>
         );
       };
@@ -763,8 +820,8 @@
                 <h2 className="text-3xl font-black mb-1 text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-yellow-500">{t.nameInputTitle}</h2>
                 <p className="text-indigo-200 mb-6">{t.txtLvl} {gameState.challengeData.currentLevel} {t.txtLayer} &nbsp;|&nbsp; {t.totalScore}: {gameState.challengeData.totalScore}</p>
                 <div className="w-full max-w-sm mx-auto bg-slate-950 p-4 rounded-xl border border-indigo-500/30 mb-2"><div className="h-12 flex items-center justify-center text-3xl font-[Rubik] tracking-[0.3em] font-bold text-white">{playerName || <span className="text-slate-600 animate-pulse">{t.nameInputPlaceholder}</span>}</div></div>
-                <VirtualKeyboard onKeyPress={(k) => setPlayerName(p => p.length < 8 ? p + k : p)} onDelete={() => setPlayerName(p => p.slice(0, -1))} onSubmit={submitChallengeScore} disabledSubmit={playerName.length < 3} t={t} />
-                <button onClick={() => setGameState(prev => ({...prev, mode: 'menu'}))} className="mt-6 text-slate-400 hover:text-white underline text-sm">{t.btnSkip}</button>
+                <VirtualKeyboard onKeyPress={(k) => setPlayerName(p => p.length < 8 ? p + k : p)} onDelete={() => setPlayerName(p => p.slice(0, -1))} onSubmit={handleKeyboardAction} disabledSubmit={playerName.length < 3 && uploadStatus === 'idle'} uploadStatus={uploadStatus} t={t} />
+                <button onClick={() => { setUploadStatus('idle'); setGameState(prev => ({...prev, mode: 'menu'})); }} className="mt-6 text-slate-400 hover:text-white underline text-sm">{(uploadStatus === 'success' || uploadStatus === 'restart') ? t.btnBackMenu : t.btnSkip}</button>
               </div>
             )}
 
@@ -778,9 +835,9 @@
                       <tbody>
                         {leaderboard.length === 0 ? ( <tr><td colSpan="4" className="text-center p-6 text-slate-500">{t.lbEmpty}</td></tr> ) : (
                           leaderboard.map((entry, idx) => (
-                            <tr key={entry.id} className={`border-b border-slate-800/50 hover:bg-slate-800/30 transition-colors ${idx < 3 ? 'font-bold' : ''}`}>
-                              <td className="p-3 text-center">{idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : idx + 1}</td>
-                              <td className={`p-3 font-[Rubik] tracking-wider ${idx === 0 ? 'text-yellow-300' : idx === 1 ? 'text-slate-300' : idx === 2 ? 'text-amber-600' : 'text-indigo-200'}`}>{entry.name}</td>
+                            <tr key={entry.id} className={`border-b border-slate-800/50 hover:bg-slate-800/30 transition-colors ${entry.rank <= 3 ? 'font-bold' : ''}`}>
+                              <td className="p-3 text-center">{entry.rank === 1 ? '🥇' : entry.rank === 2 ? '🥈' : entry.rank === 3 ? '🥉' : entry.rank}</td>
+                              <td className={`p-3 font-[Rubik] tracking-wider ${entry.rank === 1 ? 'text-yellow-300' : entry.rank === 2 ? 'text-slate-300' : entry.rank === 3 ? 'text-amber-600' : 'text-indigo-200'}`}>{entry.name}</td>
                               <td className="p-3 text-center text-emerald-400">{t.txtLvl} {entry.level} {t.txtLayer}</td><td className="p-3 text-right font-mono text-rose-300">{entry.totalScore}</td>
                             </tr>
                           ))
@@ -958,7 +1015,7 @@
                         <Trophy className="w-16 h-16 text-emerald-400 mb-2 drop-shadow-[0_0_15px_rgba(52,211,153,0.5)]" />
                         <h2 className="text-3xl font-black mb-4 text-emerald-300">{t.challengeSuccess}</h2>
                         <div className="text-lg text-slate-300 mb-6 bg-slate-800/50 px-6 py-4 rounded-xl border border-slate-600 w-full">
-                          <p>{t.txtYou} <span className="text-indigo-300 font-bold">{gameState.scores[1]}</span> vs {t.ai} <span className="text-rose-300">{gameState.scores[2]}</span></p>
+                          <p>{t.txtYou} <span className="text-indigo-300 font-bold">{gameState.scores[1]}</span> {t.txtVsAI} <span className="text-rose-300">{gameState.scores[2]}</span></p>
                           <p className="mt-2">{t.totalScore}: <span className="text-yellow-400 font-bold text-2xl">{gameState.challengeData.totalScore + gameState.scores[1]}</span></p>
                         </div>
                         <button onClick={nextChallengeLevel} className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-lg transition-all">{gameState.challengeData.currentLevel >= 100 ? t.btnFinish100 : t.btnNextLvl}</button>
@@ -970,7 +1027,7 @@
                         <div className="text-lg text-slate-300 mb-6 bg-slate-800/50 px-6 py-4 rounded-xl border border-slate-600 w-full">
                           <p>{t.totalScore}: <span className="text-yellow-400 font-bold text-2xl">{gameState.challengeData.totalScore + gameState.scores[1]}</span></p>
                         </div>
-                        <button onClick={() => setGameState(prev => ({...prev, mode: 'name_input', challengeData: {...prev.challengeData, totalScore: prev.challengeData.totalScore + gameState.scores[1]}}))} className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold text-lg transition-all">{t.btnSaveRecord}</button>
+                        <button onClick={() => { setUploadStatus('idle'); setGameState(prev => ({...prev, mode: 'name_input', challengeData: {...prev.challengeData, totalScore: prev.challengeData.totalScore + gameState.scores[1]}})); }} className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold text-lg transition-all">{t.btnSaveRecord}</button>
                       </React.Fragment>
                     )}
                   </React.Fragment>
