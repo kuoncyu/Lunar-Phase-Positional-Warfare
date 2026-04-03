@@ -1,100 +1,1064 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Multiplayer Board Game Engine v2.0</title>
-    <style>
-        /* 四方 UI 佈局 CSS */
-        :root {
-            --p1-color: #6366f1; /* Indigo */
-            --p2-color: #f43f5e; /* Rose */
-            --p3-color: #10b981; /* Emerald */
-            --p4-color: #f59e0b; /* Amber */
-        }
-        /* 此處省略詳細樣式，保留結構預覽 */
-        .player-info { border: 2px solid #ccc; padding: 10px; }
-        .active { border-color: gold; box-shadow: 0 0 10px gold; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>月相陣地戰 - 極限闖關與派對版</title>
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&family=Zen+Maru+Gothic:wght@700;900&family=Rubik:wght@700&display=swap" rel="stylesheet">
+
+  <style>
+    body, html { margin: 0; padding: 0; background-color: #020617; overflow: hidden; touch-action: none; font-family: 'Noto Sans TC', sans-serif; }
+    
+    /* === 響應式棋盤引擎 === */
+    .game-wrapper {
+      --board-size-portrait: min(calc(100vw - 32px), calc((100dvh - 280px) / var(--portrait-mult)));
+      --board-size-landscape: min(calc(100dvh - 40px), calc((100vw - 300px) / var(--landscape-mult)));
+    }
+    @media (orientation: portrait) { .game-wrapper { --board-size: var(--board-size-portrait); } }
+    @media (orientation: landscape) { .game-wrapper { --board-size: var(--board-size-landscape); } }
+    
+    .board-container { width: var(--board-size); height: var(--board-size); }
+    .card-item { width: calc(var(--board-size) * var(--card-scale)); height: calc(var(--board-size) * var(--card-scale) * 1.25); }
+    .card-text { font-size: max(9px, calc(var(--board-size) * var(--card-scale) * 0.15)); }
+
+    /* === 結算特效文字 === */
+    .scoring-text { font-family: 'Zen Maru Gothic', sans-serif; paint-order: stroke fill; line-height: 1.2; }
+    .score-identical { background: linear-gradient(180deg, #a5f3fc 0%, #06b6d4 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; -webkit-text-stroke: 1.5px #164e63; filter: drop-shadow(0px 0px 8px rgba(6,182,212,0.9)); }
+    .score-num-identical { color: #22d3ee; -webkit-text-stroke: 1px #164e63; }
+    .score-complementary { background: linear-gradient(180deg, #fef08a 0%, #eab308 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; -webkit-text-stroke: 1.5px #713f12; filter: drop-shadow(0px 0px 8px rgba(234,179,8,0.9)); }
+    .score-num-complementary { color: #facc15; -webkit-text-stroke: 1px #713f12; }
+    .score-sequence { background: linear-gradient(180deg, #f5d0fe 0%, #d946ef 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; -webkit-text-stroke: 1.5px #4a044e; filter: drop-shadow(0px 0px 8px rgba(217,70,239,0.9)); }
+    .score-num-sequence { color: #e879f9; -webkit-text-stroke: 1px #4a044e; }
+
+    @keyframes score-pulse { 0% { transform: scale(1); filter: brightness(1); } 50% { transform: scale(1.15); filter: brightness(1.3); box-shadow: 0 0 40px rgba(254,240,138,1); } 100% { transform: scale(1); filter: brightness(1); } }
+    .animate-score-pulse { animation: score-pulse 1.5s ease-in-out forwards; }
+    @keyframes float-score { 0% { opacity: 0; transform: translateY(30px) scale(0.5); } 15%, 85% { opacity: 1; transform: translateY(0) scale(1.1); } 100% { opacity: 0; transform: translateY(-30px) scale(0.8); } }
+    .animate-float-score { animation: float-score 1.5s ease-in-out forwards; }
+    @keyframes ai-think { 0%, 100% { opacity: 0.5; transform: scale(0.9); } 50% { opacity: 1; transform: scale(1.1); } }
+    .animate-ai-think { animation: ai-think 1s infinite ease-in-out; }
+    
+    .custom-scroll::-webkit-scrollbar { width: 6px; }
+    .custom-scroll::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.5); border-radius: 4px; }
+    .custom-scroll::-webkit-scrollbar-thumb { background: rgba(99, 102, 241, 0.5); border-radius: 4px; }
+    
+    .keyboard-btn { transition: all 0.1s; border-bottom-width: 4px; }
+    .keyboard-btn:active { transform: translateY(4px); border-bottom-width: 0px; margin-top: 4px; }
+  </style>
 </head>
-<body>
+<body class="text-slate-100 selection:bg-indigo-500/30">
+  <div id="root"></div>
 
-<div id="game-lobby">
-    <h2>連線大廳</h2>
-    <div id="room-setup">
-        <label>玩家人數: <select id="player-count">
-            <option value="2">2 人</option>
-            <option value="3">3 人</option>
-            <option value="4">4 人</option>
-        </select></label>
-        <button onclick="startGame()">開始遊戲 (自動填補 AI)</button>
-    </div>
-</div>
+  <script type="text/babel" data-type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js';
+    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js';
+    import { getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, collection, getDocs, addDoc } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
 
-<div id="game-container" style="display:none;">
-    <div id="p1-ui" class="player-info">P1 (Blue)</div>
-    <div id="p2-ui" class="player-info">P2 (Red)</div>
-    <div id="p3-ui" class="player-info">P3 (Green)</div>
-    <div id="p4-ui" class="player-info">P4 (Yellow)</div>
+    const { useState, useEffect, useCallback, useRef } = React;
 
-    <div id="board-container">
-        </div>
-</div>
+    const myFirebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : { apiKey: "AIzaSyDs8L6uD0SvtUYn4A6iC2jGB_uHLYXS-1o", authDomain: "moonphasegame.firebaseapp.com", projectId: "moonphasegame", storageBucket: "moonphasegame.firebasestorage.app", messagingSenderId: "412480594259", appId: "1:412480594259:web:b8e31530e807c0c7f4c1a6" };
+    let app, auth, db; try { app = initializeApp(myFirebaseConfig); auth = getAuth(app); db = getFirestore(app); } catch (e) { console.warn("Firebase offline"); }
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'moonphase-app';
 
-<script>
-    // 遊戲核心數據
-    const GameState = {
-        players: [],
-        currentPlayerIndex: 0,
-        playerCount: 2,
-        isOnline: false,
-        boards: {
-            mode3: [/* 5張15格棋盤數據 */],
-            mode4: [/* 5張20格棋盤數據 */]
-        }
+    // --- I18N Dictionary ---
+    const TRANSLATIONS = {
+      zh: {
+        title: '月相陣地戰', subtitle: '派對連線與極限闖關！',
+        btnChallenge: '單人極限闖關 (100層)', btnLeaderboard: '查閱闖關排行榜', btnLocal: '自由派對 (單/多人同機)', btnOnline: '線上房間連線對戰',
+        settings: '遊戲設定', language: '語言 (Language)', bgmTrack: '背景音樂曲目', bgmVol: '音樂大小', sfxVol: '音效大小',
+        howToPlay: '遊戲玩法教學', fullscreen: '全螢幕切換', about: '關於遊戲', back: '返回',
+        track1: '曲目一：空靈', track2: '曲目二：華麗', track3: '曲目三：冒險',
+        aboutText: "設計開發：邱祈雅 老師\n測試校正：郭柏宏 老師\n開發工具：gemeni\n靈感來源：Google Doodle「弦月升起」（Rise of the Half Moon）\n程式版本：20260404",
+        player: '玩家', ai: '電腦', level: '層', totalScore: '總積分', win: '獲勝', tie: '平手', gameOver: '遊戲結束！結算領地...',
+        tallyBase: '結算領地', phaseSame: '相同月相', phaseComp: '互補滿月', phaseSeq: '月相變化',
+        localSetupTitle: '自由對戰設定', localTotalPlayers: '參戰總人數 (2~4人)', localHumans: '真實玩家數量 (不足補電腦)', localDifficulty: '電腦難度', localBoard: '選擇棋盤 (限此人數)', localRandom: '🎲 隨機抽取', btnStart: '開始對戰',
+        diffLow: '低', diffMed: '中', diffHigh: '高',
+        lobbyTitle: '線上連線大廳', lobbyCreate: '建立房間 - 設定總人數', btnCreate: '建立新房間', lobbyOr: '或加入房間', lobbyPlaceholder: '輸入六位數字代碼', btnJoin: '加入',
+        roomCode: '房間代碼', roomPlayers: '玩家列表', roomYou: '(你)', roomAI: '(空缺 - 將補 AI)', roomReady: '已準備', roomNotReady: '準備中...', btnWait: '等待其他人準備...', btnStartAll: '全員就緒，開始對戰！', btnCancelReady: '取消準備', btnReady: '我準備好了！', btnLeave: '離開房間',
+        nameInputTitle: '挑戰結束！記錄你的傳奇', nameInputPlaceholder: '請輸入代號', btnSubmit: '確認上傳', btnSkip: '不儲存，直接回首頁',
+        lbTitle: '極限闖關排行榜', lbLoading: '載入資料中...', lbEmpty: '目前尚無挑戰紀錄', lbRank: '排名', lbName: '代號',
+        challengeSuccess: '挑戰成功！', challengeFail: '挑戰止步於此', txtYou: '你', txtVsAI: 'vs 電腦', btnNextLvl: '繼續深入下一層', btnFinish100: '完成終極挑戰！記錄成績', btnSaveRecord: '記錄本次挑戰成績',
+        rankTitle: '結算排行榜', btnPlayAgain: '再打一局',
+        txtLvl: '第', txtLayer: '層', txtRoom: '連線代碼:', txtThinking: '思考中...', txtPerson: '人'
+      },
+      en: {
+        title: 'Moonphase Tactics', subtitle: 'Party & 100-Level Challenge!',
+        btnChallenge: 'Solo Challenge (100 Lvl)', btnLeaderboard: 'Leaderboard', btnLocal: 'Local Party (1-4P)', btnOnline: 'Online Multiplayer',
+        settings: 'Settings', language: 'Language (語言)', bgmTrack: 'BGM Track', bgmVol: 'Music Vol', sfxVol: 'SFX Vol',
+        howToPlay: 'How to Play', fullscreen: 'Toggle Fullscreen', about: 'About', back: 'Back',
+        track1: 'Track 1: Ethereal', track2: 'Track 2: Gorgeous', track3: 'Track 3: Adventure',
+        aboutText: "Design & Dev: Teacher Chiu Chi-Ya\nQA & Testing: Teacher Kuo Po-Hung\nDev Tool: gemeni\nInspiration: Google Doodle \"Rise of the Half Moon\"\nVersion: 20260404",
+        player: 'Player', ai: 'CPU', level: 'Lvl', totalScore: 'Total Score', win: 'Wins', tie: 'Tie', gameOver: 'Game Over! Tallying...',
+        tallyBase: 'Tallying', phaseSame: 'Identical Phase', phaseComp: 'Full Moon Match', phaseSeq: 'Phase Sequence',
+        localSetupTitle: 'Local Party Setup', localTotalPlayers: 'Total Players (2~4)', localHumans: 'Human Players (Rest = AI)', localDifficulty: 'AI Difficulty', localBoard: 'Board / Map', localRandom: '🎲 Random', btnStart: 'Start Game',
+        diffLow: 'Low', diffMed: 'Med', diffHigh: 'High',
+        lobbyTitle: 'Online Lobby', lobbyCreate: 'Create Room (Players)', btnCreate: 'Create Room', lobbyOr: 'OR', lobbyPlaceholder: 'Enter 6-digit Code', btnJoin: 'Join',
+        roomCode: 'Room Code', roomPlayers: 'Players', roomYou: '(You)', roomAI: '(AI)', roomReady: 'Ready', roomNotReady: '...', btnWait: 'Waiting for others...', btnStartAll: 'Start Game!', btnCancelReady: 'Cancel', btnReady: 'Ready!', btnLeave: 'Leave Room',
+        nameInputTitle: 'Challenge Over! Save Record', nameInputPlaceholder: 'Enter Name', btnSubmit: 'Submit', btnSkip: 'Skip & Return Home',
+        lbTitle: 'Challenge Leaderboard', lbLoading: 'Loading...', lbEmpty: 'No records yet', lbRank: '#', lbName: 'ID',
+        challengeSuccess: 'Cleared!', challengeFail: 'Failed!', txtYou: 'You', txtVsAI: 'vs AI', btnNextLvl: 'Next Level', btnFinish100: '100 Lvls Cleared! Save', btnSaveRecord: 'Save Record',
+        rankTitle: 'Final Ranking', btnPlayAgain: 'Play Again',
+        txtLvl: 'Lvl', txtLayer: '', txtRoom: 'Room:', txtThinking: 'Thinking...', txtPerson: 'P'
+      },
+      ja: {
+        title: '月相タクティクス', subtitle: 'パーティー＆100階層チャレンジ！',
+        btnChallenge: 'ソロチャレンジ (100階層)', btnLeaderboard: 'ランキング', btnLocal: 'ローカルパーティー (1-4P)', btnOnline: 'オンライン対戦',
+        settings: '設定', language: '言語 (Language)', bgmTrack: 'BGMトラック', bgmVol: '音楽音量', sfxVol: '効果音音量',
+        howToPlay: '遊び方', fullscreen: 'フルスクリーン切替', about: '概要', back: '戻る',
+        track1: 'トラック1：空霊', track2: 'トラック2：華麗', track3: 'トラック3：冒険',
+        aboutText: "設計・開発：邱祈雅 先生\nテスト・校正：郭柏宏 先生\n開発ツール：gemeni\nインスピレーション：Google Doodle「半月の出」\nバージョン：20260404",
+        player: 'プレイヤー', ai: 'CPU', level: '階', totalScore: '総スコア', win: '勝利', tie: '引き分け', gameOver: 'ゲーム終了！集計中...',
+        tallyBase: '集計中', phaseSame: '同じ月相', phaseComp: '満月のペア', phaseSeq: '月相の連鎖',
+        localSetupTitle: 'ローカル対戦設定', localTotalPlayers: '参加人数 (2~4人)', localHumans: 'プレイヤー数 (残りはCPU)', localDifficulty: 'CPUの強さ', localBoard: 'ボード選択', localRandom: '🎲 ランダム', btnStart: '対戦開始',
+        diffLow: '弱', diffMed: '普通', diffHigh: '強',
+        lobbyTitle: 'オンラインロビー', lobbyCreate: 'ルーム作成 (人数)', btnCreate: 'ルーム作成', lobbyOr: 'または', lobbyPlaceholder: '6桁のコードを入力', btnJoin: '参加',
+        roomCode: 'ルームコード', roomPlayers: 'プレイヤー', roomYou: '(あなた)', roomAI: '(CPU)', roomReady: '準備完了', roomNotReady: '準備中...', btnWait: '他のプレイヤーを待っています...', btnStartAll: '全員準備完了、開始！', btnCancelReady: 'キャンセル', btnReady: '準備完了！', btnLeave: '退出',
+        nameInputTitle: '挑戦終了！記録を保存', nameInputPlaceholder: '名前を入力', btnSubmit: '送信', btnSkip: '保存せずに戻る',
+        lbTitle: 'チャレンジランキング', lbLoading: '読み込み中...', lbEmpty: '記録がありません', lbRank: '順位', lbName: '名前',
+        challengeSuccess: 'クリア！', challengeFail: 'ゲームオーバー', txtYou: 'あなた', txtVsAI: 'vs CPU', btnNextLvl: '次の階層へ', btnFinish100: '100階層クリア！記録を保存', btnSaveRecord: '記録を保存',
+        rankTitle: '最終ランキング', btnPlayAgain: 'もう一度',
+        txtLvl: '第', txtLayer: '階', txtRoom: 'ルーム:', txtThinking: '考え中...', txtPerson: '人'
+      }
     };
 
-    // 1. 初始化人數與 AI 替補
-    function initPlayers(count) {
-        GameState.players = [];
-        for (let i = 1; i <= count; i++) {
-            GameState.players.push({
-                id: i,
-                type: 'human', // 之後可切換為 'ai'
-                color: getPlayerColor(i),
-                position: 0
+    // --- Icons ---
+    const IconBase = ({ children, className = "" }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>{children}</svg>;
+    const User = ({ className }) => <IconBase className={className}><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></IconBase>;
+    const Users = ({ className }) => <IconBase className={className}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></IconBase>;
+    const RotateCcw = ({ className }) => <IconBase className={className}><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></IconBase>;
+    const Home = ({ className }) => <IconBase className={className}><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></IconBase>;
+    const Trophy = ({ className }) => <IconBase className={className}><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></IconBase>;
+    const Globe = ({ className }) => <IconBase className={className}><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></IconBase>;
+    const SettingsIcon = ({ className }) => <IconBase className={className}><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></IconBase>;
+    const Swords = ({ className }) => <IconBase className={className}><path d="M14.5 17.5 3 6V3h3l11.5 11.5"/><path d="M13 19c-2 0-3-1-3-1l-3 3"/><path d="M19 13c0-2-1-3-1-3l3-3"/><path d="m19 19 3 3"/><path d="m5 5-3-3"/></IconBase>;
+    const DeleteIcon = ({ className }) => <IconBase className={className}><path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"/><line x1="18" y1="9" x2="12" y2="15"/><line x1="12" y1="9" x2="18" y2="15"/></IconBase>;
+    const XIcon = ({ className }) => <IconBase className={className}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></IconBase>;
+    const Minimize = ({ className }) => <IconBase className={className}><path d="M8 3v3a2 2 0 0 1-2 2H3"/><path d="M21 8h-3a2 2 0 0 1-2-2V3"/><path d="M3 16h3a2 2 0 0 1 2 2v3"/><path d="M16 21v-3a2 2 0 0 1 2-2h3"/></IconBase>;
+    const Maximize = ({ className }) => <IconBase className={className}><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></IconBase>;
+    const VolumeX = ({ className }) => <IconBase className={className}><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" x2="17" y1="9" y2="15"/><line x1="17" x2="23" y1="9" y2="15"/></IconBase>;
+    const Volume2 = ({ className }) => <IconBase className={className}><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></IconBase>;
+    const CheckCircle = ({ className }) => <IconBase className={className}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></IconBase>;
+
+    // --- Enhanced Audio Manager ---
+    class AudioManager {
+      constructor() { 
+        this.ctx = null; this.masterNode = null; this.bgmGain = null; this.sfxGain = null;
+        this.bgmVolume = 0.5; this.sfxVolume = 0.8; this.currentTrack = 1; this.bgmPlaying = false; this.bgmTimer = null;
+      }
+      init() { 
+        if (this.ctx) { if (this.ctx.state === 'suspended') this.ctx.resume(); return; } 
+        const AudioContext = window.AudioContext || window.webkitAudioContext; 
+        if (!AudioContext) return;
+        this.ctx = new AudioContext(); 
+        
+        this.sfxGain = this.ctx.createGain(); this.sfxGain.gain.value = this.sfxVolume; this.sfxGain.connect(this.ctx.destination);
+        this.bgmGain = this.ctx.createGain(); this.bgmGain.gain.value = this.bgmVolume; this.bgmGain.connect(this.ctx.destination);
+        
+        this.startBGM(); 
+      }
+      setBgmVolume(val) { this.bgmVolume = val; if(this.bgmGain) this.bgmGain.gain.setTargetAtTime(val, this.ctx.currentTime, 0.1); }
+      setSfxVolume(val) { this.sfxVolume = val; if(this.sfxGain) this.sfxGain.gain.setTargetAtTime(val, this.ctx.currentTime, 0.1); }
+      setTrack(trackNum) {
+        this.currentTrack = trackNum;
+        if (this.bgmPlaying) { this.stopBGM(); setTimeout(() => this.startBGM(), 100); }
+      }
+      
+      playTone(freq, type, duration, vol = 1, slideTo = null) { 
+        if (!this.ctx || this.sfxVolume === 0) return; 
+        const osc = this.ctx.createOscillator(); const gain = this.ctx.createGain(); 
+        osc.type = type; osc.frequency.setValueAtTime(freq, this.ctx.currentTime); 
+        if (slideTo) osc.frequency.exponentialRampToValueAtTime(slideTo, this.ctx.currentTime + duration); 
+        gain.gain.setValueAtTime(0, this.ctx.currentTime); gain.gain.linearRampToValueAtTime(vol, this.ctx.currentTime + 0.05); gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration); 
+        osc.connect(gain); gain.connect(this.sfxGain); osc.start(); osc.stop(this.ctx.currentTime + duration); 
+      }
+      playPlaceCard() { this.playTone(150, 'sine', 0.15, 0.6, 50); }
+      playIdentical() { this.playTone(523.25, 'sine', 0.4, 0.4); setTimeout(() => this.playTone(659.25, 'sine', 0.6, 0.4), 100); }
+      playComplementary() { this.playTone(440, 'triangle', 0.3, 0.4); setTimeout(() => this.playTone(659.25, 'triangle', 0.4, 0.4), 150); setTimeout(() => this.playTone(880, 'triangle', 0.8, 0.4), 300); }
+      playSequence() { [261.63, 329.63, 392.00, 523.25].forEach((freq, i) => setTimeout(() => this.playTone(freq, 'sine', 0.6, 0.3), i * 150)); }
+      playWin() { [523.25, 659.25, 783.99, 1046.50].forEach((freq, i) => setTimeout(() => this.playTone(freq, 'square', 0.5, 0.2), i * 200)); setTimeout(() => this.playTone(1046.50, 'square', 1.5, 0.2), 800); }
+      playLose() { [349.23, 329.63, 293.66, 261.63].forEach((freq, i) => setTimeout(() => this.playTone(freq, 'sawtooth', 0.5, 0.3), i * 300)); }
+      
+      stopBGM() {
+        this.bgmPlaying = false;
+        if(this.bgmTimer) clearTimeout(this.bgmTimer);
+      }
+      
+      startBGM() { 
+        if (this.bgmPlaying || !this.ctx || this.bgmVolume === 0) return; 
+        this.bgmPlaying = true; 
+        
+        const delay = this.ctx.createDelay(); delay.delayTime.value = 0.5; 
+        const feedback = this.ctx.createGain(); feedback.gain.value = 0.4; 
+        const filter = this.ctx.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 1000; 
+        delay.connect(feedback); feedback.connect(filter); filter.connect(delay); 
+        delay.connect(this.bgmGain);
+
+        const scales = {
+          1: { notes: [261.63, 293.66, 329.63, 392.00, 440.00], type: 'sine', baseTempo: 1500, randTempo: 2000, dur: 4 }, // Ethereal
+          2: { notes: [261.63, 329.63, 392.00, 523.25, 659.25], type: 'triangle', baseTempo: 300, randTempo: 300, dur: 1.5 }, // Gorgeous
+          3: { notes: [220.00, 261.63, 293.66, 329.63, 392.00], type: 'sawtooth', baseTempo: 500, randTempo: 100, dur: 0.8 }  // Adventure
+        };
+
+        const playNextNote = () => { 
+          if (!this.bgmPlaying) return; 
+          const cfg = scales[this.currentTrack];
+          const osc = this.ctx.createOscillator(); const gain = this.ctx.createGain(); 
+          osc.type = cfg.type;
+          
+          let freq = cfg.notes[Math.floor(Math.random() * cfg.notes.length)];
+          if(this.currentTrack === 3 && Math.random() > 0.7) freq /= 2; 
+          if(this.currentTrack === 2 && Math.random() > 0.8) freq *= 2; 
+          
+          osc.frequency.value = freq;
+          
+          gain.gain.setValueAtTime(0, this.ctx.currentTime); 
+          gain.gain.linearRampToValueAtTime(0.15, this.ctx.currentTime + (cfg.dur * 0.2)); 
+          gain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + cfg.dur); 
+          
+          osc.connect(gain); gain.connect(this.bgmGain); gain.connect(delay); 
+          osc.start(this.ctx.currentTime); osc.stop(this.ctx.currentTime + cfg.dur); 
+          
+          this.bgmTimer = setTimeout(playNextNote, cfg.baseTempo + Math.random() * cfg.randTempo); 
+        }; 
+        playNextNote(); 
+      }
+    }
+    const audioManager = new AudioManager();
+
+    // --- GAME DATA COMPRESSED ---
+    const PHASES = [ { id: 0 }, { id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }, { id: 5 }, { id: 6 }, { id: 7 } ];
+
+    const B = (cardScale, n, edges) => ({ cardScale, nodes: n.map(([x,y])=>({x,y})), edges });
+    const ALL_BOARDS = {
+      tiny_star: B(0.28, [[50,10],[88,38],[74,85],[26,85],[12,38]], [[0,2],[2,4],[4,1],[1,3],[3,0]]),
+      hexagon: B(0.24, [[50,50],[50,18],[78,34],[78,66],[50,82],[22,66],[22,34]], [[0,1],[0,2],[0,3],[0,4],[0,5],[0,6],[1,2],[2,3],[3,4],[4,5],[5,6],[6,1]]),
+      dipper: B(0.24, [[85,15],[65,30],[45,45],[25,55],[15,80],[40,85],[45,60]], [[0,1],[1,2],[2,3],[3,4],[4,5],[5,6],[6,3]]),
+      diamond: B(0.22, [[50,10],[25,35],[75,35],[10,60],[50,60],[90,60],[35,85],[65,85]], [[0,1],[0,2],[1,3],[1,4],[2,4],[2,5],[3,6],[4,6],[4,7],[5,7],[6,7],[1,2],[3,4],[4,5]]),
+      classic: B(0.22, [[16.6,16.6],[50,16.6],[83.3,16.6],[16.6,50],[50,50],[83.3,50],[16.6,83.3],[50,83.3],[83.3,83.3]], [[0,1],[1,2],[3,4],[4,5],[6,7],[7,8],[0,3],[3,6],[1,4],[4,7],[2,5],[5,8]]),
+      pyramid: B(0.20, [[50,15],[36.6,40],[63.3,40],[23.3,65],[50,65],[76.6,65],[10,90],[36.6,90],[63.3,90],[90,90]], [[0,1],[0,2],[1,2],[1,3],[1,4],[2,4],[2,5],[3,4],[4,5],[3,6],[3,7],[4,7],[4,8],[5,8],[5,9],[6,7],[7,8],[8,9]]),
+      lightning: B(0.20, [[60,10],[40,30],[70,30],[50,50],[80,50],[30,70],[60,70],[20,90],[15,30],[85,70]], [[0,1],[0,2],[1,2],[1,3],[2,3],[2,4],[3,4],[3,5],[3,6],[4,6],[5,6],[5,7],[1,8],[6,9]]),
+      hourglass: B(0.18, [[20,15],[50,15],[80,15],[35,35],[65,35],[50,50],[35,65],[65,65],[20,85],[50,85],[80,85]], [[0,1],[1,2],[0,3],[1,3],[1,4],[2,4],[3,4],[3,5],[4,5],[5,6],[5,7],[6,7],[6,8],[6,9],[7,9],[7,10],[8,9],[9,10]]),
+      owl: B(0.18, [[35,15],[65,15],[15,38],[38,38],[62,38],[85,38],[15,62],[38,62],[62,62],[85,62],[35,85],[65,85]], [[0,1],[0,2],[0,3],[1,4],[1,5],[2,6],[3,7],[4,8],[5,9],[6,10],[7,10],[8,11],[9,11],[10,11],[2,3],[4,5],[6,7],[8,9]]),
+      nebula: B(0.18, [[20,30],[40,20],[30,45],[50,35],[50,60],[70,45],[70,70],[90,55],[15,75],[35,85],[75,20],[90,80]], [[0,1],[0,2],[1,2],[1,3],[2,3],[3,4],[3,5],[4,5],[5,6],[5,7],[6,7],[2,8],[8,9],[4,9],[1,10],[5,10],[6,11],[7,11]]),
+      tree: B(0.16, [[50,10],[25,30],[50,30],[75,30],[12.5,50],[37.5,50],[62.5,50],[87.5,50],[25,70],[50,70],[75,70],[35,90],[65,90]], [[0,1],[0,2],[0,3],[1,2],[2,3],[1,4],[1,5],[2,5],[2,6],[3,6],[3,7],[4,5],[5,6],[6,7],[4,8],[5,8],[5,9],[6,9],[6,10],[7,10],[8,9],[9,10],[8,11],[9,11],[9,12],[10,12],[11,12]]),
+      cross: B(0.16, [[50,10],[50,30],[50,50],[50,70],[50,90],[10,50],[30,50],[70,50],[90,50],[30,30],[70,30],[30,70],[70,70]], [[0,1],[1,2],[2,3],[3,4],[5,6],[6,2],[2,7],[7,8],[9,1],[9,6],[10,1],[10,7],[11,6],[11,3],[12,7],[12,3],[9,2],[10,2],[11,2],[12,2]]),
+      satellite: B(0.16, [[50,50],[50,25],[71,38],[71,62],[50,75],[29,62],[29,38],[50,5],[92,29],[92,71],[50,95],[8,71],[8,29],[25,15]], [[0,1],[0,2],[0,3],[0,4],[0,5],[0,6],[1,2],[2,3],[3,4],[4,5],[5,6],[6,1],[1,7],[2,8],[3,9],[4,10],[5,11],[6,12],[1,13],[6,13]]),
+      med_tri: B(0.15, [[50,10],[40,25],[60,25],[30,40],[50,40],[70,40],[20,55],[40,55],[60,55],[80,55],[10,70],[30,70],[50,70],[70,70],[90,70]], [[0,1],[0,2],[1,2],[1,3],[1,4],[2,4],[2,5],[3,4],[4,5],[3,6],[3,7],[4,7],[4,8],[5,8],[5,9],[6,7],[7,8],[8,9],[6,10],[6,11],[7,11],[7,12],[8,12],[8,13],[9,13],[9,14],[10,11],[11,12],[12,13],[13,14]]),
+      med_star: B(0.15, [[50,10],[60,35],[90,35],[65,55],[75,85],[50,65],[25,85],[35,55],[10,35],[40,35],[50,45],[70,45],[60,65],[40,65],[30,45]], [[0,1],[0,9],[1,2],[1,10],[9,10],[2,11],[1,11],[11,3],[3,12],[12,4],[3,4],[12,5],[3,5],[5,13],[13,6],[5,6],[13,7],[7,14],[14,8],[7,8],[14,9],[7,9],[10,11],[11,12],[12,13],[13,14],[14,10],[10,5],[9,5],[1,5]]),
+      vortex: B(0.14, [[35,35],[65,35],[65,65],[35,65],[50,20],[80,50],[50,80],[20,50],[25,15],[85,25],[75,85],[15,75],[10,30],[70,10],[90,70],[30,90]], [[0,1],[1,2],[2,3],[3,0],[0,4],[1,5],[2,6],[3,7],[4,8],[5,9],[6,10],[7,11],[8,12],[9,13],[10,14],[11,15],[4,13],[5,9],[6,14],[7,11]]),
+      lrg_grid: B(0.12, Array.from({length:20}).map((_,i)=>[20+(i%5)*15, 25+Math.floor(i/5)*16]), (()=>{let e=[];for(let i=0;i<20;i++){if(i%5!==4)e.push([i,i+1]);if(Math.floor(i/5)!==3)e.push([i,i+5]);}return e;})()),
+      lrg_cross: B(0.12, [[50,50],[50,30],[70,50],[50,70],[30,50],[50,15],[85,50],[50,85],[15,50],[35,35],[65,35],[65,65],[35,65],[25,25],[75,25],[75,75],[25,75],[50,5],[95,50],[50,95]], [[0,1],[0,2],[0,3],[0,4],[1,9],[1,10],[2,10],[2,11],[3,11],[3,12],[4,12],[4,9],[1,5],[2,6],[3,7],[4,8],[9,13],[10,14],[11,15],[12,16],[5,13],[5,14],[6,14],[6,15],[7,15],[7,16],[8,16],[8,13],[5,17],[6,18],[7,19]]),
+      lrg_flower: B(0.13, [[50,50],[50,25],[75,50],[50,75],[25,50],[35,35],[65,35],[65,65],[35,65],[50,10],[90,50],[50,90],[10,50],[20,20],[80,20],[80,80],[20,80],[65,15],[85,65],[35,85]], [[0,1],[0,2],[0,3],[0,4],[0,5],[0,6],[0,7],[0,8],[1,5],[1,6],[2,6],[2,7],[3,7],[3,8],[4,8],[4,5],[1,9],[2,10],[3,11],[4,12],[5,13],[6,14],[7,15],[8,16],[9,14],[10,14],[10,15],[11,15],[11,16],[12,16],[12,13],[9,13]]),
+      lrg_spiral: B(0.12, [[50,50],[50,35],[65,35],[65,65],[35,65],[35,20],[80,20],[80,80],[20,80],[20,10],[90,10],[90,90],[10,90],[10,5],[95,5],[95,95],[5,95],[5,50],[50,15],[75,50]], [[0,1],[1,2],[2,3],[3,4],[4,5],[5,6],[6,7],[7,8],[8,9],[9,10],[10,11],[11,12],[12,13],[13,14],[14,15],[15,16],[16,17],[0,4],[1,5],[2,6],[3,7],[4,8],[5,9],[6,10],[7,11],[8,12],[9,13],[10,14]])
+    };
+
+    const CHALLENGE_BOARDS_ORDERED = ['tiny_star', 'hexagon', 'dipper', 'diamond', 'classic', 'pyramid', 'lightning', 'hourglass', 'owl', 'nebula', 'tree', 'cross', 'satellite', 'med_tri', 'med_star', 'vortex', 'lrg_grid', 'lrg_cross', 'lrg_flower', 'lrg_spiral'];
+
+    const getBoardPool = (playerCount) => {
+      let pool = {};
+      Object.entries(ALL_BOARDS).forEach(([k, v]) => {
+        if (playerCount === 2 && v.nodes.length <= 13) pool[k] = v;
+        else if (playerCount === 3 && v.nodes.length >= 13 && v.nodes.length <= 16) pool[k] = v;
+        else if (playerCount === 4 && v.nodes.length >= 16) pool[k] = v;
+      });
+      return Object.keys(pool).length === 0 ? ALL_BOARDS : pool;
+    };
+
+    const isMatch = (p1, p2) => (p1 + 4) % 8 === p2;
+    const isIdentical = (p1, p2) => p1 === p2;
+    const getNeighbors = (idx, edges) => { let n = []; edges.forEach(e => { if (e[0] === idx) n.push(e[1]); if (e[1] === idx) n.push(e[0]); }); return n; };
+    const findSequences = (board, startIdx, edges) => {
+      const getPaths = (curr, step, visited) => {
+        let paths = []; let exp = (board[curr].phase + step + 8) % 8; let hasNext = false;
+        getNeighbors(curr, edges).forEach(n => { if (board[n] && board[n].phase === exp && !visited.has(n)) { hasNext = true; let sub = getPaths(n, step, new Set([...visited, n])); sub.forEach(p => paths.push([curr, ...p])); } });
+        if (!hasNext) paths.push([curr]); return paths;
+      };
+      const pUp = getPaths(startIdx, 1, new Set([startIdx])); const pDown = getPaths(startIdx, -1, new Set([startIdx])); let seqs = [];
+      pDown.forEach(d => { pUp.forEach(u => { const c = [...d].reverse().concat(u.slice(1)); if (c.length >= 3) seqs.push(c); }); }); return seqs;
+    };
+
+    // --- UI Components ---
+    const MoonSvg = ({ phase, className = "" }) => {
+      const p = ["M 50,2 A 48,48 0 0,1 50,98 A 24,48 0 0,0 50,2 Z", "M 50,2 A 48,48 0 0,1 50,98 L 50,2 Z", "M 50,2 A 48,48 0 0,1 50,98 A 24,48 0 0,1 50,2 Z", "", "M 50,2 A 48,48 0 0,0 50,98 A 24,48 0 0,0 50,2 Z", "M 50,2 A 48,48 0 0,0 50,98 L 50,2 Z", "M 50,2 A 48,48 0 0,0 50,98 A 24,48 0 0,1 50,2 Z"];
+      return (
+        <svg viewBox="0 0 100 100" className={className} style={{ filter: 'drop-shadow(0px 0px 6px rgba(254, 240, 138, 0.5))' }}>
+          <circle cx="50" cy="50" r="48" fill="#1e1b4b" stroke="#312e81" strokeWidth="2" />
+          {phase === 4 ? <circle cx="50" cy="50" r="48" fill="#fef08a" /> : (phase > 0 && phase < 8 && <path d={p[phase-1]} fill="#fef08a" />)}
+          {phase !== 0 && <circle cx={phase > 0 && phase < 4 ? "70" : phase > 4 ? "30" : "50"} cy="40" r="3" fill="#ca8a04" opacity="0.3" />}
+        </svg>
+      );
+    };
+
+    const StarryBackground = () => (
+      <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none bg-gradient-to-b from-slate-950 via-indigo-950 to-slate-900">
+        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MDAiIGhlaWdodD0iNDAwIj48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSIxIiBmaWxsPSIjZmZmIiBvcGFjaXR5PSIwLjMiLz48Y2lyY2xlIGN4PSIyNTAiIGN5PSIxNTAiIHI9IjEuNSIgZmlsbD0iI2ZmZiIgb3BhY2l0eT0iMC41Ii8+PGNpcmNsZSBjeD0iMzUwIiBjeT0iMzIwIiByPSIxIiBmaWxsPSIjZmZmIiBvcGFjaXR5PSIwLjIiLz48L3N2Zz4=')] bg-repeat opacity-50 animate-pulse"></div>
+      </div>
+    );
+
+    const VirtualKeyboard = ({ onKeyPress, onDelete, onSubmit, disabledSubmit, t }) => {
+      const rows = [ ['Q','W','E','R','T','Y','U','I','O','P'], ['A','S','D','F','G','H','J','K','L'], ['Z','X','C','V','B','N','M'] ];
+      return (
+        <div className="w-full max-w-md mx-auto mt-6 bg-slate-800/80 p-4 rounded-2xl border border-slate-600/50 shadow-2xl backdrop-blur-md">
+          {rows.map((r, i) => ( <div key={i} className="flex justify-center mb-2 gap-1 sm:gap-2">{r.map(k => <button key={k} onClick={() => onKeyPress(k)} className="keyboard-btn flex-1 py-3 sm:py-4 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-[Rubik] font-bold text-lg sm:text-xl border-slate-900 shadow-md">{k}</button>)}</div> ))}
+          <div className="flex justify-center gap-2 mt-4">
+            <button onClick={onDelete} className="keyboard-btn flex-[2] py-3 bg-rose-900/80 hover:bg-rose-800 text-rose-200 rounded-xl font-bold flex items-center justify-center border-rose-950 shadow-md"><DeleteIcon className="w-6 h-6"/></button>
+            <button onClick={onSubmit} disabled={disabledSubmit} className={`keyboard-btn flex-[5] py-3 rounded-xl font-bold text-lg shadow-md transition-all ${disabledSubmit ? 'bg-slate-700 text-slate-500 border-slate-800 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-900'}`}>{t.btnSubmit}</button>
+          </div>
+        </div>
+      );
+    };
+
+    const SettingsModal = ({ onClose, lang, setLang, bgmTrack, setBgmTrack, bgmVol, setBgmVol, sfxVol, setSfxVol, toggleFs, showTutorial, setShowTutorial, t }) => {
+      if (showTutorial) return (
+        <div className="fixed inset-0 z-[99999] bg-slate-950/95 overflow-y-auto px-4 py-8 flex flex-col items-center backdrop-blur-md custom-scroll">
+          <div className="w-full max-w-3xl bg-slate-900 border border-indigo-500/30 rounded-3xl p-6 shadow-[0_0_50px_rgba(99,102,241,0.15)] relative my-auto">
+            <button onClick={() => setShowTutorial(false)} className="absolute top-4 right-4 p-2 bg-slate-800 rounded-full hover:bg-slate-700 text-white shadow-lg"><XIcon className="w-6 h-6"/></button>
+            <h2 className="text-3xl font-black mb-6 text-center text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-yellow-500">{t.howToPlay}</h2>
+            <div className="space-y-6 text-slate-200">
+              <section className="bg-slate-800/40 p-4 rounded-2xl border border-slate-700">
+                <h3 className="text-xl font-bold mb-2 text-indigo-300">🎯 {t.tallyBase}</h3>
+                <p>輪流將手牌放入棋盤空位。遊戲結束時，你的專屬顏色佔領的<strong className="text-white">每一個格子都會算作 1 分</strong>！</p>
+              </section>
+              <section className="bg-slate-800/40 p-4 rounded-2xl border border-slate-700">
+                <h3 className="text-xl font-bold mb-4 text-yellow-300">⚡ 連線掠奪機制</h3>
+                <p className="mb-4">若與周圍(有白線相連)的卡牌達成條件，可獲得<strong className="text-white">額外連線分數</strong>，並<strong className="text-rose-400">強制將相連的卡牌變成你的顏色！</strong></p>
+                <div className="space-y-4">
+                  <div className="bg-slate-900 p-4 rounded-xl border border-cyan-900/50"><h4 className="font-bold text-cyan-300 mb-1">🔹 {t.phaseSame} (+1 分)</h4><div className="flex items-center gap-2"><div className="w-10 h-12 bg-slate-800 rounded-lg p-1"><MoonSvg phase={4}/></div><div className="h-0.5 w-6 bg-cyan-400"></div><div className="w-10 h-12 bg-slate-800 rounded-lg p-1"><MoonSvg phase={4}/></div></div></div>
+                  <div className="bg-slate-900 p-4 rounded-xl border border-yellow-900/50"><h4 className="font-bold text-yellow-300 mb-1">🔸 {t.phaseComp} (+2 分)</h4><div className="flex items-center gap-2"><div className="w-10 h-12 bg-slate-800 rounded-lg p-1"><MoonSvg phase={1}/></div><div className="h-0.5 w-6 bg-yellow-400"></div><div className="w-10 h-12 bg-slate-800 rounded-lg p-1"><MoonSvg phase={5}/></div></div></div>
+                  <div className="bg-slate-900 p-4 rounded-xl border border-purple-900/50"><h4 className="font-bold text-purple-300 mb-1">🟣 {t.phaseSeq} (+長度 分)</h4><div className="flex items-center gap-1"><div className="w-8 h-10 bg-slate-800 rounded-md p-1"><MoonSvg phase={0}/></div><div className="h-0.5 w-4 bg-purple-400"></div><div className="w-8 h-10 bg-slate-800 rounded-md p-1"><MoonSvg phase={1}/></div><div className="h-0.5 w-4 bg-purple-400"></div><div className="w-8 h-10 bg-slate-800 rounded-md p-1"><MoonSvg phase={2}/></div></div></div>
+                </div>
+              </section>
+              <button onClick={() => setShowTutorial(false)} className="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold">{t.back}</button>
+            </div>
+          </div>
+        </div>
+      );
+
+      return (
+        <div className="fixed inset-0 z-[99999] bg-slate-950/80 backdrop-blur-md flex justify-center items-center p-4">
+          <div className="bg-slate-900 border border-slate-600 rounded-3xl p-6 w-full max-w-md relative text-slate-200 shadow-2xl">
+            <button onClick={onClose} className="absolute top-4 right-4 p-2 bg-slate-800 rounded-full hover:bg-slate-700 text-white"><XIcon className="w-6 h-6"/></button>
+            <h2 className="text-3xl font-black mb-6 text-center text-indigo-300">{t.settings}</h2>
+            
+            <div className="space-y-5">
+              <div><label className="block text-sm font-bold mb-2">{t.language}</label>
+                <select value={lang} onChange={e => setLang(e.target.value)} className="w-full bg-slate-800 border border-slate-600 text-white rounded-lg px-3 py-2 outline-none">
+                  <option value="zh">繁體中文</option><option value="en">English</option><option value="ja">日本語</option>
+                </select>
+              </div>
+              
+              <div><label className="block text-sm font-bold mb-2">{t.bgmTrack}</label>
+                <select value={bgmTrack} onChange={e => setBgmTrack(parseInt(e.target.value))} className="w-full bg-slate-800 border border-slate-600 text-white rounded-lg px-3 py-2 outline-none">
+                  <option value={1}>{t.track1}</option><option value={2}>{t.track2}</option><option value={3}>{t.track3}</option>
+                </select>
+              </div>
+
+              <div className="flex gap-4">
+                <div className="flex-1"><label className="block text-sm font-bold mb-2">{t.bgmVol}</label><input type="range" min="0" max="1" step="0.01" value={bgmVol} onChange={e => setBgmVol(parseFloat(e.target.value))} className="w-full accent-indigo-500" /></div>
+                <div className="flex-1"><label className="block text-sm font-bold mb-2">{t.sfxVol}</label><input type="range" min="0" max="1" step="0.01" value={sfxVol} onChange={e => setSfxVol(parseFloat(e.target.value))} className="w-full accent-rose-500" /></div>
+              </div>
+
+              <div className="flex gap-3">
+                <button onClick={() => setShowTutorial(true)} className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 rounded-xl font-bold border border-slate-600">{t.howToPlay}</button>
+                <button onClick={toggleFs} className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 rounded-xl font-bold border border-slate-600">{t.fullscreen}</button>
+              </div>
+
+              <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 mt-4">
+                <h3 className="font-bold text-slate-400 mb-2">{t.about}</h3>
+                <p className="text-xs text-slate-500 whitespace-pre-line leading-relaxed">{t.aboutText}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    function App() {
+      const [user, setUser] = useState(null);
+      const [roomId, setRoomId] = useState('');
+      const [joinCode, setJoinCode] = useState('');
+      const [myPlayerId, setMyPlayerId] = useState(1);
+      const [isPseudoFs, setIsPseudoFs] = useState(false);
+      const [nativeFs, setNativeFs] = useState(false);
+      
+      const [lang, setLang] = useState('zh');
+      const [bgmTrack, setBgmTrack] = useState(1);
+      const [bgmVol, setBgmVol] = useState(0.4);
+      const [sfxVol, setSfxVol] = useState(0.8);
+      const [showSettings, setShowSettings] = useState(false);
+      const [showTutorialInner, setShowTutorialInner] = useState(false);
+
+      const [localTotalPlayers, setLocalTotalPlayers] = useState(2);
+      const [localHumanCount, setLocalHumanCount] = useState(1);
+      const [aiDifficulty, setAiDifficulty] = useState('medium'); 
+      const [boardTypePref, setBoardTypePref] = useState('random');
+
+      const [onlineMaxPlayers, setOnlineMaxPlayers] = useState(4);
+      const [onlineRoomData, setOnlineRoomData] = useState(null);
+
+      const [playerName, setPlayerName] = useState('');
+      const [leaderboard, setLeaderboard] = useState([]);
+      const [isLoadingLb, setIsLoadingLb] = useState(false);
+      const [aiThinkingPlayer, setAiThinkingPlayer] = useState(null);
+
+      const lastProcessedMoveTs = useRef(0);
+      const roomIdRef = useRef('');
+
+      const [gameState, setGameState] = useState({
+        mode: 'menu', boardType: 'classic', board: [], totalPlayers: 2, playersInfo: {}, hands: {}, decks: {}, scores: {},
+        turn: 1, finalBaseScores: null, isAnimating: false, gameOver: false, tallyState: 'none', selectedCardIdx: null, scoringQueue: [], currentScoringEvent: null, pendingResolveInfo: null,
+        challengeData: { currentLevel: 1, totalScore: 0 }
+      });
+
+      const t = TRANSLATIONS[lang] || TRANSLATIONS.zh;
+
+      useEffect(() => { roomIdRef.current = roomId; }, [roomId]);
+
+      useEffect(() => {
+        const handleFsChange = () => { const isNowFs = !!(document.fullscreenElement || document.webkitFullscreenElement); setNativeFs(isNowFs); if (!isNowFs) setIsPseudoFs(false); };
+        document.addEventListener('fullscreenchange', handleFsChange); document.addEventListener('webkitfullscreenchange', handleFsChange);
+        return () => { document.removeEventListener('fullscreenchange', handleFsChange); document.removeEventListener('webkitfullscreenchange', handleFsChange); };
+      }, []);
+      const toggleFullscreen = () => { const docElem = document.documentElement; const isNowFs = !!(document.fullscreenElement || document.webkitFullscreenElement); if (!isNowFs && !isPseudoFs) { const req = docElem.requestFullscreen || docElem.webkitRequestFullscreen; if (req) req.call(docElem).catch(() => setIsPseudoFs(true)); else setIsPseudoFs(true); } else { const exit = document.exitFullscreen || document.webkitExitFullscreen; if (isNowFs && exit) exit.call(document).catch(() => setIsPseudoFs(false)); setIsPseudoFs(false); } };
+      
+      useEffect(() => { audioManager.setBgmVolume(bgmVol); }, [bgmVol]);
+      useEffect(() => { audioManager.setSfxVolume(sfxVol); }, [sfxVol]);
+      useEffect(() => { audioManager.setTrack(bgmTrack); }, [bgmTrack]);
+
+      useEffect(() => { const initAuth = async () => { try { if (auth) { if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) await signInWithCustomToken(auth, __initial_auth_token); else await signInAnonymously(auth); } } catch (e) { console.error(e); } }; initAuth(); if (auth) { const unsubscribe = onAuthStateChanged(auth, setUser); return () => unsubscribe(); } }, []);
+
+      useEffect(() => {
+        if (!roomId || !user || !db || (gameState.mode !== 'online' && gameState.mode !== 'lobby_wait')) return;
+        const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'moonphase_rooms', roomId);
+        const unsubscribe = onSnapshot(roomRef, (snap) => {
+          if (!snap.exists()) return; const data = snap.data();
+          setOnlineRoomData(data);
+          if (data.status === 'playing') {
+            setGameState(prev => {
+              if (prev.mode !== 'online' || (data.round && data.round !== prev.round)) {
+                lastProcessedMoveTs.current = 0; 
+                return { ...prev, mode: 'online', boardType: data.initialState.boardType, ...data.initialState, turn: 1, finalBaseScores: null, isAnimating: false, gameOver: false, tallyState: 'none', selectedCardIdx: null, scoringQueue: [], currentScoringEvent: null, pendingResolveInfo: null, round: data.round || 1 };
+              }
+              return prev;
             });
+            if (data.lastMove && data.lastMove.player !== myPlayerId && data.lastMove.ts > lastProcessedMoveTs.current) { lastProcessedMoveTs.current = data.lastMove.ts; playCard(data.lastMove.cardIdx, data.lastMove.boardIdx, true); }
+          }
+        });
+        return () => unsubscribe();
+      }, [roomId, user, myPlayerId, gameState.mode]);
+
+      const fetchLeaderboard = async () => {
+        if (!user || !db) return; setIsLoadingLb(true);
+        try {
+          const snap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'moonphase_leaderboard'));
+          let data = []; snap.forEach(doc => data.push({ id: doc.id, ...doc.data() }));
+          data.sort((a, b) => { if (b.level !== a.level) return b.level - a.level; return b.totalScore - a.totalScore; });
+          setLeaderboard(data.slice(0, 50));
+        } catch(e) { console.error(e); } setIsLoadingLb(false);
+      };
+      useEffect(() => { if (gameState.mode === 'leaderboard') fetchLeaderboard(); }, [gameState.mode]);
+
+      const getActualBoardId = (playerCount) => {
+        const pool = getBoardPool(playerCount);
+        if (boardTypePref !== 'random' && pool[boardTypePref]) return boardTypePref;
+        const choices = Object.keys(pool); return choices[Math.floor(Math.random() * choices.length)];
+      };
+
+      const getChallengeBoardId = (level) => {
+        const boardIndex = Math.floor((level - 1) / 5);
+        return CHALLENGE_BOARDS_ORDERED[Math.min(boardIndex, 19)];
+      };
+      
+      const getChallengeAiDifficulty = (level) => {
+        const cycle = (level - 1) % 5;
+        if (cycle <= 1) return 'low'; if (cycle <= 3) return 'medium'; return 'high';
+      };
+
+      const generateInitData = (mode, totalPlayers, humanCount, boardId) => {
+        const boardConfig = ALL_BOARDS[boardId] || ALL_BOARDS['classic'];
+        const genDeck = () => { let d = []; for(let i=0; i<3; i++) d.push(0,1,2,3,4,5,6,7); return d.sort(()=>Math.random()-0.5); };
+        let decks = {}, hands = {}, scores = {}, playersInfo = {};
+        for (let i = 1; i <= totalPlayers; i++) {
+          let d = genDeck(); decks[i] = d.slice(3); hands[i] = d.slice(0,3); scores[i] = 0;
+          if (mode === 'challenge') { playersInfo[i] = { type: i === 1 ? 'human' : 'ai', difficulty: getChallengeAiDifficulty(1) }; }
+          else if (mode === 'local') { playersInfo[i] = { type: i <= humanCount ? 'human' : 'ai', difficulty: aiDifficulty }; }
         }
-        // 若人數不足，自動填補 AI 的邏輯在此處實作
+        return { boardType: boardId, board: Array(boardConfig.nodes.length).fill(null), totalPlayers, playersInfo, hands, decks, scores };
+      };
+
+      const initGame = (mode) => {
+        audioManager.init(); let newChallengeData = { currentLevel: 1, totalScore: 0 }; let totalP = localTotalPlayers; let humanC = localHumanCount;
+        if (mode === 'challenge') { totalP = 2; humanC = 1; }
+        let bId = mode === 'challenge' ? getChallengeBoardId(1) : getActualBoardId(totalP);
+        const initData = generateInitData(mode, totalP, humanC, bId);
+        setAiThinkingPlayer(null);
+        setGameState(prev => ({ ...prev, mode, ...initData, turn: 1, finalBaseScores: null, isAnimating: false, gameOver: false, tallyState: 'none', selectedCardIdx: null, scoringQueue: [], currentScoringEvent: null, pendingResolveInfo: null, challengeData: newChallengeData }));
+      };
+
+      const nextChallengeLevel = () => {
+        const nextLevel = gameState.challengeData.currentLevel + 1; const accScore = gameState.challengeData.totalScore + gameState.scores[1];
+        if (nextLevel > 100) { setGameState(prev => ({ ...prev, mode: 'name_input', challengeData: { currentLevel: 100, totalScore: accScore } })); return; }
+        const nextBId = getChallengeBoardId(nextLevel);
+        const initData = generateInitData('challenge', 2, 1, nextBId);
+        initData.playersInfo[2].difficulty = getChallengeAiDifficulty(nextLevel);
+        setAiThinkingPlayer(null);
+        setGameState(prev => ({ ...prev, ...initData, turn: 1, finalBaseScores: null, isAnimating: false, gameOver: false, tallyState: 'none', challengeData: { currentLevel: nextLevel, totalScore: accScore } }));
+      };
+
+      const submitChallengeScore = async () => {
+        if (!user || !db || playerName.trim().length < 3) return;
+        try { await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'moonphase_leaderboard'), { name: playerName.toUpperCase(), level: gameState.challengeData.currentLevel, totalScore: gameState.challengeData.totalScore, uid: user.uid, ts: Date.now() }); setPlayerName(''); setGameState(prev => ({...prev, mode: 'leaderboard'})); } catch(e) { console.error(e); }
+      };
+
+      const createRoom = async () => {
+        if (!user || !db) return alert("Firebase Offline");
+        const newRoomId = Math.floor(100000 + Math.random() * 900000).toString();
+        try { await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'moonphase_rooms', newRoomId), { status: 'waiting', createdAt: Date.now(), host: user.uid, maxPlayers: onlineMaxPlayers, players: { [user.uid]: { pId: 1, ready: true } }, round: 1 }); setRoomId(newRoomId); setMyPlayerId(1); setGameState(prev => ({ ...prev, mode: 'lobby_wait' })); } catch (e) { console.error(e); }
+      };
+      
+      const joinRoom = async (code) => {
+        if (!user || !code || !db) return;
+        try {
+          const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'moonphase_rooms', code); const snap = await getDoc(roomRef);
+          if (snap.exists() && snap.data().status === 'waiting') {
+            const data = snap.data(); const currentPlayers = Object.keys(data.players).length;
+            if (currentPlayers >= data.maxPlayers) return alert("Room Full");
+            let usedPids = Object.values(data.players).map(p=>p.pId); let newPid = 2; while(usedPids.includes(newPid)) newPid++;
+            await updateDoc(roomRef, { [`players.${user.uid}`]: { pId: newPid, ready: false } });
+            setRoomId(code); setMyPlayerId(newPid); setGameState(prev => ({ ...prev, mode: 'lobby_wait' }));
+          } else { alert("Not Found"); }
+        } catch (e) { console.error(e); }
+      };
+
+      const toggleReadyOnline = async () => {
+        if (!roomId || !user || !db || !onlineRoomData) return;
+        const isReady = onlineRoomData.players[user.uid].ready;
+        await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'moonphase_rooms', roomId), { [`players.${user.uid}.ready`]: !isReady });
+      };
+
+      const startOnlineGame = async () => {
+        if (!roomId || !user || !db || !onlineRoomData) return;
+        const humanCount = Object.keys(onlineRoomData.players).length; const totalP = onlineRoomData.maxPlayers;
+        let bId = getActualBoardId(totalP); const initData = generateInitData('online', totalP, humanCount, bId);
+        for(let i=1; i<=totalP; i++) initData.playersInfo[i] = { type: 'ai', difficulty: 'medium' };
+        Object.entries(onlineRoomData.players).forEach(([uid, p]) => { initData.playersInfo[p.pId] = { type: 'human', uid }; });
+        try { await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'moonphase_rooms', roomId), { status: 'playing', initialState: initData, round: (onlineRoomData.round || 1) + 1, lastMove: null }); } catch (e) { console.error(e); }
+      };
+
+      const handlePlayAgain = () => { if (gameState.mode === 'online' && myPlayerId === 1) { startOnlineGame(); } else if (gameState.mode !== 'online') { initGame(gameState.mode); } };
+
+      const getNextTurn = (curr, hands) => { let n = curr; let count = 0; do { n = (n % gameState.totalPlayers) + 1; count++; } while (hands[n] && hands[n].length === 0 && count < gameState.totalPlayers); return n; };
+      const drawCard = (deck, hand) => (deck.length === 0 ? { newDeck: deck, finalHand: hand } : { newDeck: deck.slice(1), finalHand: [...hand, deck[0]] });
+
+      const applyResolveTurn = (prevState, captured, newHand, turn) => {
+        let newBoard = [...prevState.board]; captured.forEach(idx => { if (newBoard[idx]) newBoard[idx].player = turn; });
+        let newHands = {...prevState.hands}; let newDecks = {...prevState.decks};
+        const { newDeck, finalHand } = drawCard(prevState.decks[turn]||[], newHand);
+        newHands[turn] = finalHand; newDecks[turn] = newDeck;
+        
+        const isBoardFull = !newBoard.includes(null); const allHandsEmpty = Object.values(newHands).every(h => h.length === 0);
+        const gameOver = isBoardFull || allHandsEmpty;
+        let finalBaseScores = prevState.finalBaseScores; if (gameOver && !finalBaseScores) finalBaseScores = { ...prevState.scores };
+        const nextT = gameOver ? turn : getNextTurn(turn, newHands);
+
+        return { board: newBoard, decks: newDecks, hands: newHands, isAnimating: false, turn: nextT, gameOver, finalBaseScores, tallyState: gameOver ? 'start' : 'none', scoringQueue: [], currentScoringEvent: null, pendingResolveInfo: null };
+      };
+
+      const playCard = useCallback((cardIdx, boardIdx, isRemote = false) => {
+        audioManager.init(); audioManager.playPlaceCard();
+        setGameState(prev => {
+          if (prev.isAnimating || prev.gameOver || !prev.board || prev.board[boardIdx] !== null) return prev;
+          const hand = prev.hands[prev.turn]; if (!hand || hand[cardIdx] === undefined) return prev;
+          
+          const playedPhase = hand[cardIdx]; let newHand = [...hand]; newHand.splice(cardIdx, 1);
+          let newBoard = [...prev.board]; newBoard[boardIdx] = { phase: playedPhase, player: 0 }; 
+
+          if (!isRemote && prev.mode === 'online' && roomIdRef.current && db) { updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'moonphase_rooms', roomIdRef.current), { lastMove: { cardIdx, boardIdx, player: prev.turn, ts: Date.now() } }).catch(console.error); }
+
+          const edges = ALL_BOARDS[prev.boardType]?.edges || []; 
+          let events = []; let totalCaptured = new Set();
+          getNeighbors(boardIdx, edges).forEach(n => {
+            const neighbor = newBoard[n];
+            if (neighbor) {
+              if (isIdentical(playedPhase, neighbor.phase)) { events.push({ id: `ev-${Date.now()}-${n}`, type: 'identical', cells: [boardIdx, n], points: 1, name: t.phaseSame }); totalCaptured.add(boardIdx); totalCaptured.add(n); } 
+              else if (isMatch(playedPhase, neighbor.phase)) { events.push({ id: `ev-${Date.now()}-${n}`, type: 'complementary', cells: [boardIdx, n], points: 2, name: t.phaseComp }); totalCaptured.add(boardIdx); totalCaptured.add(n); }
+            }
+          });
+          findSequences(newBoard, boardIdx, edges).forEach((seq, i) => { events.push({ id: `seq-${Date.now()}-${i}`, type: 'sequence', cells: seq, points: seq.length, name: t.phaseSeq }); seq.forEach(n => totalCaptured.add(n)); });
+
+          return { ...prev, board: newBoard, hands: {...prev.hands, [prev.turn]: newHand}, selectedCardIdx: null, isAnimating: true, scoringQueue: events.length > 0 ? events.slice(1) : [], currentScoringEvent: events.length > 0 ? events[0] : null, pendingResolveInfo: { captured: Array.from(totalCaptured), newHand, turn: prev.turn } };
+        });
+      }, [t]);
+
+      useEffect(() => {
+        if (!gameState.isAnimating) return;
+        if (gameState.currentScoringEvent) {
+          const type = gameState.currentScoringEvent.type;
+          if (type === 'identical') audioManager.playIdentical(); else if (type === 'complementary') audioManager.playComplementary(); else if (type === 'sequence') audioManager.playSequence();
+          const timer = setTimeout(() => { setGameState(prev => { let newS = { ...prev.scores }; newS[prev.pendingResolveInfo.turn] += prev.currentScoringEvent.points; return { ...prev, scores: newS, currentScoringEvent: null }; }); }, 1500); return () => clearTimeout(timer);
+        } else if (gameState.pendingResolveInfo) {
+          if (gameState.scoringQueue.length > 0) { const gapTimer = setTimeout(() => { setGameState(prev => ({ ...prev, currentScoringEvent: prev.scoringQueue[0], scoringQueue: prev.scoringQueue.slice(1) })); }, 100); return () => clearTimeout(gapTimer); } 
+          else { const finishTimer = setTimeout(() => { setGameState(prev => { if (!prev.pendingResolveInfo) return prev; return { ...prev, ...applyResolveTurn(prev, prev.pendingResolveInfo.captured, prev.pendingResolveInfo.newHand, prev.pendingResolveInfo.turn) }; }); }, 200); return () => clearTimeout(finishTimer); }
+        }
+      }, [gameState.currentScoringEvent, gameState.isAnimating, gameState.scoringQueue.length, gameState.pendingResolveInfo]);
+
+      useEffect(() => {
+        if (gameState.tallyState === 'start') { setTimeout(() => setGameState(p => ({ ...p, tallyState: 'tally_1' })), 1000); } 
+        else if (gameState.tallyState && gameState.tallyState.startsWith('tally_')) {
+          const pId = parseInt(gameState.tallyState.split('_')[1]);
+          audioManager.playTone(880, 'sine', 0.1, 0.2); 
+          setGameState(p => { const territory = p.board.filter(c => c && c.player === pId).length; return { ...p, scores: { ...p.scores, [pId]: (p.scores[pId]||0) + territory } }; });
+          setTimeout(() => {
+            const nextP = pId + 1;
+            if (nextP <= gameState.totalPlayers) setGameState(p => ({ ...p, tallyState: `tally_${nextP}` }));
+            else { 
+              setGameState(p => ({ ...p, tallyState: 'done' })); 
+              if (gameState.mode === 'challenge') { if(gameState.scores[1] + gameState.board.filter(c=>c&&c.player===1).length <= gameState.scores[2] + gameState.board.filter(c=>c&&c.player===2).length) audioManager.playLose(); else audioManager.playWin(); }
+              else { audioManager.playWin(); }
+            }
+          }, 1200);
+        }
+      }, [gameState.tallyState, gameState.totalPlayers, gameState.mode]);
+
+      useEffect(() => {
+        if (gameState.gameOver || gameState.isAnimating || gameState.mode === 'menu') { setAiThinkingPlayer(null); return; }
+        const currentP = gameState.playersInfo[gameState.turn];
+        if (currentP && currentP.type === 'ai') {
+          setAiThinkingPlayer(gameState.turn);
+          const thinkTime = Math.random() * 1500 + 1000; 
+          const timer = setTimeout(() => {
+            const edges = ALL_BOARDS[gameState.boardType]?.edges || [];
+            const emptyCells = gameState.board.map((c, i) => c === null ? i : -1).filter(i => i !== -1);
+            const myHand = gameState.hands[gameState.turn];
+            if (myHand && myHand.length > 0 && emptyCells.length > 0) {
+              let allMoves = [];
+              myHand.forEach((phase, cardIdx) => {
+                emptyCells.forEach(boardIdx => {
+                  let simBoard = [...gameState.board]; simBoard[boardIdx] = { phase, player: 0 };
+                  let simCapture = new Set(); let comboPts = 0;
+                  getNeighbors(boardIdx, edges).forEach(n => {
+                    const neighbor = simBoard[n];
+                    if (neighbor) {
+                      if (isIdentical(phase, neighbor.phase)) { simCapture.add(boardIdx); simCapture.add(n); comboPts += 1; }
+                      else if (isMatch(phase, neighbor.phase)) { simCapture.add(boardIdx); simCapture.add(n); comboPts += 2; }
+                    }
+                  });
+                  findSequences(simBoard, boardIdx, edges).forEach(seqCells => { seqCells.forEach(n => simCapture.add(n)); comboPts += seqCells.length; });
+                  let pts = comboPts; simCapture.forEach(idx => { if (gameState.board[idx] && gameState.board[idx].player !== gameState.turn) pts += 1.5; });
+                  allMoves.push({ cardIdx, boardIdx, score: pts });
+                });
+              });
+
+              if (allMoves.length > 0) {
+                let selectedMove = null; const diff = currentP.difficulty;
+                if (diff === 'low') { selectedMove = allMoves[Math.floor(Math.random() * allMoves.length)]; } 
+                else if (diff === 'medium') { if (Math.random() < 0.5) { allMoves.sort((a, b) => b.score - a.score); const bests = allMoves.filter(m => m.score === allMoves[0].score); selectedMove = bests[Math.floor(Math.random() * bests.length)]; } else { selectedMove = allMoves[Math.floor(Math.random() * allMoves.length)]; } } 
+                else { allMoves.sort((a, b) => b.score - a.score); const bests = allMoves.filter(m => m.score === allMoves[0].score); selectedMove = bests[Math.floor(Math.random() * bests.length)]; }
+                if (selectedMove) { setAiThinkingPlayer(null); playCard(selectedMove.cardIdx, selectedMove.boardIdx); }
+              }
+            }
+          }, thinkTime); 
+          return () => clearTimeout(timer);
+        } else { setAiThinkingPlayer(null); }
+      }, [gameState.turn, gameState.mode, gameState.isAnimating, gameState.gameOver, gameState.board, gameState.hands, gameState.boardType, playCard, gameState.playersInfo, gameState.totalPlayers]); 
+
+      const P_COLORS = {
+        1: { base: 'indigo', hex: '99,102,241', text: 'text-indigo-300', bgText: 'text-indigo-100', border: 'border-indigo-500', ring: 'ring-indigo-400', bg: 'bg-indigo-900', shadow: 'rgba(99,102,241,0.5)' },
+        2: { base: 'rose', hex: '244,63,94', text: 'text-rose-300', bgText: 'text-rose-100', border: 'border-rose-500', ring: 'ring-rose-400', bg: 'bg-rose-900', shadow: 'rgba(244,63,94,0.5)' },
+        3: { base: 'emerald', hex: '52,211,153', text: 'text-emerald-300', bgText: 'text-emerald-100', border: 'border-emerald-500', ring: 'ring-emerald-400', bg: 'bg-emerald-900', shadow: 'rgba(52,211,153,0.5)' },
+        4: { base: 'amber', hex: '251,191,36', text: 'text-amber-300', bgText: 'text-amber-100', border: 'border-amber-500', ring: 'ring-amber-400', bg: 'bg-amber-900', shadow: 'rgba(251,191,36,0.5)' }
+      };
+
+      const getPlayerLabel = (pId) => {
+        let label = `${t.player} ${pId}`; const pInfo = gameState.playersInfo[pId];
+        if (pInfo && pInfo.type === 'ai') { 
+          label = `${t.ai}${pId}`; 
+          if(pInfo.difficulty === 'low') label+=`[${t.diffLow}]`; 
+          else if(pInfo.difficulty === 'high') label+=`[${t.diffHigh}]`; 
+          else label+=`[${t.diffMed}]`; 
+        }
+        else if (gameState.mode === 'online' && pId === myPlayerId) label += ` ${t.roomYou}`;
+        else if (gameState.mode === 'local' || gameState.mode === 'challenge') { if(pId === 1) label+=` ${t.roomYou}`; }
+        return label;
+      };
+
+      const wrapperClass = `font-sans text-slate-100 selection:bg-indigo-500/30 transition-all duration-300 ${isPseudoFs ? 'fixed inset-0 z-[9999] bg-slate-950 w-screen h-[100dvh]' : 'w-full h-[100dvh] relative'}`;
+
+      const renderCard = (phase, index, player, isBoard = false, boardIdx = -1) => {
+        if (phase === undefined || phase === null) return null;
+        const isNeutral = !isBoard || player === 0;
+        const isTallying = gameState.tallyState === `tally_${player}` && isBoard;
+        const isDimmed = isBoard && gameState.tallyState.startsWith('tally_') && !isTallying;
+        const isSelected = !isBoard && gameState.selectedCardIdx === index && player === gameState.turn;
+        const isScoringPulse = isBoard && gameState.currentScoringEvent?.cells.includes(boardIdx);
+        
+        let isHidden = false;
+        if (!isBoard && index >= 0 && !gameState.gameOver) { 
+          const pInfo = gameState.playersInfo[player];
+          if (pInfo && pInfo.type === 'ai') isHidden = true;
+          else if (gameState.mode === 'online' && player !== myPlayerId) isHidden = true; 
+        }
+
+        let cInfo = P_COLORS[player] || P_COLORS[1];
+        let colorClasses = isNeutral ? (isBoard ? 'bg-slate-700/60 border-slate-500 ring-1 ring-slate-500' : 'bg-gradient-to-br from-slate-700/80 to-slate-800 border-slate-500 shadow-lg') : `${cInfo.bg}/90 ${cInfo.border} ring-2 ${cInfo.ring} shadow-[0_0_15px_${cInfo.shadow}]`;
+        if (isHidden) colorClasses = 'bg-slate-800 border-slate-600 shadow-inner';
+        let animClasses = '';
+        if (isScoringPulse) animClasses = 'animate-score-pulse ring-[3px] ring-yellow-400 z-50'; 
+        else if (isTallying) animClasses = `scale-110 shadow-[0_0_40px_${cInfo.shadow}] z-20 ring-[3px] ${cInfo.ring} transition-all duration-300`; 
+        else if (isDimmed) animClasses = 'opacity-30 grayscale transition-all duration-500';
+
+        return (
+          <div key={isBoard ? `board-${boardIdx}` : `hand-${player}-${index}`} onClick={(e) => { e.stopPropagation(); const canSelect = (gameState.mode === 'online') ? (gameState.turn === myPlayerId && player === myPlayerId) : (player === gameState.turn && gameState.playersInfo[player].type !== 'ai'); if (!isBoard && canSelect && !gameState.isAnimating && gameState.tallyState === 'none') { setGameState(prev => ({ ...prev, selectedCardIdx: prev.selectedCardIdx === index ? null : index })); } }}
+            className={`relative flex flex-col items-center justify-center rounded-lg sm:rounded-xl md:rounded-2xl transition-all duration-300 cursor-pointer border ${colorClasses} ${isSelected ? 'ring-2 ring-yellow-400 -translate-y-2 shadow-[0_10px_20px_rgba(250,204,21,0.4)]' : ''} ${animClasses} ${isBoard ? 'absolute inset-0 w-full h-full' : 'card-item shrink-0'}`}>
+            {!isHidden ? ( <React.Fragment><MoonSvg phase={phase} className="w-[50%] h-[50%] mb-[2%]" /><span className={`card-text font-medium tracking-wide ${isNeutral ? 'text-slate-300' : cInfo.bgText}`}>{PHASES[phase]?.name || ''}</span></React.Fragment> ) : ( <div className="w-[60%] h-[60%] rounded-full bg-slate-700/50 border border-slate-600/50 flex items-center justify-center"><span className="card-text text-slate-400 opacity-50 font-bold">?</span></div> )}
+          </div>
+        );
+      };
+
+      const getPlayerLayoutClasses = (pId, total) => {
+        if (total === 2) {
+          if (pId === 1) return "portrait:bottom-6 portrait:left-1/2 portrait:-translate-x-1/2 portrait:flex-col landscape:right-6 landscape:top-1/2 landscape:-translate-y-1/2 landscape:flex-col";
+          if (pId === 2) return "portrait:top-6 portrait:left-1/2 portrait:-translate-x-1/2 portrait:flex-col-reverse landscape:left-6 landscape:top-1/2 landscape:-translate-y-1/2 landscape:flex-col-reverse";
+        }
+        if (total === 3) {
+          if (pId === 1) return "portrait:bottom-6 portrait:left-1/2 portrait:-translate-x-1/2 portrait:flex-col landscape:right-6 landscape:top-1/2 landscape:-translate-y-1/2 landscape:flex-col";
+          if (pId === 2) return "portrait:top-6 portrait:left-6 portrait:flex-col-reverse landscape:top-6 landscape:left-6 landscape:flex-col-reverse";
+          if (pId === 3) return "portrait:top-6 portrait:right-6 portrait:flex-col-reverse landscape:bottom-6 landscape:left-6 landscape:flex-col";
+        }
+        if (total === 4) {
+          if (pId === 1) return "bottom-6 right-6 flex-col";
+          if (pId === 2) return "bottom-6 left-6 flex-col";
+          if (pId === 3) return "top-6 left-6 flex-col-reverse";
+          if (pId === 4) return "top-6 right-6 flex-col-reverse";
+        }
+        return "";
+      };
+
+      const getPlayerContainerStyle = (pId) => {
+        const cInfo = P_COLORS[pId];
+        if (gameState.turn !== pId || gameState.tallyState !== 'none') return 'bg-transparent border border-transparent';
+        return `${cInfo.bg}/20 border border-${cInfo.base}-500/30 shadow-[0_0_20px_${cInfo.shadow}]`;
+      };
+
+      // === Non-Playing Views ===
+      if (['menu', 'lobby', 'lobby_wait', 'name_input', 'leaderboard', 'local_setup'].includes(gameState.mode)) {
+        return (
+          <div className={`${wrapperClass} flex flex-col items-center justify-center overflow-y-auto`}>
+            <StarryBackground />
+            
+            {/* Settings Gear */}
+            <div className="fixed top-4 right-4 z-[9999]">
+              <button onClick={() => setShowSettings(true)} className="p-3 text-indigo-300 hover:text-white bg-slate-800/80 rounded-full border border-white/10 shadow-lg hover:rotate-90 transition-all"><SettingsIcon className="w-6 h-6"/></button>
+            </div>
+
+            {showSettings && <SettingsModal onClose={() => setShowSettings(false)} lang={lang} setLang={setLang} bgmTrack={bgmTrack} setBgmTrack={setBgmTrack} bgmVol={bgmVol} setBgmVol={setBgmVol} sfxVol={sfxVol} setSfxVol={setSfxVol} toggleFs={toggleFullscreen} showTutorial={showTutorialInner} setShowTutorial={setShowTutorialInner} t={t} />}
+
+            {gameState.mode === 'name_input' && (
+              <div className="z-10 flex flex-col items-center p-8 bg-slate-900/80 backdrop-blur-xl rounded-3xl border border-yellow-500/50 shadow-[0_0_40px_rgba(234,179,8,0.2)] relative w-full max-w-2xl my-10 mx-4 text-center">
+                <Trophy className="w-16 h-16 text-yellow-400 mb-2 drop-shadow-[0_0_15px_rgba(250,204,21,0.5)]" />
+                <h2 className="text-3xl font-black mb-1 text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-yellow-500">{t.nameInputTitle}</h2>
+                <p className="text-indigo-200 mb-6">{t.txtLvl} {gameState.challengeData.currentLevel} {t.txtLayer} &nbsp;|&nbsp; {t.totalScore}: {gameState.challengeData.totalScore}</p>
+                <div className="w-full max-w-sm mx-auto bg-slate-950 p-4 rounded-xl border border-indigo-500/30 mb-2"><div className="h-12 flex items-center justify-center text-3xl font-[Rubik] tracking-[0.3em] font-bold text-white">{playerName || <span className="text-slate-600 animate-pulse">{t.nameInputPlaceholder}</span>}</div></div>
+                <VirtualKeyboard onKeyPress={(k) => setPlayerName(p => p.length < 8 ? p + k : p)} onDelete={() => setPlayerName(p => p.slice(0, -1))} onSubmit={submitChallengeScore} disabledSubmit={playerName.length < 3} t={t} />
+                <button onClick={() => setGameState(prev => ({...prev, mode: 'menu'}))} className="mt-6 text-slate-400 hover:text-white underline text-sm">{t.btnSkip}</button>
+              </div>
+            )}
+
+            {gameState.mode === 'leaderboard' && (
+              <div className="z-10 flex flex-col items-center p-6 sm:p-8 bg-slate-900/80 backdrop-blur-xl rounded-3xl border border-indigo-500/30 shadow-2xl relative w-full max-w-3xl my-10 mx-4 custom-scroll overflow-y-auto max-h-[80vh]">
+                <h2 className="text-3xl sm:text-4xl font-black mb-6 text-center text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-yellow-500 flex items-center gap-3"><Trophy className="w-8 h-8"/> {t.lbTitle}</h2>
+                {isLoadingLb ? ( <div className="text-indigo-300 animate-pulse py-10">{t.lbLoading}</div> ) : (
+                  <div className="w-full bg-slate-950/50 rounded-2xl border border-slate-700 overflow-hidden">
+                    <table className="w-full text-left border-collapse">
+                      <thead><tr className="bg-slate-800 text-slate-300 text-sm sm:text-base border-b border-slate-700"><th className="p-3 text-center w-16">{t.lbRank}</th><th className="p-3">{t.lbName}</th><th className="p-3 text-center">{t.level}</th><th className="p-3 text-right">{t.totalScore}</th></tr></thead>
+                      <tbody>
+                        {leaderboard.length === 0 ? ( <tr><td colSpan="4" className="text-center p-6 text-slate-500">{t.lbEmpty}</td></tr> ) : (
+                          leaderboard.map((entry, idx) => (
+                            <tr key={entry.id} className={`border-b border-slate-800/50 hover:bg-slate-800/30 transition-colors ${idx < 3 ? 'font-bold' : ''}`}>
+                              <td className="p-3 text-center">{idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : idx + 1}</td>
+                              <td className={`p-3 font-[Rubik] tracking-wider ${idx === 0 ? 'text-yellow-300' : idx === 1 ? 'text-slate-300' : idx === 2 ? 'text-amber-600' : 'text-indigo-200'}`}>{entry.name}</td>
+                              <td className="p-3 text-center text-emerald-400">{t.txtLvl} {entry.level} {t.txtLayer}</td><td className="p-3 text-right font-mono text-rose-300">{entry.totalScore}</td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+                <div className="flex gap-4 mt-8 w-full sm:w-auto"><button onClick={() => initGame('challenge')} className="flex-1 sm:flex-none py-3 px-6 bg-yellow-600 hover:bg-yellow-500 text-white rounded-xl font-bold transition-all shadow-lg flex items-center justify-center gap-2"><Swords className="w-5 h-5"/> {t.btnChallenge.split(' ')[0]}</button><button onClick={() => setGameState(prev => ({...prev, mode: 'menu'}))} className="flex-1 sm:flex-none py-3 px-6 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-bold transition-all flex items-center justify-center gap-2"><Home className="w-5 h-5"/> {t.back}</button></div>
+              </div>
+            )}
+
+            {gameState.mode === 'menu' && (
+              <div className="z-10 flex flex-col items-center p-8 bg-slate-900/60 backdrop-blur-xl rounded-3xl border border-indigo-500/30 shadow-2xl relative w-full max-w-md my-10 mx-4">
+                  <div className="flex items-center space-x-4 mb-6 mt-4"><MoonSvg phase={2} className="w-16 h-16" /><MoonSvg phase={6} className="w-16 h-16" /></div>
+                  <h1 className="text-4xl md:text-5xl font-extrabold mb-2 tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-yellow-200 to-yellow-500 drop-shadow-lg text-center">{t.title}</h1>
+                  <p className="mb-8 text-indigo-200 text-lg text-center">{t.subtitle}</p>
+                  
+                  <div className="w-full flex flex-col gap-3 mb-6">
+                    <button onClick={() => initGame('challenge')} className="group flex items-center justify-center space-x-3 w-full py-5 bg-gradient-to-r from-yellow-600 to-amber-600 hover:from-yellow-500 hover:to-amber-500 text-white rounded-xl font-black text-lg transition-all shadow-[0_0_20px_rgba(217,119,6,0.4)] border border-yellow-400/50"><Swords className="w-6 h-6 group-hover:scale-110 transition-transform" /><span>{t.btnChallenge}</span></button>
+                    <button onClick={() => setGameState(prev => ({...prev, mode: 'leaderboard'}))} className="flex items-center justify-center space-x-2 w-full py-3 bg-slate-800 hover:bg-slate-700 text-yellow-300 border border-slate-600 rounded-xl font-bold transition-all">{t.btnLeaderboard}</button>
+                  </div>
+                  <div className="flex flex-col space-y-3 w-full">
+                    <button onClick={() => setGameState(prev => ({...prev, mode: 'local_setup'}))} className="flex items-center justify-center space-x-3 w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold transition-all shadow-lg"><Users className="w-6 h-6" /><span>{t.btnLocal}</span></button>
+                    <button onClick={() => { audioManager.init(); setGameState(prev => ({...prev, mode: 'lobby'})); }} className="flex items-center justify-center space-x-3 w-full py-4 bg-emerald-700 hover:bg-emerald-600 text-white border border-emerald-500/50 rounded-xl font-bold transition-all"><Globe className="w-6 h-6" /><span>{t.btnOnline}</span></button>
+                  </div>
+              </div>
+            )}
+
+            {gameState.mode === 'local_setup' && (
+              <div className="z-10 flex flex-col items-center p-8 bg-slate-900/60 backdrop-blur-xl rounded-3xl border border-indigo-500/30 shadow-2xl relative w-full max-w-md my-10 mx-4">
+                <h2 className="text-3xl font-black mb-6 text-white text-center">{t.localSetupTitle}</h2>
+                <div className="w-full bg-slate-800/50 border border-slate-600/50 rounded-xl p-5 mb-6 flex flex-col space-y-5">
+                  <div>
+                    <label className="block text-sm font-bold text-slate-300 mb-2">{t.localTotalPlayers}</label>
+                    <div className="flex gap-2">
+                      {[2,3,4].map(n => <button key={n} onClick={() => {setLocalTotalPlayers(n); if(localHumanCount>n) setLocalHumanCount(n); setBoardTypePref('random');}} className={`flex-1 py-2 rounded-lg font-bold border ${localTotalPlayers===n ? 'bg-indigo-600 text-white border-indigo-400' : 'bg-slate-700 text-slate-300 border-slate-600'}`}>{n} {t.txtPerson}</button>)}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-slate-300 mb-2">{t.localHumans}</label>
+                    <div className="flex gap-2">
+                      {Array.from({length: localTotalPlayers}, (_,i)=>i+1).map(n => <button key={n} onClick={() => setLocalHumanCount(n)} className={`flex-1 py-2 rounded-lg font-bold border ${localHumanCount===n ? 'bg-rose-600 text-white border-rose-400' : 'bg-slate-700 text-slate-300 border-slate-600'}`}>{n} {t.txtPerson}</button>)}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-slate-300 mb-2">{t.localDifficulty}</label>
+                    <select value={aiDifficulty} onChange={e => setAiDifficulty(e.target.value)} className="w-full bg-slate-900 border border-slate-500 text-white rounded-lg px-3 py-2 outline-none"><option value="low">{t.diffLow}</option><option value="medium">{t.diffMed}</option><option value="high">{t.diffHigh}</option></select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-slate-300 mb-2">{t.localBoard}</label>
+                    <select value={boardTypePref} onChange={e => setBoardTypePref(e.target.value)} className="w-full bg-slate-900 border border-slate-500 text-white rounded-lg px-3 py-2 outline-none">
+                      <option value="random">{t.localRandom}</option>
+                      {Object.entries(getBoardPool(localTotalPlayers)).map(([k, v]) => <option key={k} value={k}>{v.name}</option>)}
+                    </select>
+                  </div>
+                </div>
+                <div className="flex w-full gap-3"><button onClick={() => setGameState(prev => ({...prev, mode: 'menu'}))} className="flex-1 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-bold">{t.back}</button><button onClick={() => initGame('local')} className="flex-[2] py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold shadow-lg">{t.btnStart}</button></div>
+              </div>
+            )}
+
+            {gameState.mode === 'lobby' && (
+              <div className="z-10 flex flex-col items-center p-8 bg-slate-900/60 backdrop-blur-xl rounded-3xl border border-indigo-500/30 shadow-2xl relative w-full max-w-md my-10 mx-4">
+                <h1 className="text-3xl font-extrabold mb-8 text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 to-emerald-500 drop-shadow-lg text-center mt-4">{t.lobbyTitle}</h1>
+                {!user ? ( <p className="text-indigo-200 animate-pulse">...</p> ) : (
+                   <div className="w-full flex flex-col space-y-6">
+                     <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-600">
+                       <label className="block text-sm font-bold text-slate-300 mb-2">{t.lobbyCreate}</label>
+                       <div className="flex gap-2 mb-4">
+                         {[2,3,4].map(n => <button key={n} onClick={() => setOnlineMaxPlayers(n)} className={`flex-1 py-2 rounded-lg font-bold border ${onlineMaxPlayers===n ? 'bg-emerald-600 text-white border-emerald-400' : 'bg-slate-700 text-slate-300 border-slate-600'}`}>{n} {t.txtPerson}</button>)}
+                       </div>
+                       <button onClick={createRoom} className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold shadow-lg">{t.btnCreate}</button>
+                     </div>
+                     <div className="relative flex items-center py-2"><div className="flex-grow border-t border-slate-600"></div><span className="flex-shrink-0 mx-4 text-slate-400">{t.lobbyOr}</span><div className="flex-grow border-t border-slate-600"></div></div>
+                     <div className="flex flex-col space-y-2">
+                       <input type="text" maxLength="6" placeholder={t.lobbyPlaceholder} value={joinCode} onChange={(e) => setJoinCode(e.target.value.replace(/\D/g, ''))} className="w-full bg-slate-800 border border-slate-600 rounded-xl py-3 px-4 text-center text-2xl font-mono tracking-[0.2em] text-white outline-none focus:border-emerald-400" />
+                       <button onClick={() => joinRoom(joinCode)} className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold">{t.btnJoin}</button>
+                     </div>
+                   </div>
+                )}
+                <button onClick={() => setGameState(prev => ({ ...prev, mode: 'menu' }))} className="mt-8 text-slate-400 hover:text-white flex items-center space-x-2"><Home className="w-4 h-4" /> <span>{t.back}</span></button>
+              </div>
+            )}
+
+            {gameState.mode === 'lobby_wait' && onlineRoomData && (
+              <div className="z-10 flex flex-col items-center p-8 bg-slate-900/60 backdrop-blur-xl rounded-3xl border border-emerald-500/30 shadow-2xl relative w-full max-w-md my-10 mx-4">
+                <h2 className="text-xl font-bold text-slate-300">{t.roomCode}</h2>
+                <div className="text-6xl font-black font-mono tracking-widest text-emerald-400 mb-6 drop-shadow-[0_0_15px_rgba(52,211,153,0.5)] select-all">{roomId}</div>
+                <div className="w-full bg-slate-800 p-4 rounded-xl border border-slate-600 mb-6">
+                  <h3 className="text-center font-bold text-slate-400 mb-4 border-b border-slate-700 pb-2">{t.roomPlayers} ({Object.keys(onlineRoomData.players).length}/{onlineRoomData.maxPlayers})</h3>
+                  <div className="flex flex-col gap-2">
+                    {Array.from({length: onlineRoomData.maxPlayers}, (_,i)=>i+1).map(pId => {
+                      const pEntry = Object.entries(onlineRoomData.players).find(([u,p])=>p.pId===pId);
+                      const isMe = pEntry && pEntry[0] === user.uid;
+                      const isHost = pEntry && pEntry[0] === onlineRoomData.host;
+                      const cInfo = P_COLORS[pId];
+                      return (
+                        <div key={pId} className={`flex justify-between items-center p-3 rounded-lg border ${pEntry ? `bg-${cInfo.base}-900/20 border-${cInfo.base}-500/50` : 'bg-slate-900/50 border-slate-700 border-dashed'}`}>
+                          <span className={`font-bold flex items-center gap-2 ${pEntry ? cInfo.text : 'text-slate-600'}`}>
+                            P{pId} {pEntry ? (isMe?t.roomYou:'') : t.roomAI} {isHost && '👑'}
+                          </span>
+                          {pEntry && (
+                            <span className={`text-sm font-bold flex items-center gap-1 ${pEntry[1].ready ? 'text-emerald-400':'text-amber-400'}`}>{pEntry[1].ready ? <><CheckCircle className="w-4 h-4"/>{t.roomReady}</> : t.roomNotReady}</span>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+                
+                {onlineRoomData.host === user.uid ? (
+                  <button onClick={startOnlineGame} disabled={Object.values(onlineRoomData.players).some(p => !p.ready && p.pId !== 1)} className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 disabled:text-slate-400 text-white rounded-xl font-bold transition-all shadow-lg text-lg">
+                    {Object.values(onlineRoomData.players).some(p => !p.ready && p.pId !== 1) ? t.btnWait : t.btnStartAll}
+                  </button>
+                ) : (
+                  <button onClick={toggleReadyOnline} className={`w-full py-4 rounded-xl font-bold transition-all shadow-lg text-lg ${onlineRoomData.players[user.uid]?.ready ? 'bg-slate-600 text-slate-300' : 'bg-indigo-600 hover:bg-indigo-500 text-white'}`}>
+                    {onlineRoomData.players[user.uid]?.ready ? t.btnCancelReady : t.btnReady}
+                  </button>
+                )}
+                <button onClick={() => setGameState(prev => ({ ...prev, mode: 'menu' }))} className="mt-6 text-slate-400 hover:text-white flex items-center space-x-2"><RotateCcw className="w-4 h-4" /> <span>{t.btnLeave}</span></button>
+              </div>
+            )}
+          </div>
+        );
+      }
+
+      const currentBoardConfig = ALL_BOARDS[gameState.boardType] || ALL_BOARDS['classic'];
+      let currentScoreTextClass = ''; let currentScoreNumClass = '';
+      if (gameState.currentScoringEvent) {
+        if (gameState.currentScoringEvent.type === 'identical') { currentScoreTextClass = 'score-identical'; currentScoreNumClass = 'score-num-identical'; }
+        else if (gameState.currentScoringEvent.type === 'complementary') { currentScoreTextClass = 'score-complementary'; currentScoreNumClass = 'score-num-complementary'; }
+        else { currentScoreTextClass = 'score-sequence'; currentScoreNumClass = 'score-num-sequence'; }
+      }
+      
+      const portraitMult = 1.2 + 2 * ((currentBoardConfig.cardScale||0.2) * 1.25);
+      const landscapeMult = 1.2 + 2 * (currentBoardConfig.cardScale||0.2);
+      const sortedPlayers = Object.keys(gameState.scores).map(pId => parseInt(pId)).sort((a,b) => gameState.scores[b] - gameState.scores[a]);
+
+      return (
+        <div className={`game-wrapper ${wrapperClass} flex flex-col`} style={{ '--card-scale': currentBoardConfig.cardScale||0.2, '--portrait-mult': portraitMult, '--landscape-mult': landscapeMult }}>
+          <StarryBackground />
+          
+          <div className="fixed top-4 right-4 z-[9999]">
+            <button onClick={() => setShowSettings(true)} className="p-3 text-indigo-300 hover:text-white bg-slate-800/80 rounded-full border border-white/10 shadow-lg hover:rotate-90 transition-all"><SettingsIcon className="w-6 h-6"/></button>
+          </div>
+          {showSettings && <SettingsModal onClose={() => setShowSettings(false)} lang={lang} setLang={setLang} bgmTrack={bgmTrack} setBgmTrack={setBgmTrack} bgmVol={bgmVol} setBgmVol={setBgmVol} sfxVol={sfxVol} setSfxVol={setSfxVol} toggleFs={toggleFullscreen} showTutorial={showTutorialInner} setShowTutorial={setShowTutorialInner} t={t} />}
+
+          <div className="z-10 absolute top-4 left-4 sm:left-6 flex flex-col gap-1 items-start shrink-0 pointer-events-none">
+            {gameState.mode === 'challenge' && <div className="bg-slate-900/80 px-4 py-1.5 rounded-full border border-yellow-500/50 shadow-lg backdrop-blur-sm"><span className="text-sm sm:text-base font-bold text-yellow-400 tracking-widest drop-shadow-md">{t.txtLvl} {gameState.challengeData.currentLevel} {t.txtLayer} <span className="text-slate-500 mx-2">|</span> {t.totalScore}: {gameState.challengeData.totalScore}</span></div>}
+            {gameState.mode === 'online' && ( <div className="bg-slate-900/80 px-4 py-1.5 rounded-full border border-emerald-500/50 shadow-lg backdrop-blur-sm"><span className="text-sm font-bold text-emerald-400">{t.txtRoom} {roomId}</span></div> )}
+            <div className="bg-slate-900/60 px-3 py-1 rounded-full border border-white/10"><span className="text-xs text-slate-300 uppercase tracking-widest">{currentBoardConfig.name}</span></div>
+          </div>
+          
+          <button onClick={() => setGameState(prev => ({ ...prev, mode: 'menu' }))} className="absolute bottom-4 left-4 z-[99] p-3 text-indigo-300 hover:text-white bg-slate-900/80 rounded-full border border-white/10 shadow-lg backdrop-blur-sm"><Home className="w-5 h-5" /></button>
+
+          {gameState.tallyState !== 'none' && gameState.tallyState !== 'done' && (
+            <div className="absolute inset-0 z-[100] flex items-center justify-center pointer-events-none">
+               <div className="bg-slate-900/95 text-white px-6 py-4 rounded-full text-lg sm:text-xl font-bold animate-pulse shadow-2xl border border-slate-500 text-center">
+                  {gameState.tallyState === 'start' && <span>{t.gameOver}</span>}
+                  {gameState.tallyState.startsWith('tally_') && (() => {
+                    const tId = parseInt(gameState.tallyState.split('_')[1]); const cInfo = P_COLORS[tId];
+                    return <span>{t.tallyBase} {getPlayerLabel(tId)}... <span className={`${cInfo.text} ml-2`}>+{gameState.board.filter(c => c && c.player === tId).length}</span></span>;
+                  })()}
+               </div>
+            </div>
+          )}
+
+          {gameState.tallyState === 'done' && (
+            <div className="absolute inset-0 z-[200] flex items-center justify-center bg-slate-950/80 backdrop-blur-md">
+              <div className="bg-slate-900 border border-indigo-500/50 p-6 sm:p-8 rounded-3xl shadow-[0_0_50px_rgba(99,102,241,0.2)] flex flex-col items-center text-center w-full max-w-xl mx-4 max-h-[90vh] overflow-y-auto">
+                {gameState.mode === 'challenge' ? (
+                  <React.Fragment>
+                    {sortedPlayers[0] === 1 && gameState.scores[1] >= gameState.scores[2] ? (
+                      <React.Fragment>
+                        <Trophy className="w-16 h-16 text-emerald-400 mb-2 drop-shadow-[0_0_15px_rgba(52,211,153,0.5)]" />
+                        <h2 className="text-3xl font-black mb-4 text-emerald-300">{t.challengeSuccess}</h2>
+                        <div className="text-lg text-slate-300 mb-6 bg-slate-800/50 px-6 py-4 rounded-xl border border-slate-600 w-full">
+                          <p>{t.txtYou} <span className="text-indigo-300 font-bold">{gameState.scores[1]}</span> vs {t.ai} <span className="text-rose-300">{gameState.scores[2]}</span></p>
+                          <p className="mt-2">{t.totalScore}: <span className="text-yellow-400 font-bold text-2xl">{gameState.challengeData.totalScore + gameState.scores[1]}</span></p>
+                        </div>
+                        <button onClick={nextChallengeLevel} className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-lg transition-all">{gameState.challengeData.currentLevel >= 100 ? t.btnFinish100 : t.btnNextLvl}</button>
+                      </React.Fragment>
+                    ) : (
+                      <React.Fragment>
+                        <div className="w-16 h-16 rounded-full bg-rose-900/50 flex items-center justify-center mb-2 border-2 border-rose-500"><XIcon className="w-8 h-8 text-rose-400" /></div>
+                        <h2 className="text-3xl font-black mb-4 text-rose-400">{t.challengeFail}</h2>
+                        <div className="text-lg text-slate-300 mb-6 bg-slate-800/50 px-6 py-4 rounded-xl border border-slate-600 w-full">
+                          <p>{t.totalScore}: <span className="text-yellow-400 font-bold text-2xl">{gameState.challengeData.totalScore + gameState.scores[1]}</span></p>
+                        </div>
+                        <button onClick={() => setGameState(prev => ({...prev, mode: 'name_input', challengeData: {...prev.challengeData, totalScore: prev.challengeData.totalScore + gameState.scores[1]}}))} className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold text-lg transition-all">{t.btnSaveRecord}</button>
+                      </React.Fragment>
+                    )}
+                  </React.Fragment>
+                ) : (
+                  <React.Fragment>
+                    <Trophy className="w-12 h-12 text-yellow-400 mb-2 drop-shadow-[0_0_15px_rgba(250,204,21,0.5)]" />
+                    <h2 className="text-2xl sm:text-3xl font-black mb-4 text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-yellow-500">{t.rankTitle}</h2>
+                    <div className="w-full flex flex-col gap-2 mb-6">
+                      {sortedPlayers.map((pId, idx) => {
+                        const cInfo = P_COLORS[pId];
+                        return (
+                          <div key={pId} className={`flex justify-between items-center p-3 rounded-xl border ${idx === 0 ? `bg-${cInfo.base}-900/40 border-${cInfo.base}-400 scale-105 shadow-lg` : 'bg-slate-800/50 border-slate-600'}`}>
+                            <div className="flex items-center gap-3"><span className="text-2xl">{idx===0?'👑':idx+1}</span><span className={`font-bold ${cInfo.text}`}>{getPlayerLabel(pId)}</span></div>
+                            <span className={`text-2xl font-black ${cInfo.bgText}`}>{gameState.scores[pId]}</span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                    <div className="flex w-full space-x-4">
+                      {((gameState.mode==='online' && myPlayerId===1) || gameState.mode!=='online') && <button onClick={handlePlayAgain} className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold flex items-center justify-center space-x-2"><RotateCcw className="w-5 h-5" /> <span>{t.btnPlayAgain}</span></button>}
+                      <button onClick={() => setGameState(prev => ({ ...prev, mode: 'menu' }))} className="flex-1 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-bold flex items-center justify-center space-x-2"><Home className="w-5 h-5" /> <span>{t.back}</span></button>
+                    </div>
+                  </React.Fragment>
+                )}
+              </div>
+            </div>
+          )}
+
+          <div className="z-10 w-full max-w-[1400px] mx-auto flex flex-1 min-h-0 relative items-center justify-center overflow-hidden">
+            {Array.from({length: gameState.totalPlayers}, (_,i)=>i+1).map(pId => {
+              const posClass = getPlayerLayoutClasses(pId, gameState.totalPlayers);
+              const cInfo = P_COLORS[pId];
+              const isAiThinking = aiThinkingPlayer === pId;
+              if(!gameState.hands[pId]) return null;
+              
+              return (
+                <div key={pId} className={`absolute z-20 flex items-center p-1.5 sm:p-2 rounded-2xl transition-all duration-300 ${getPlayerContainerStyle(pId)} ${posClass}`}>
+                  <div className={`flex flex-row justify-center gap-1 sm:gap-2 mb-1 mt-1`}>
+                    {gameState.hands[pId].map((phase, i) => renderCard(phase, i, pId))}
+                  </div>
+                  <div className={`relative flex flex-row justify-between w-full items-center gap-2 bg-slate-950/60 rounded-full border border-${cInfo.base}-500/30 px-3 py-1 shadow-md`}>
+                    <span className={`text-[10px] sm:text-xs font-bold truncate max-w-[80px] sm:max-w-[120px] ${cInfo.text}`}>{getPlayerLabel(pId)}</span>
+                    {isAiThinking && <span className="absolute left-1/2 -translate-x-1/2 text-xs font-bold text-yellow-300 animate-ai-think whitespace-nowrap bg-slate-900/80 px-2 py-0.5 rounded-full border border-yellow-500/50 shadow-lg">{t.txtThinking}</span>}
+                    <span className={`text-sm sm:text-base font-black ${cInfo.bgText}`}>{gameState.scores[pId]}</span>
+                  </div>
+                </div>
+              );
+            })}
+
+            <div className="relative bg-slate-900/40 rounded-[2rem] sm:rounded-[3rem] backdrop-blur-md border border-slate-700/50 shadow-2xl shrink-0 board-container flex items-center justify-center">
+              {gameState.currentScoringEvent && (
+                <div key={gameState.currentScoringEvent.id} className="absolute inset-0 flex items-center justify-center pointer-events-none z-[100]">
+                  <div className="animate-float-score flex flex-col items-center">
+                    <span className={`text-[length:clamp(1.5rem,5vmin,3rem)] font-black tracking-widest scoring-text pb-1 ${currentScoreTextClass}`}>{gameState.currentScoringEvent.name}</span>
+                    <span className={`text-[length:clamp(2rem,6vmin,4rem)] font-black scoring-text mt-0 drop-shadow-md ${currentScoreNumClass}`}>+{gameState.currentScoringEvent.points}</span>
+                  </div>
+                </div>
+              )}
+              <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full pointer-events-none z-0 overflow-visible">
+                {currentBoardConfig.edges.map((edge, i) => {
+                  const n1 = currentBoardConfig.nodes[edge[0]]; const n2 = currentBoardConfig.nodes[edge[1]];
+                  let isScoringEdge = false;
+                  if (gameState.currentScoringEvent) {
+                    const ev = gameState.currentScoringEvent;
+                    if (ev.type === 'sequence') { const idx1 = ev.cells.indexOf(edge[0]); const idx2 = ev.cells.indexOf(edge[1]); if (idx1 !== -1 && idx2 !== -1 && Math.abs(idx1 - idx2) === 1) isScoringEdge = true; } 
+                    else { isScoringEdge = ev.cells.includes(edge[0]) && ev.cells.includes(edge[1]); }
+                  }
+                  let strokeColor = "rgba(71, 85, 105, 0.3)"; let strokeW = "1.2";
+                  if (isScoringEdge) { strokeColor = `rgba(${P_COLORS[gameState.turn].hex}, 0.9)`; strokeW = "2.5"; }
+                  return <line key={`edge-${i}`} x1={n1.x} y1={n1.y} x2={n2.x} y2={n2.y} stroke={strokeColor} strokeWidth={strokeW} strokeLinecap="round" className="transition-all duration-500" style={isScoringEdge ? { filter: `drop-shadow(0px 0px 4px ${strokeColor})` } : {}} />;
+                })}
+              </svg>
+              {gameState.board.map((cell, idx) => {
+                const node = currentBoardConfig.nodes[idx];
+                return (
+                  <div key={`node-${idx}`} className={`absolute z-10 flex items-center justify-center transition-colors card-item ${cell === null ? 'border-2 border-dashed border-slate-500/50 bg-slate-800/30 hover:bg-slate-700/60 cursor-pointer backdrop-blur-sm shadow-inner rounded-full sm:rounded-2xl' : ''}`} style={{ left: `${node.x}%`, top: `${node.y}%`, transform: 'translate(-50%, -50%)' }} onClick={(e) => { e.stopPropagation(); if (cell === null && gameState.selectedCardIdx !== null && (!gameState.isAnimating)) { const pType = gameState.playersInfo[gameState.turn].type; const canPlay = (gameState.mode === 'online') ? gameState.turn === myPlayerId : pType !== 'ai'; if (canPlay) playCard(gameState.selectedCardIdx, idx, false); } }}>
+                    {cell && renderCard(cell.phase, -1, cell.player, true, idx)}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      );
     }
 
-    // 2. 棋盤鎖定與選擇機制
-    function selectBoard(count) {
-        if (count === 3) return GameState.boards.mode3[Math.floor(Math.random()*5)];
-        if (count === 4) return GameState.boards.mode4[Math.floor(Math.random()*5)];
-        // 預設 2 人模式邏輯...
-    }
-
-    // 3. 連線大廳準備機制 (Socket.io 邏輯預留)
-    function onPlayerReady(id) {
-        // 更新 UI 與準備狀態
-    }
-
-    // 啟動遊戲
-    function startGame() {
-        const count = parseInt(document.getElementById('player-count').value);
-        GameState.playerCount = count;
-        initPlayers(count);
-        // 切換 UI，渲染棋盤...
-        document.getElementById('game-lobby').style.display = 'none';
-        document.getElementById('game-container').style.display = 'block';
-        console.log(`遊戲開始：${count} 人模式`);
-    }
-
-    function getPlayerColor(index) {
-        const colors = ['#6366f1', '#f43f5e', '#10b981', '#f59e0b'];
-        return colors[index - 1];
-    }
-</script>
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
 </body>
 </html>
