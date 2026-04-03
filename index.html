@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>月相陣地戰</title>
+  <title>月相陣地戰 - 四人連線版</title>
   
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
@@ -14,24 +14,24 @@
   <style>
     body, html { margin: 0; padding: 0; background-color: #020617; overflow: hidden; touch-action: none; }
     .game-wrapper {
-      --board-size-portrait: min(calc(100vw - 32px), calc((100dvh - 150px) / var(--portrait-mult)));
-      --board-size-landscape: min(calc(100dvh - 90px), calc((100vw - 160px) / var(--landscape-mult)));
+      --board-size-portrait: min(calc(100vw - 32px), calc((100dvh - 220px) / var(--portrait-mult)));
+      --board-size-landscape: min(calc(100dvh - 120px), calc((100vw - 260px) / var(--landscape-mult)));
     }
     @media (orientation: portrait) { .game-wrapper { --board-size: var(--board-size-portrait); } }
     @media (orientation: landscape) { .game-wrapper { --board-size: var(--board-size-landscape); } }
     .board-container { width: var(--board-size); height: var(--board-size); }
     .card-item { width: calc(var(--board-size) * var(--card-scale)); height: calc(var(--board-size) * var(--card-scale) * 1.25); container-type: size; }
-    .card-text { font-size: max(10px, 12cqh); }
+    .card-text { font-size: max(8px, 12cqh); }
 
     .scoring-text { font-family: 'Zen Maru Gothic', 'Noto Sans TC', sans-serif; paint-order: stroke fill; line-height: 1.2; }
-    .score-identical { background: linear-gradient(180deg, #a5f3fc 0%, #06b6d4 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; -webkit-text-stroke: 1.5px #164e63; filter: drop-shadow(0px 0px 8px rgba(6,182,212,0.9)) drop-shadow(0px 4px 6px rgba(0,0,0,0.8)); }
+    .score-identical { background: linear-gradient(180deg, #a5f3fc 0%, #06b6d4 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; -webkit-text-stroke: 1.5px #164e63; filter: drop-shadow(0px 0px 8px rgba(6,182,212,0.9)); }
     .score-num-identical { color: #22d3ee; -webkit-text-stroke: 1px #164e63; }
-    .score-complementary { background: linear-gradient(180deg, #fef08a 0%, #eab308 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; -webkit-text-stroke: 1.5px #713f12; filter: drop-shadow(0px 0px 8px rgba(234,179,8,0.9)) drop-shadow(0px 4px 6px rgba(0,0,0,0.8)); }
+    .score-complementary { background: linear-gradient(180deg, #fef08a 0%, #eab308 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; -webkit-text-stroke: 1.5px #713f12; filter: drop-shadow(0px 0px 8px rgba(234,179,8,0.9)); }
     .score-num-complementary { color: #facc15; -webkit-text-stroke: 1px #713f12; }
-    .score-sequence { background: linear-gradient(180deg, #f5d0fe 0%, #d946ef 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; -webkit-text-stroke: 1.5px #4a044e; filter: drop-shadow(0px 0px 8px rgba(217,70,239,0.9)) drop-shadow(0px 4px 6px rgba(0,0,0,0.8)); }
+    .score-sequence { background: linear-gradient(180deg, #f5d0fe 0%, #d946ef 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; -webkit-text-stroke: 1.5px #4a044e; filter: drop-shadow(0px 0px 8px rgba(217,70,239,0.9)); }
     .score-num-sequence { color: #e879f9; -webkit-text-stroke: 1px #4a044e; }
 
-    @keyframes score-pulse { 0% { transform: scale(1); filter: brightness(1); box-shadow: none; } 20%, 80% { transform: scale(1.15); filter: brightness(1.3); box-shadow: 0 0 40px rgba(254,240,138,1); } 100% { transform: scale(1); filter: brightness(1); box-shadow: none; } }
+    @keyframes score-pulse { 0% { transform: scale(1); filter: brightness(1); } 50% { transform: scale(1.15); filter: brightness(1.3); box-shadow: 0 0 40px rgba(254,240,138,1); } 100% { transform: scale(1); filter: brightness(1); } }
     .animate-score-pulse { animation: score-pulse 1.5s ease-in-out forwards; }
     @keyframes float-score { 0% { opacity: 0; transform: translateY(30px) scale(0.5); } 15%, 85% { opacity: 1; transform: translateY(0) scale(1.1); } 100% { opacity: 0; transform: translateY(-30px) scale(0.8); } }
     .animate-float-score { animation: float-score 1.5s ease-in-out forwards; }
@@ -39,9 +39,7 @@
     .custom-scroll::-webkit-scrollbar { width: 6px; }
     .custom-scroll::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.5); border-radius: 4px; }
     .custom-scroll::-webkit-scrollbar-thumb { background: rgba(99, 102, 241, 0.5); border-radius: 4px; }
-    .custom-scroll::-webkit-scrollbar-thumb:hover { background: rgba(99, 102, 241, 0.8); }
     
-    /* 鍵盤按鈕特效 */
     .keyboard-btn { transition: all 0.1s; border-bottom-width: 4px; }
     .keyboard-btn:active { transform: translateY(4px); border-bottom-width: 0px; margin-top: 4px; }
   </style>
@@ -63,7 +61,7 @@
     try { app = initializeApp(myFirebaseConfig); auth = getAuth(app); db = getFirestore(app); } catch (e) { console.warn("Firebase offline"); }
     const appId = typeof __app_id !== 'undefined' ? __app_id : 'moonphase-app';
 
-    // --- 內建 Icons ---
+    // --- Icons ---
     const IconBase = ({ children, className = "" }) => <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>{children}</svg>;
     const User = ({ className }) => <IconBase className={className}><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></IconBase>;
     const Users = ({ className }) => <IconBase className={className}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></IconBase>;
@@ -75,103 +73,68 @@
     const Minimize = ({ className }) => <IconBase className={className}><path d="M8 3v3a2 2 0 0 1-2 2H3"/><path d="M21 8h-3a2 2 0 0 1-2-2V3"/><path d="M3 16h3a2 2 0 0 1 2 2v3"/><path d="M16 21v-3a2 2 0 0 1 2-2h3"/></IconBase>;
     const Volume2 = ({ className }) => <IconBase className={className}><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></IconBase>;
     const VolumeX = ({ className }) => <IconBase className={className}><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" x2="17" y1="9" y2="15"/><line x1="17" x2="23" y1="9" y2="15"/></IconBase>;
-    const Settings2 = ({ className }) => <IconBase className={className}><path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="7" r="3"/><circle cx="7" cy="17" r="3"/></IconBase>;
-    const Brain = ({ className }) => <IconBase className={className}><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"/><path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"/><path d="M15 13a4.5 4.5 0 0 1-3-4 4.5 4.5 0 0 1-3 4"/><path d="M17.599 6.5a3 3 0 0 0 .399-1.375"/><path d="M6.002 5.125A3 3 0 0 0 6.401 6.5"/><path d="M3.477 10.896a4 4 0 0 1 .585-.396"/><path d="M19.938 10.5a4 4 0 0 1 .585.396"/><path d="M6 18a4 4 0 0 1-1.967-.516"/><path d="M19.967 17.484A4 4 0 0 1 18 18"/></IconBase>;
-    const BookOpen = ({ className }) => <IconBase className={className}><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></IconBase>;
-    const XIcon = ({ className }) => <IconBase className={className}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></IconBase>;
     const Swords = ({ className }) => <IconBase className={className}><path d="M14.5 17.5 3 6V3h3l11.5 11.5"/><path d="M13 19c-2 0-3-1-3-1l-3 3"/><path d="M19 13c0-2-1-3-1-3l3-3"/><path d="m19 19 3 3"/><path d="m5 5-3-3"/></IconBase>;
-    const ListIcon = ({ className }) => <IconBase className={className}><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></IconBase>;
+    const CheckCircle = ({ className }) => <IconBase className={className}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></IconBase>;
     const DeleteIcon = ({ className }) => <IconBase className={className}><path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"/><line x1="18" y1="9" x2="12" y2="15"/><line x1="12" y1="9" x2="18" y2="15"/></IconBase>;
 
-    // --- 音效引擎 ---
+    // --- Audio Manager ---
     class AudioManager {
       constructor() { this.ctx = null; this.masterGain = null; this.bgmGain = null; this.isMuted = false; this.bgmPlaying = false; this.baseVolume = 0.8; }
-      init() {
-        if (this.ctx) { if (this.ctx.state === 'suspended') this.ctx.resume(); return; }
-        const AudioContext = window.AudioContext || window.webkitAudioContext; this.ctx = new AudioContext();
-        this.masterGain = this.ctx.createGain(); this.masterGain.gain.value = this.isMuted ? 0 : this.baseVolume;
-        this.masterGain.connect(this.ctx.destination); this.startBGM();
-      }
+      init() { if (this.ctx) { if (this.ctx.state === 'suspended') this.ctx.resume(); return; } const AudioContext = window.AudioContext || window.webkitAudioContext; this.ctx = new AudioContext(); this.masterGain = this.ctx.createGain(); this.masterGain.gain.value = this.isMuted ? 0 : this.baseVolume; this.masterGain.connect(this.ctx.destination); this.startBGM(); }
       setVolume(val) { this.baseVolume = val; if (this.masterGain && !this.isMuted) this.masterGain.gain.setTargetAtTime(val, this.ctx.currentTime, 0.1); }
       toggleMute() { this.isMuted = !this.isMuted; if (this.masterGain) this.masterGain.gain.setTargetAtTime(this.isMuted ? 0 : this.baseVolume, this.ctx.currentTime, 0.1); }
-      playTone(freq, type, duration, vol = 1, slideTo = null) {
-        if (!this.ctx || this.isMuted) return;
-        const osc = this.ctx.createOscillator(); const gain = this.ctx.createGain();
-        osc.type = type; osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
-        if (slideTo) osc.frequency.exponentialRampToValueAtTime(slideTo, this.ctx.currentTime + duration);
-        gain.gain.setValueAtTime(0, this.ctx.currentTime); gain.gain.linearRampToValueAtTime(vol, this.ctx.currentTime + 0.05); gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
-        osc.connect(gain); gain.connect(this.masterGain); osc.start(); osc.stop(this.ctx.currentTime + duration);
-      }
+      playTone(freq, type, duration, vol = 1, slideTo = null) { if (!this.ctx || this.isMuted) return; const osc = this.ctx.createOscillator(); const gain = this.ctx.createGain(); osc.type = type; osc.frequency.setValueAtTime(freq, this.ctx.currentTime); if (slideTo) osc.frequency.exponentialRampToValueAtTime(slideTo, this.ctx.currentTime + duration); gain.gain.setValueAtTime(0, this.ctx.currentTime); gain.gain.linearRampToValueAtTime(vol, this.ctx.currentTime + 0.05); gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration); osc.connect(gain); gain.connect(this.masterGain); osc.start(); osc.stop(this.ctx.currentTime + duration); }
       playPlaceCard() { this.playTone(150, 'sine', 0.15, 0.6, 50); }
       playIdentical() { this.playTone(523.25, 'sine', 0.4, 0.4); setTimeout(() => this.playTone(659.25, 'sine', 0.6, 0.4), 100); }
       playComplementary() { this.playTone(440, 'triangle', 0.3, 0.4); setTimeout(() => this.playTone(659.25, 'triangle', 0.4, 0.4), 150); setTimeout(() => this.playTone(880, 'triangle', 0.8, 0.4), 300); }
       playSequence() { [261.63, 329.63, 392.00, 523.25].forEach((freq, i) => setTimeout(() => this.playTone(freq, 'sine', 0.6, 0.3), i * 150)); }
       playWin() { [523.25, 659.25, 783.99, 1046.50].forEach((freq, i) => setTimeout(() => this.playTone(freq, 'square', 0.5, 0.2), i * 200)); setTimeout(() => this.playTone(1046.50, 'square', 1.5, 0.2), 800); }
       playLose() { [349.23, 329.63, 293.66, 261.63].forEach((freq, i) => setTimeout(() => this.playTone(freq, 'sawtooth', 0.5, 0.3), i * 300)); }
-      startBGM() {
-        if (this.bgmPlaying || !this.ctx) return; this.bgmPlaying = true;
-        const delay = this.ctx.createDelay(); delay.delayTime.value = 0.8;
-        const feedback = this.ctx.createGain(); feedback.gain.value = 0.5;
-        const filter = this.ctx.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 800;
-        delay.connect(feedback); feedback.connect(filter); filter.connect(delay);
-        this.bgmGain = this.ctx.createGain(); this.bgmGain.gain.value = 0.15; this.bgmGain.connect(this.masterGain); delay.connect(this.bgmGain);
-        const scale = [261.63, 293.66, 329.63, 392.00, 440.00]; 
-        const playNextNote = () => {
-          if (!this.bgmPlaying) return;
-          const osc = this.ctx.createOscillator(); const gain = this.ctx.createGain();
-          osc.type = Math.random() > 0.5 ? 'sine' : 'triangle'; osc.frequency.value = scale[Math.floor(Math.random() * scale.length)] * (Math.random() > 0.5 ? 0.5 : 1);
-          gain.gain.setValueAtTime(0, this.ctx.currentTime); gain.gain.linearRampToValueAtTime(0.2, this.ctx.currentTime + 2); gain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 6);
-          osc.connect(gain); gain.connect(this.bgmGain); gain.connect(delay); osc.start(this.ctx.currentTime); osc.stop(this.ctx.currentTime + 6);
-          setTimeout(playNextNote, 2000 + Math.random() * 3000);
-        };
-        playNextNote(); setTimeout(playNextNote, 2500); 
-      }
+      startBGM() { if (this.bgmPlaying || !this.ctx) return; this.bgmPlaying = true; const delay = this.ctx.createDelay(); delay.delayTime.value = 0.8; const feedback = this.ctx.createGain(); feedback.gain.value = 0.5; const filter = this.ctx.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 800; delay.connect(feedback); feedback.connect(filter); filter.connect(delay); this.bgmGain = this.ctx.createGain(); this.bgmGain.gain.value = 0.15; this.bgmGain.connect(this.masterGain); delay.connect(this.bgmGain); const scale = [261.63, 293.66, 329.63, 392.00, 440.00]; const playNextNote = () => { if (!this.bgmPlaying) return; const osc = this.ctx.createOscillator(); const gain = this.ctx.createGain(); osc.type = Math.random() > 0.5 ? 'sine' : 'triangle'; osc.frequency.value = scale[Math.floor(Math.random() * scale.length)] * (Math.random() > 0.5 ? 0.5 : 1); gain.gain.setValueAtTime(0, this.ctx.currentTime); gain.gain.linearRampToValueAtTime(0.2, this.ctx.currentTime + 2); gain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 6); osc.connect(gain); gain.connect(this.bgmGain); gain.connect(delay); osc.start(this.ctx.currentTime); osc.stop(this.ctx.currentTime + 6); setTimeout(playNextNote, 2000 + Math.random() * 3000); }; playNextNote(); setTimeout(playNextNote, 2500); }
     }
     const audioManager = new AudioManager();
 
-    // --- 遊戲資料定義 ---
+    // --- GAME DATA ---
     const PHASES = [ { id: 0, name: '新月' }, { id: 1, name: '眉月' }, { id: 2, name: '上弦月' }, { id: 3, name: '盈凸月' }, { id: 4, name: '滿月' }, { id: 5, name: '虧凸月' }, { id: 6, name: '下弦月' }, { id: 7, name: '殘月' } ];
 
-    const BOARDS = {
-      classic: { id: 'classic', name: '🔲 九宮格 (9格)', cardScale: 0.24, nodes: [ {x:16.6,y:16.6}, {x:50,y:16.6}, {x:83.3,y:16.6}, {x:16.6,y:50}, {x:50,y:50}, {x:83.3,y:50}, {x:16.6,y:83.3}, {x:50,y:83.3}, {x:83.3,y:83.3} ], edges: [ [0,1], [1,2], [3,4], [4,5], [6,7], [7,8], [0,3], [3,6], [1,4], [4,7], [2,5], [5,8] ] },
-      owl: { id: 'owl', name: '🦉 貓頭鷹 (12格)', cardScale: 0.18, nodes: [ {x:35,y:15}, {x:65,y:15}, {x:15,y:38}, {x:38,y:38}, {x:62,y:38}, {x:85,y:38}, {x:15,y:62}, {x:38,y:62}, {x:62,y:62}, {x:85,y:62}, {x:35,y:85}, {x:65,y:85} ], edges: [ [0,1], [0,2], [0,3], [1,4], [1,5], [2,6], [3,7], [4,8], [5,9], [6,10], [7,10], [8,11], [9,11], [10,11], [2,3], [4,5], [6,7], [8,9] ] },
-      tree: { id: 'tree', name: '🌲 拱門神木 (13格)', cardScale: 0.15, nodes: [ {x:50,y:10}, {x:25,y:30}, {x:50,y:30}, {x:75,y:30}, {x:12.5,y:50}, {x:37.5,y:50}, {x:62.5,y:50}, {x:87.5,y:50}, {x:25,y:70}, {x:50,y:70}, {x:75,y:70}, {x:35,y:90}, {x:65,y:90} ], edges: [ [0,1], [0,2], [0,3], [1,2], [2,3], [1,4], [1,5], [2,5], [2,6], [3,6], [3,7], [4,5], [5,6], [6,7], [4,8], [5,8], [5,9], [6,9], [6,10], [7,10], [8,9], [9,10], [8,11], [9,11], [9,12], [10,12], [11,12] ] },
-      nova: { id: 'nova', name: '✨ 宇宙新星 (13格)', cardScale: 0.14, nodes: [ {x:50,y:50}, {x:50,y:28}, {x:72,y:50}, {x:50,y:72}, {x:28,y:50}, {x:50,y:8}, {x:92,y:50}, {x:50,y:92}, {x:8,y:50}, {x:22,y:22}, {x:78,y:22}, {x:78,y:78}, {x:22,y:78} ], edges: [ [0,1], [0,2], [0,3], [0,4], [1,2], [2,3], [3,4], [4,1], [1,5], [2,6], [3,7], [4,8], [1,9], [4,9], [1,10], [2,10], [2,11], [3,11], [3,12], [4,12] ] },
-      hexagon: { id: 'hexagon', name: '⬡ 蜂巢核心 (7格)', cardScale: 0.22, nodes: [ {x:50,y:50}, {x:50,y:18}, {x:78,y:34}, {x:78,y:66}, {x:50,y:82}, {x:22,y:66}, {x:22,y:34} ], edges: [ [0,1], [0,2], [0,3], [0,4], [0,5], [0,6], [1,2], [2,3], [3,4], [4,5], [5,6], [6,1] ] },
-      pyramid: { id: 'pyramid', name: '🔺 星際金字塔 (10格)', cardScale: 0.18, nodes: [ {x:50,y:15}, {x:36.6,y:40}, {x:63.3,y:40}, {x:23.3,y:65}, {x:50,y:65}, {x:76.6,y:65}, {x:10,y:90}, {x:36.6,y:90}, {x:63.3,y:90}, {x:90,y:90} ], edges: [ [0,1], [0,2], [1,2], [1,3], [1,4], [2,4], [2,5], [3,4], [4,5], [3,6], [3,7], [4,7], [4,8], [5,8], [5,9], [6,7], [7,8], [8,9] ] },
-      cross: { id: 'cross', name: '✛ 十字星芒 (13格)', cardScale: 0.16, nodes: [ {x:50,y:10}, {x:50,y:30}, {x:50,y:50}, {x:50,y:70}, {x:50,y:90}, {x:10,y:50}, {x:30,y:50}, {x:70,y:50}, {x:90,y:50}, {x:30,y:30}, {x:70,y:30}, {x:30,y:70}, {x:70,y:70} ], edges: [ [0,1], [1,2], [2,3], [3,4], [5,6], [6,2], [2,7], [7,8], [9,1], [9,6], [10,1], [10,7], [11,6], [11,3], [12,7], [12,3], [9,2], [10,2], [11,2], [12,2] ] },
-      diamond: { id: 'diamond', name: '♦️ 八面體晶石 (9格)', cardScale: 0.20, nodes: [ {x:50,y:10}, {x:28,y:32}, {x:72,y:32}, {x:10,y:50}, {x:50,y:50}, {x:90,y:50}, {x:28,y:68}, {x:72,y:68}, {x:50,y:90} ], edges: [ [0,1], [0,2], [1,3], [1,4], [2,4], [2,5], [3,6], [4,6], [4,7], [5,7], [6,8], [7,8], [1,2], [3,4], [4,5], [6,7] ] },
-      hourglass: { id: 'hourglass', name: '⏳ 時空沙漏 (11格)', cardScale: 0.18, nodes: [ {x:20,y:15}, {x:50,y:15}, {x:80,y:15}, {x:35,y:35}, {x:65,y:35}, {x:50,y:50}, {x:35,y:65}, {x:65,y:65}, {x:20,y:85}, {x:50,y:85}, {x:80,y:85} ], edges: [ [0,1], [1,2], [0,3], [1,3], [1,4], [2,4], [3,4], [3,5], [4,5], [5,6], [5,7], [6,7], [6,8], [6,9], [7,9], [7,10], [8,9], [9,10] ] },
-      orbital: { id: 'orbital', name: '🪐 星空軌道環 (10格)', cardScale: 0.18, nodes: [ {x:50,y:15}, {x:70,y:20}, {x:85,y:40}, {x:85,y:60}, {x:70,y:80}, {x:50,y:85}, {x:30,y:80}, {x:15,y:60}, {x:15,y:40}, {x:30,y:20} ], edges: [ [0,1], [1,2], [2,3], [3,4], [4,5], [5,6], [6,7], [7,8], [8,9], [9,0], [0,2], [2,4], [4,6], [6,8], [8,0] ] },
-      meteor: { id: 'meteor', name: '☄️ 不對稱 - 流星 (10格)', cardScale: 0.18, nodes: [ {x:20,y:80}, {x:35,y:85}, {x:15,y:65}, {x:35,y:65}, {x:50,y:50}, {x:65,y:35}, {x:80,y:20}, {x:90,y:10}, {x:55,y:65}, {x:35,y:45} ], edges: [ [0,1], [0,2], [2,3], [1,3], [3,4], [4,5], [5,6], [6,7], [4,8], [4,9] ] },
-      dipper: { id: 'dipper', name: '🥄 不對稱 - 北斗七星 (7格)', cardScale: 0.22, nodes: [ {x:85,y:15}, {x:65,y:30}, {x:45,y:45}, {x:25,y:55}, {x:15,y:80}, {x:40,y:85}, {x:45,y:60} ], edges: [ [0,1], [1,2], [2,3], [3,4], [4,5], [5,6], [6,3] ] },
-      crescent: { id: 'crescent', name: '🌙 不對稱 - 弦月灣 (8格)', cardScale: 0.22, nodes: [ {x:80,y:15}, {x:60,y:20}, {x:40,y:35}, {x:25,y:55}, {x:30,y:75}, {x:50,y:85}, {x:75,y:85}, {x:55,y:55} ], edges: [ [0,1], [1,2], [2,3], [3,4], [4,5], [5,6], [1,7], [2,7], [3,7], [4,7], [5,7] ] },
-      flag: { id: 'flag', name: '🏴 不對稱 - 殘旗 (10格)', cardScale: 0.18, nodes: [ {x:25,y:10}, {x:25,y:30}, {x:25,y:50}, {x:25,y:70}, {x:25,y:90}, {x:50,y:15}, {x:75,y:20}, {x:50,y:35}, {x:75,y:40}, {x:50,y:55} ], edges: [ [0,1], [1,2], [2,3], [3,4], [0,5], [1,5], [5,6], [1,7], [2,7], [5,7], [6,8], [7,8], [2,9], [3,9], [7,9] ] },
-      lightning: { id: 'lightning', name: '⚡ 不對稱 - 落雷 (10格)', cardScale: 0.18, nodes: [ {x:60,y:10}, {x:40,y:30}, {x:70,y:30}, {x:50,y:50}, {x:80,y:50}, {x:30,y:70}, {x:60,y:70}, {x:20,y:90}, {x:15,y:30}, {x:85,y:70} ], edges: [ [0,1], [0,2], [1,2], [1,3], [2,3], [2,4], [3,4], [3,5], [3,6], [4,6], [5,6], [5,7], [1,8], [6,9] ] },
-      mountain: { id: 'mountain', name: '⛰️ 不對稱 - 斷崖 (11格)', cardScale: 0.16, nodes: [ {x:10,y:85}, {x:30,y:85}, {x:50,y:85}, {x:70,y:85}, {x:90,y:85}, {x:20,y:65}, {x:40,y:65}, {x:60,y:65}, {x:30,y:45}, {x:50,y:45}, {x:40,y:25} ], edges: [ [0,1], [1,2], [2,3], [3,4], [0,5], [1,5], [1,6], [2,6], [2,7], [3,7], [5,8], [6,8], [6,9], [7,9], [8,10], [9,10] ] },
-      satellite: { id: 'satellite', name: '🛰️ 不對稱 - 衛星 (9格)', cardScale: 0.18, nodes: [ {x:60,y:50}, {x:40,y:40}, {x:40,y:60}, {x:80,y:40}, {x:80,y:60}, {x:20,y:20}, {x:15,y:50}, {x:20,y:80}, {x:60,y:85} ], edges: [ [0,1], [0,2], [0,3], [0,4], [1,2], [3,4], [1,5], [1,6], [2,6], [2,7], [0,8] ] },
-      vortex: { id: 'vortex', name: '🌀 不對稱 - 單向旋渦 (11格)', cardScale: 0.16, nodes: [ {x:50,y:50}, {x:50,y:25}, {x:75,y:35}, {x:75,y:65}, {x:50,y:75}, {x:25,y:65}, {x:25,y:35}, {x:60,y:10}, {x:90,y:50}, {x:40,y:90}, {x:10,y:50} ], edges: [ [0,1], [0,2], [0,3], [0,4], [0,5], [0,6], [1,2], [2,3], [3,4], [4,5], [5,6], [6,1], [1,7], [3,8], [4,9], [6,10] ] },
-      nebula: { id: 'nebula', name: '🌌 不對稱 - 星雲裂隙 (12格)', cardScale: 0.16, nodes: [ {x:20,y:30}, {x:40,y:20}, {x:30,y:45}, {x:50,y:35}, {x:50,y:60}, {x:70,y:45}, {x:70,y:70}, {x:90,y:55}, {x:15,y:75}, {x:35,y:85}, {x:75,y:20}, {x:90,y:80} ], edges: [ [0,1], [0,2], [1,2], [1,3], [2,3], [3,4], [3,5], [4,5], [5,6], [5,7], [6,7], [2,8], [8,9], [4,9], [1,10], [5,10], [6,11], [7,11] ] },
-      comet: { id: 'comet', name: '☄️ 不對稱 - 彗星 (10格)', cardScale: 0.18, nodes: [ {x:20,y:80}, {x:10,y:60}, {x:35,y:70}, {x:30,y:50}, {x:45,y:60}, {x:55,y:40}, {x:70,y:50}, {x:75,y:25}, {x:90,y:35}, {x:90,y:10} ], edges: [ [0,1], [0,2], [1,3], [2,3], [2,4], [3,4], [4,5], [4,6], [5,6], [5,7], [6,8], [7,8], [7,9], [8,9] ] }
+    const BOARDS_2P = {
+      classic: { name: '🔲 九宮格 (9)', cardScale: 0.24, nodes: [{x:16.6,y:16.6},{x:50,y:16.6},{x:83.3,y:16.6},{x:16.6,y:50},{x:50,y:50},{x:83.3,y:50},{x:16.6,y:83.3},{x:50,y:83.3},{x:83.3,y:83.3}], edges: [[0,1],[1,2],[3,4],[4,5],[6,7],[7,8],[0,3],[3,6],[1,4],[4,7],[2,5],[5,8]] },
+      owl: { name: '🦉 貓頭鷹 (12)', cardScale: 0.18, nodes: [{x:35,y:15},{x:65,y:15},{x:15,y:38},{x:38,y:38},{x:62,y:38},{x:85,y:38},{x:15,y:62},{x:38,y:62},{x:62,y:62},{x:85,y:62},{x:35,y:85},{x:65,y:85}], edges: [[0,1],[0,2],[0,3],[1,4],[1,5],[2,6],[3,7],[4,8],[5,9],[6,10],[7,10],[8,11],[9,11],[10,11],[2,3],[4,5],[6,7],[8,9]] },
+      tree: { name: '🌲 拱門神木 (13)', cardScale: 0.15, nodes: [{x:50,y:10},{x:25,y:30},{x:50,y:30},{x:75,y:30},{x:12.5,y:50},{x:37.5,y:50},{x:62.5,y:50},{x:87.5,y:50},{x:25,y:70},{x:50,y:70},{x:75,y:70},{x:35,y:90},{x:65,y:90}], edges: [[0,1],[0,2],[0,3],[1,2],[2,3],[1,4],[1,5],[2,5],[2,6],[3,6],[3,7],[4,5],[5,6],[6,7],[4,8],[5,8],[5,9],[6,9],[6,10],[7,10],[8,9],[9,10],[8,11],[9,11],[9,12],[10,12],[11,12]] },
+      hexagon: { name: '⬡ 蜂巢 (7)', cardScale: 0.22, nodes: [{x:50,y:50},{x:50,y:18},{x:78,y:34},{x:78,y:66},{x:50,y:82},{x:22,y:66},{x:22,y:34}], edges: [[0,1],[0,2],[0,3],[0,4],[0,5],[0,6],[1,2],[2,3],[3,4],[4,5],[5,6],[6,1]] },
+      cross: { name: '✛ 十字星 (13)', cardScale: 0.16, nodes: [{x:50,y:10},{x:50,y:30},{x:50,y:50},{x:50,y:70},{x:50,y:90},{x:10,y:50},{x:30,y:50},{x:70,y:50},{x:90,y:50},{x:30,y:30},{x:70,y:30},{x:30,y:70},{x:70,y:70}], edges: [[0,1],[1,2],[2,3],[3,4],[5,6],[6,2],[2,7],[7,8],[9,1],[9,6],[10,1],[10,7],[11,6],[11,3],[12,7],[12,3],[9,2],[10,2],[11,2],[12,2]] }
     };
 
-    const isMatch = (phase1, phase2) => (phase1 + 4) % 8 === phase2;
-    const isIdentical = (phase1, phase2) => phase1 === phase2;
+    const BOARDS_3P = {
+      med_tri: { name: '📐 能量三角 (15)', cardScale: 0.15, nodes: [{x:50,y:10},{x:40,y:25},{x:60,y:25},{x:30,y:40},{x:50,y:40},{x:70,y:40},{x:20,y:55},{x:40,y:55},{x:60,y:55},{x:80,y:55},{x:10,y:70},{x:30,y:70},{x:50,y:70},{x:70,y:70},{x:90,y:70}], edges: [[0,1],[0,2],[1,2],[1,3],[1,4],[2,4],[2,5],[3,4],[4,5],[3,6],[3,7],[4,7],[4,8],[5,8],[5,9],[6,7],[7,8],[8,9],[6,10],[6,11],[7,11],[7,12],[8,12],[8,13],[9,13],[9,14],[10,11],[11,12],[12,13],[13,14]] },
+      med_star: { name: '🌟 五芒星陣 (15)', cardScale: 0.15, nodes: [{x:50,y:10},{x:60,y:35},{x:90,y:35},{x:65,y:55},{x:75,y:85},{x:50,y:65},{x:25,y:85},{x:35,y:55},{x:10,y:35},{x:40,y:35},{x:50,y:45},{x:70,y:45},{x:60,y:65},{x:40,y:65},{x:30,y:45}], edges: [[0,1],[0,9],[1,2],[1,10],[9,10],[2,11],[1,11],[11,3],[3,12],[12,4],[3,4],[12,5],[3,5],[5,13],[13,6],[5,6],[13,7],[7,14],[14,8],[7,8],[14,9],[7,9],[10,11],[11,12],[12,13],[13,14],[14,10],[10,5],[9,5],[1,5]] },
+      med_ring: { name: '⭕ 迴圈星軌 (15)', cardScale: 0.16, nodes: [{x:50,y:50},{x:50,y:20},{x:78,y:29},{x:92,y:50},{x:78,y:71},{x:50,y:80},{x:22,y:71},{x:8,y:50},{x:22,y:29},{x:50,y:35},{x:65,y:40},{x:65,y:60},{x:50,y:65},{x:35,y:60},{x:35,y:40}], edges: [[0,9],[0,10],[0,11],[0,12],[0,13],[0,14],[1,2],[2,3],[3,4],[4,5],[5,6],[6,7],[7,8],[8,1],[9,10],[10,11],[11,12],[12,13],[13,14],[14,9],[1,9],[2,10],[3,11],[5,12],[7,13],[8,14]] },
+      med_maze: { name: '🌀 迷宮核心 (15)', cardScale: 0.15, nodes: [{x:10,y:10},{x:30,y:10},{x:50,y:10},{x:70,y:10},{x:90,y:10},{x:90,y:30},{x:90,y:50},{x:90,y:70},{x:90,y:90},{x:70,y:90},{x:50,y:90},{x:30,y:90},{x:10,y:90},{x:10,y:50},{x:50,y:50}], edges: [[0,1],[1,2],[2,3],[3,4],[4,5],[5,6],[6,7],[7,8],[8,9],[9,10],[10,11],[11,12],[12,13],[0,13],[13,14],[2,14],[6,14],[10,14]] },
+      med_hexa: { name: '⬡ 雙重蜂巢 (15)', cardScale: 0.16, nodes: [{x:50,y:50},{x:35,y:25},{x:65,y:25},{x:80,y:50},{x:65,y:75},{x:35,y:75},{x:20,y:50},{x:50,y:10},{x:80,y:10},{x:95,y:50},{x:80,y:90},{x:50,y:90},{x:20,y:90},{x:5,y:50},{x:20,y:10}], edges: [[0,1],[0,2],[0,3],[0,4],[0,5],[0,6],[1,2],[2,3],[3,4],[4,5],[5,6],[6,1],[1,7],[7,8],[8,2],[2,3],[3,9],[9,10],[10,4],[4,11],[11,12],[12,5],[5,13],[13,14],[14,1],[1,8],[8,9],[9,4],[4,12],[12,13],[13,1]] }
+    };
 
-    const getNeighbors = (idx, edges) => { const neighbors = []; edges.forEach(edge => { if (edge[0] === idx) neighbors.push(edge[1]); if (edge[1] === idx) neighbors.push(edge[0]); }); return neighbors; };
-    const findSequences = (boardArray, startIdx, edges) => {
-      const getPaths = (currIdx, step, visited) => {
-        let paths = []; let expectedPhase = (boardArray[currIdx].phase + step + 8) % 8; let hasNext = false;
-        getNeighbors(currIdx, edges).forEach(n => {
-          if (boardArray[n] && boardArray[n].phase === expectedPhase && !visited.has(n)) { hasNext = true; let subPaths = getPaths(n, step, new Set([...visited, n])); subPaths.forEach(p => paths.push([currIdx, ...p])); }
-        });
-        if (!hasNext) paths.push([currIdx]); return paths;
+    const BOARDS_4P = {
+      lrg_grid: { name: '🔠 矩陣結界 (20)', cardScale: 0.12, nodes: Array.from({length:20}).map((_,i)=>({x: 20+(i%5)*15, y: 25+Math.floor(i/5)*16})), edges: (()=>{let e=[];for(let i=0;i<20;i++){if(i%5!==4)e.push([i,i+1]);if(Math.floor(i/5)!==3)e.push([i,i+5]);}return e;})() },
+      lrg_cross: { name: '💠 大十字星 (20)', cardScale: 0.12, nodes: [{x:50,y:50},{x:50,y:30},{x:70,y:50},{x:50,y:70},{x:30,y:50},{x:50,y:15},{x:85,y:50},{x:50,y:85},{x:15,y:50},{x:35,y:35},{x:65,y:35},{x:65,y:65},{x:35,y:65},{x:25,y:25},{x:75,y:25},{x:75,y:75},{x:25,y:75},{x:50,y:5},{x:95,y:50},{x:50,y:95}], edges: [[0,1],[0,2],[0,3],[0,4],[1,9],[1,10],[2,10],[2,11],[3,11],[3,12],[4,12],[4,9],[1,5],[2,6],[3,7],[4,8],[9,13],[10,14],[11,15],[12,16],[5,13],[5,14],[6,14],[6,15],[7,15],[7,16],[8,16],[8,13],[5,17],[6,18],[7,19]] },
+      lrg_flower: { name: '🌸 星雲之花 (20)', cardScale: 0.13, nodes: [{x:50,y:50},{x:50,y:25},{x:75,y:50},{x:50,y:75},{x:25,y:50},{x:35,y:35},{x:65,y:35},{x:65,y:65},{x:35,y:65},{x:50,y:10},{x:90,y:50},{x:50,y:90},{x:10,y:50},{x:20,y:20},{x:80,y:20},{x:80,y:80},{x:20,y:80},{x:65,y:15},{x:85,y:65},{x:35,y:85}], edges: [[0,1],[0,2],[0,3],[0,4],[0,5],[0,6],[0,7],[0,8],[1,5],[1,6],[2,6],[2,7],[3,7],[3,8],[4,8],[4,5],[1,9],[2,10],[3,11],[4,12],[5,13],[6,14],[7,15],[8,16],[9,14],[10,14],[10,15],[11,15],[11,16],[12,16],[12,13],[9,13]] },
+      lrg_orbit: { name: '🪐 雙軌衛星 (20)', cardScale: 0.12, nodes: [{x:50,y:50},{x:50,y:35},{x:65,y:50},{x:50,y:65},{x:35,y:50},{x:50,y:20},{x:71,y:29},{x:80,y:50},{x:71,y:71},{x:50,y:80},{x:29,y:71},{x:20,y:50},{x:29,y:29},{x:50,y:5},{x:82,y:18},{x:95,y:50},{x:82,y:82},{x:50,y:95},{x:18,y:82},{x:5,y:50}], edges: [[0,1],[0,2],[0,3],[0,4],[1,2],[2,3],[3,4],[4,1],[1,5],[1,6],[2,6],[2,7],[2,8],[3,8],[3,9],[3,10],[4,10],[4,11],[4,12],[1,12],[5,6],[6,7],[7,8],[8,9],[9,10],[10,11],[11,12],[12,5],[5,13],[6,14],[7,15],[8,16],[9,17],[10,18],[11,19]] },
+      lrg_spiral: { name: '🌀 無盡螺旋 (20)', cardScale: 0.12, nodes: [{x:50,y:50},{x:50,y:35},{x:65,y:35},{x:65,y:65},{x:35,y:65},{x:35,y:20},{x:80,y:20},{x:80,y:80},{x:20,y:80},{x:20,y:10},{x:90,y:10},{x:90,y:90},{x:10,y:90},{x:10,y:5},{x:95,y:5},{x:95,y:95},{x:5,y:95},{x:5,y:50},{x:50,y:15},{x:75,y:50}], edges: [[0,1],[1,2],[2,3],[3,4],[4,5],[5,6],[6,7],[7,8],[8,9],[9,10],[10,11],[11,12],[12,13],[13,14],[14,15],[15,16],[16,17],[0,4],[1,5],[2,6],[3,7],[4,8],[5,9],[6,10],[7,11],[8,12],[9,13],[10,14]] }
+    };
+
+    const isMatch = (p1, p2) => (p1 + 4) % 8 === p2;
+    const isIdentical = (p1, p2) => p1 === p2;
+    const getNeighbors = (idx, edges) => { let n = []; edges.forEach(e => { if (e[0] === idx) n.push(e[1]); if (e[1] === idx) n.push(e[0]); }); return n; };
+    const findSequences = (board, startIdx, edges) => {
+      const getPaths = (curr, step, visited) => {
+        let paths = []; let exp = (board[curr].phase + step + 8) % 8; let hasNext = false;
+        getNeighbors(curr, edges).forEach(n => { if (board[n] && board[n].phase === exp && !visited.has(n)) { hasNext = true; let sub = getPaths(n, step, new Set([...visited, n])); sub.forEach(p => paths.push([curr, ...p])); } });
+        if (!hasNext) paths.push([curr]); return paths;
       };
-      const pathsUp = getPaths(startIdx, 1, new Set([startIdx])); const pathsDown = getPaths(startIdx, -1, new Set([startIdx])); let sequences = [];
-      pathsDown.forEach(pDown => { pathsUp.forEach(pUp => { const combined = [...pDown].reverse().concat(pUp.slice(1)); if (combined.length >= 3) sequences.push(combined); }); });
-      return sequences;
+      const pUp = getPaths(startIdx, 1, new Set([startIdx])); const pDown = getPaths(startIdx, -1, new Set([startIdx])); let seqs = [];
+      pDown.forEach(d => { pUp.forEach(u => { const c = [...d].reverse().concat(u.slice(1)); if (c.length >= 3) seqs.push(c); }); }); return seqs;
     };
 
+    // --- UI Components ---
     const MoonSvg = ({ phase, className = "" }) => (
       <svg viewBox="0 0 100 100" className={className} style={{ filter: 'drop-shadow(0px 0px 6px rgba(254, 240, 138, 0.5))' }}>
         <circle cx="50" cy="50" r="48" fill="#1e1b4b" stroke="#312e81" strokeWidth="2" />
@@ -192,31 +155,18 @@
       </div>
     );
 
-    // --- 虛擬英文鍵盤元件 ---
     const VirtualKeyboard = ({ onKeyPress, onDelete, onSubmit, disabledSubmit, name }) => {
-      const rows = [
-        ['Q','W','E','R','T','Y','U','I','O','P'],
-        ['A','S','D','F','G','H','J','K','L'],
-        ['Z','X','C','V','B','N','M']
-      ];
+      const rows = [ ['Q','W','E','R','T','Y','U','I','O','P'], ['A','S','D','F','G','H','J','K','L'], ['Z','X','C','V','B','N','M'] ];
       return (
         <div className="w-full max-w-md mx-auto mt-6 bg-slate-800/80 p-4 rounded-2xl border border-slate-600/50 shadow-2xl backdrop-blur-md">
           {rows.map((row, i) => (
             <div key={i} className="flex justify-center mb-2 gap-1 sm:gap-2">
-              {row.map(key => (
-                <button key={key} onClick={() => onKeyPress(key)} className="keyboard-btn flex-1 py-3 sm:py-4 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-[Rubik] font-bold text-lg sm:text-xl border-slate-900 shadow-md">
-                  {key}
-                </button>
-              ))}
+              {row.map(k => <button key={k} onClick={() => onKeyPress(k)} className="keyboard-btn flex-1 py-3 sm:py-4 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-[Rubik] font-bold text-lg sm:text-xl border-slate-900 shadow-md">{k}</button>)}
             </div>
           ))}
           <div className="flex justify-center gap-2 mt-4">
-            <button onClick={onDelete} className="keyboard-btn flex-[2] py-3 bg-rose-900/80 hover:bg-rose-800 text-rose-200 rounded-xl font-bold flex items-center justify-center border-rose-950 shadow-md">
-              <DeleteIcon className="w-6 h-6"/>
-            </button>
-            <button onClick={onSubmit} disabled={disabledSubmit} className={`keyboard-btn flex-[5] py-3 rounded-xl font-bold text-lg shadow-md transition-all ${disabledSubmit ? 'bg-slate-700 text-slate-500 border-slate-800 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-900'}`}>
-              確認上傳成績
-            </button>
+            <button onClick={onDelete} className="keyboard-btn flex-[2] py-3 bg-rose-900/80 hover:bg-rose-800 text-rose-200 rounded-xl font-bold flex items-center justify-center border-rose-950 shadow-md"><DeleteIcon className="w-6 h-6"/></button>
+            <button onClick={onSubmit} disabled={disabledSubmit} className={`keyboard-btn flex-[5] py-3 rounded-xl font-bold text-lg shadow-md transition-all ${disabledSubmit ? 'bg-slate-700 text-slate-500 border-slate-800 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-900'}`}>確認上傳</button>
           </div>
         </div>
       );
@@ -231,8 +181,18 @@
       const [nativeFs, setNativeFs] = useState(false);
       const [isMuted, setIsMuted] = useState(false);
       const [volume, setVolumeState] = useState(0.8);
-      const [boardTypePref, setBoardTypePref] = useState('random');
+
+      // Local Setup
+      const [localTotalPlayers, setLocalTotalPlayers] = useState(2);
+      const [localHumanCount, setLocalHumanCount] = useState(1);
       const [aiDifficulty, setAiDifficulty] = useState('medium'); 
+      const [boardTypePref, setBoardTypePref] = useState('random');
+
+      // Online Setup
+      const [onlineMaxPlayers, setOnlineMaxPlayers] = useState(4);
+      const [onlineRoomData, setOnlineRoomData] = useState(null);
+
+      // Leaderboard
       const [playerName, setPlayerName] = useState('');
       const [leaderboard, setLeaderboard] = useState([]);
       const [isLoadingLb, setIsLoadingLb] = useState(false);
@@ -241,9 +201,9 @@
       const roomIdRef = useRef('');
 
       const [gameState, setGameState] = useState({
-        mode: 'menu', boardType: 'classic', board: Array(9).fill(null),
-        p1Deck: [], p2Deck: [], p1Hand: [], p2Hand: [], turn: 1, comboScores: { 1: 0, 2: 0 },
-        finalBaseScores: null, isAnimating: false, gameOver: false, tallyState: 'none', 
+        mode: 'menu', boardType: 'classic', board: [],
+        totalPlayers: 2, playersInfo: {}, hands: {}, decks: {}, scores: {},
+        turn: 1, finalBaseScores: null, isAnimating: false, gameOver: false, tallyState: 'none', 
         selectedCardIdx: null, round: 1, scoringQueue: [], currentScoringEvent: null, pendingResolveInfo: null,
         challengeData: { currentLevel: 1, totalScore: 0, levels: [] }
       });
@@ -251,150 +211,176 @@
       useEffect(() => { roomIdRef.current = roomId; }, [roomId]);
 
       useEffect(() => {
-        const handleFsChange = () => {
-          const isNowFs = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
-          setNativeFs(isNowFs); if (!isNowFs) setIsPseudoFs(false);
-        };
+        const handleFsChange = () => { const isNowFs = !!(document.fullscreenElement || document.webkitFullscreenElement); setNativeFs(isNowFs); if (!isNowFs) setIsPseudoFs(false); };
         document.addEventListener('fullscreenchange', handleFsChange); document.addEventListener('webkitfullscreenchange', handleFsChange);
         return () => { document.removeEventListener('fullscreenchange', handleFsChange); document.removeEventListener('webkitfullscreenchange', handleFsChange); };
       }, []);
-
-      const toggleFullscreen = () => {
-        const docElem = document.documentElement; const isNowFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
-        if (!isNowFs && !isPseudoFs) { const req = docElem.requestFullscreen || docElem.webkitRequestFullscreen; if (req) req.call(docElem).catch(() => setIsPseudoFs(true)); else setIsPseudoFs(true); } 
-        else { const exit = document.exitFullscreen || document.webkitExitFullscreen; if (isNowFs && exit) exit.call(document).catch(() => setIsPseudoFs(false)); setIsPseudoFs(false); }
-      };
-
+      const toggleFullscreen = () => { const docElem = document.documentElement; const isNowFs = !!(document.fullscreenElement || document.webkitFullscreenElement); if (!isNowFs && !isPseudoFs) { const req = docElem.requestFullscreen || docElem.webkitRequestFullscreen; if (req) req.call(docElem).catch(() => setIsPseudoFs(true)); else setIsPseudoFs(true); } else { const exit = document.exitFullscreen || document.webkitExitFullscreen; if (isNowFs && exit) exit.call(document).catch(() => setIsPseudoFs(false)); setIsPseudoFs(false); } };
       const toggleMute = () => { audioManager.init(); audioManager.toggleMute(); setIsMuted(!isMuted); };
       const handleVolumeChange = (e) => { const val = parseFloat(e.target.value); setVolumeState(val); audioManager.init(); audioManager.setVolume(val); if (isMuted && val > 0) { audioManager.isMuted = false; setIsMuted(false); } else if (!isMuted && val === 0) { audioManager.isMuted = true; setIsMuted(true); } };
 
-      useEffect(() => {
-        const initAuth = async () => { try { if (auth) { if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) await signInWithCustomToken(auth, __initial_auth_token); else await signInAnonymously(auth); } } catch (e) { console.error("Auth Error:", e); } };
-        initAuth(); if (auth) { const unsubscribe = onAuthStateChanged(auth, setUser); return () => unsubscribe(); }
-      }, []);
+      useEffect(() => { const initAuth = async () => { try { if (auth) { if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) await signInWithCustomToken(auth, __initial_auth_token); else await signInAnonymously(auth); } } catch (e) { console.error(e); } }; initAuth(); if (auth) { const unsubscribe = onAuthStateChanged(auth, setUser); return () => unsubscribe(); } }, []);
 
       // Online Multiplayer Sync
       useEffect(() => {
-        if (!roomId || !user || !db || gameState.mode !== 'online') return;
+        if (!roomId || !user || !db || (gameState.mode !== 'online' && gameState.mode !== 'lobby_wait')) return;
         const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'moonphase_rooms', roomId);
         const unsubscribe = onSnapshot(roomRef, (snap) => {
           if (!snap.exists()) return; const data = snap.data();
-          setGameState(prev => {
-            let nextState = { ...prev };
-            if (data.status === 'playing' && (nextState.mode !== 'online' || (data.round && data.round !== nextState.round))) {
-              lastProcessedMoveTs.current = 0; 
-              nextState = { ...nextState, mode: 'online', boardType: data.initialState.boardType || 'classic', ...data.initialState, turn: 1, comboScores: { 1: 0, 2: 0 }, finalBaseScores: null, isAnimating: false, gameOver: false, tallyState: 'none', selectedCardIdx: null, scoringQueue: [], currentScoringEvent: null, pendingResolveInfo: null, round: data.round || 1 };
-            } return nextState;
-          });
-          if (data.lastMove && data.lastMove.player !== myPlayerId && data.lastMove.ts > lastProcessedMoveTs.current) { lastProcessedMoveTs.current = data.lastMove.ts; playCard(data.lastMove.cardIdx, data.lastMove.boardIdx, true); }
+          setOnlineRoomData(data);
+          
+          if (data.status === 'playing') {
+            setGameState(prev => {
+              if (prev.mode !== 'online' || (data.round && data.round !== prev.round)) {
+                lastProcessedMoveTs.current = 0; 
+                return { ...prev, mode: 'online', boardType: data.initialState.boardType, ...data.initialState, turn: 1, finalBaseScores: null, isAnimating: false, gameOver: false, tallyState: 'none', selectedCardIdx: null, scoringQueue: [], currentScoringEvent: null, pendingResolveInfo: null, round: data.round || 1 };
+              }
+              return prev;
+            });
+            if (data.lastMove && data.lastMove.player !== myPlayerId && data.lastMove.ts > lastProcessedMoveTs.current) { lastProcessedMoveTs.current = data.lastMove.ts; playCard(data.lastMove.cardIdx, data.lastMove.boardIdx, true); }
+          }
         });
         return () => unsubscribe();
       }, [roomId, user, myPlayerId, gameState.mode]);
 
       const fetchLeaderboard = async () => {
-        if (!user || !db) return;
-        setIsLoadingLb(true);
+        if (!user || !db) return; setIsLoadingLb(true);
         try {
-          const q = collection(db, 'artifacts', appId, 'public', 'data', 'moonphase_leaderboard');
-          const snap = await getDocs(q);
-          let data = [];
-          snap.forEach(doc => data.push({ id: doc.id, ...doc.data() }));
+          const snap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'moonphase_leaderboard'));
+          let data = []; snap.forEach(doc => data.push({ id: doc.id, ...doc.data() }));
           data.sort((a, b) => { if (b.level !== a.level) return b.level - a.level; return b.totalScore - a.totalScore; });
           setLeaderboard(data.slice(0, 50));
-        } catch(e) { console.error(e); }
-        setIsLoadingLb(false);
+        } catch(e) { console.error(e); } setIsLoadingLb(false);
       };
-
       useEffect(() => { if (gameState.mode === 'leaderboard') fetchLeaderboard(); }, [gameState.mode]);
 
+      const getBoardPool = (playerCount) => { if (playerCount === 3) return BOARDS_3P; if (playerCount === 4) return BOARDS_4P; return BOARDS_2P; };
+      const getActualBoardId = (playerCount) => {
+        const pool = getBoardPool(playerCount);
+        if (boardTypePref !== 'random' && pool[boardTypePref]) return boardTypePref;
+        const choices = Object.keys(pool); return choices[Math.floor(Math.random() * choices.length)];
+      };
+
+      const generateInitData = (mode, totalPlayers, humanCount, boardId) => {
+        const boardConfig = getBoardPool(totalPlayers)[boardId];
+        const genDeck = () => { let d = []; for(let i=0; i<3; i++) d.push(0,1,2,3,4,5,6,7); return d.sort(()=>Math.random()-0.5); };
+        let decks = {}, hands = {}, scores = {}, playersInfo = {};
+        for (let i = 1; i <= totalPlayers; i++) {
+          let d = genDeck(); decks[i] = d.slice(3); hands[i] = d.slice(0,3); scores[i] = 0;
+          if (mode === 'challenge') { playersInfo[i] = { type: i === 1 ? 'human' : 'ai', difficulty: getChallengeAiDifficulty(1) }; }
+          else if (mode === 'local') { playersInfo[i] = { type: i <= humanCount ? 'human' : 'ai', difficulty: aiDifficulty }; }
+        }
+        return { boardType: boardId, board: Array(boardConfig.nodes.length).fill(null), totalPlayers, playersInfo, hands, decks, scores };
+      };
+
       const getChallengeAiDifficulty = (level) => { if (level <= 5) return 'low'; if (level <= 12) return 'medium'; return 'high'; };
-      const getActualBoardId = () => { if (boardTypePref !== 'random') return boardTypePref; const choices = Object.keys(BOARDS); return choices[Math.floor(Math.random() * choices.length)]; };
 
       const initGame = (mode) => {
-        audioManager.init();
-        let actualBoardId = getActualBoardId();
-        let newChallengeData = { currentLevel: 1, totalScore: 0, levels: [] };
-
+        audioManager.init(); let newChallengeData = { currentLevel: 1, totalScore: 0, levels: [] }; let totalP = localTotalPlayers; let humanC = localHumanCount;
         if (mode === 'challenge') {
-          const shuffledBoards = Object.keys(BOARDS).sort(() => Math.random() - 0.5);
-          newChallengeData = { currentLevel: 1, totalScore: 0, levels: shuffledBoards };
-          actualBoardId = shuffledBoards[0];
-          setAiDifficulty(getChallengeAiDifficulty(1));
+          totalP = 2; humanC = 1; const shuffledBoards = Object.keys(BOARDS_2P).sort(() => Math.random() - 0.5);
+          newChallengeData = { currentLevel: 1, totalScore: 0, levels: shuffledBoards }; setAiDifficulty(getChallengeAiDifficulty(1));
         }
-
-        const boardConfig = BOARDS[actualBoardId];
-        const generateDeck = () => { let deck = []; for(let i=0; i<3; i++) deck.push(0, 1, 2, 3, 4, 5, 6, 7); return deck.sort(() => Math.random() - 0.5); };
-        let deck1 = generateDeck(), deck2 = generateDeck();
-        setGameState(prev => ({
-          ...prev, mode, boardType: actualBoardId, board: Array(boardConfig.nodes.length).fill(null),
-          p1Deck: deck1.slice(3), p2Deck: deck2.slice(3), p1Hand: deck1.slice(0, 3), p2Hand: deck2.slice(0, 3),
-          turn: 1, comboScores: { 1: 0, 2: 0 }, finalBaseScores: null, isAnimating: false, gameOver: false, tallyState: 'none', selectedCardIdx: null, scoringQueue: [], currentScoringEvent: null, pendingResolveInfo: null,
-          challengeData: newChallengeData
-        }));
+        let bId = mode === 'challenge' ? newChallengeData.levels[0] : getActualBoardId(totalP);
+        const initData = generateInitData(mode, totalP, humanC, bId);
+        setGameState(prev => ({ ...prev, mode, ...initData, turn: 1, finalBaseScores: null, isAnimating: false, gameOver: false, tallyState: 'none', selectedCardIdx: null, scoringQueue: [], currentScoringEvent: null, pendingResolveInfo: null, challengeData: newChallengeData }));
       };
 
       const nextChallengeLevel = () => {
-        const nextLevel = gameState.challengeData.currentLevel + 1;
-        const accumulatedScore = gameState.challengeData.totalScore + gameState.comboScores[1];
-
-        if (nextLevel > 20) {
-          setGameState(prev => ({ ...prev, mode: 'name_input', challengeData: { ...prev.challengeData, totalScore: accumulatedScore } }));
-          return;
-        }
-
-        const nextBoardId = gameState.challengeData.levels[nextLevel - 1];
-        setAiDifficulty(getChallengeAiDifficulty(nextLevel));
-        const boardConfig = BOARDS[nextBoardId];
-        const generateDeck = () => { let deck = []; for(let i=0; i<3; i++) deck.push(0, 1, 2, 3, 4, 5, 6, 7); return deck.sort(() => Math.random() - 0.5); };
-        let deck1 = generateDeck(), deck2 = generateDeck();
-
-        setGameState(prev => ({
-          ...prev, boardType: nextBoardId, board: Array(boardConfig.nodes.length).fill(null),
-          p1Deck: deck1.slice(3), p2Deck: deck2.slice(3), p1Hand: deck1.slice(0, 3), p2Hand: deck2.slice(0, 3),
-          turn: 1, comboScores: { 1: 0, 2: 0 }, finalBaseScores: null, isAnimating: false, gameOver: false, tallyState: 'none',
-          challengeData: { ...prev.challengeData, currentLevel: nextLevel, totalScore: accumulatedScore }
-        }));
+        const nextLevel = gameState.challengeData.currentLevel + 1; const accScore = gameState.challengeData.totalScore + gameState.scores[1];
+        if (nextLevel > 20) { setGameState(prev => ({ ...prev, mode: 'name_input', challengeData: { ...prev.challengeData, totalScore: accScore } })); return; }
+        const nextBId = gameState.challengeData.levels[nextLevel - 1]; setAiDifficulty(getChallengeAiDifficulty(nextLevel));
+        const initData = generateInitData('challenge', 2, 1, nextBId);
+        initData.playersInfo[2].difficulty = getChallengeAiDifficulty(nextLevel);
+        setGameState(prev => ({ ...prev, ...initData, turn: 1, finalBaseScores: null, isAnimating: false, gameOver: false, tallyState: 'none', challengeData: { ...prev.challengeData, currentLevel: nextLevel, totalScore: accScore } }));
       };
 
       const submitChallengeScore = async () => {
         if (!user || !db || playerName.trim().length < 3) return;
+        try { await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'moonphase_leaderboard'), { name: playerName.toUpperCase(), level: gameState.challengeData.currentLevel, totalScore: gameState.challengeData.totalScore, uid: user.uid, ts: Date.now() }); setPlayerName(''); setGameState(prev => ({...prev, mode: 'leaderboard'})); } catch(e) { console.error(e); }
+      };
+
+      // --- Online Lobby Logic ---
+      const createRoom = async () => {
+        if (!user || !db) return alert("Firebase Offline");
+        const newRoomId = Math.floor(100000 + Math.random() * 900000).toString();
         try {
-          await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'moonphase_leaderboard'), {
-            name: playerName.toUpperCase(), level: gameState.challengeData.currentLevel, totalScore: gameState.challengeData.totalScore, uid: user.uid, ts: Date.now()
-          });
-          setPlayerName(''); setGameState(prev => ({...prev, mode: 'leaderboard'}));
-        } catch(e) { console.error(e); }
+          await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'moonphase_rooms', newRoomId), { status: 'waiting', createdAt: Date.now(), host: user.uid, maxPlayers: onlineMaxPlayers, players: { [user.uid]: { pId: 1, ready: true } }, round: 1 });
+          setRoomId(newRoomId); setMyPlayerId(1); setGameState(prev => ({ ...prev, mode: 'lobby_wait' }));
+        } catch (e) { console.error(e); }
+      };
+      
+      const joinRoom = async (code) => {
+        if (!user || !code || !db) return;
+        try {
+          const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'moonphase_rooms', code); const snap = await getDoc(roomRef);
+          if (snap.exists() && snap.data().status === 'waiting') {
+            const data = snap.data(); const currentPlayers = Object.keys(data.players).length;
+            if (currentPlayers >= data.maxPlayers) return alert("房間已滿");
+            let usedPids = Object.values(data.players).map(p=>p.pId); let newPid = 2; while(usedPids.includes(newPid)) newPid++;
+            await updateDoc(roomRef, { [`players.${user.uid}`]: { pId: newPid, ready: false } });
+            setRoomId(code); setMyPlayerId(newPid); setGameState(prev => ({ ...prev, mode: 'lobby_wait' }));
+          } else { alert("找不到房間，或遊戲已開始"); }
+        } catch (e) { console.error(e); }
+      };
+
+      const toggleReadyOnline = async () => {
+        if (!roomId || !user || !db || !onlineRoomData) return;
+        const isReady = onlineRoomData.players[user.uid].ready;
+        await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'moonphase_rooms', roomId), { [`players.${user.uid}.ready`]: !isReady });
+      };
+
+      const startOnlineGame = async () => {
+        if (!roomId || !user || !db || !onlineRoomData) return;
+        const humanCount = Object.keys(onlineRoomData.players).length; const totalP = onlineRoomData.maxPlayers;
+        let bId = getActualBoardId(totalP); const initData = generateInitData('online', totalP, humanCount, bId);
+        // Map joined humans to their pId
+        for(let i=1; i<=totalP; i++) initData.playersInfo[i] = { type: 'ai', difficulty: 'medium' };
+        Object.entries(onlineRoomData.players).forEach(([uid, p]) => { initData.playersInfo[p.pId] = { type: 'human', uid }; });
+        try { await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'moonphase_rooms', roomId), { status: 'playing', initialState: initData, round: (onlineRoomData.round || 1) + 1, lastMove: null }); } catch (e) { console.error(e); }
+      };
+
+      const handlePlayAgain = () => { if (gameState.mode === 'online' && myPlayerId === 1) { startOnlineGame(); } else if (gameState.mode !== 'online') { initGame(gameState.mode); } };
+
+      // --- Core Game Engine ---
+      const getNextTurn = (curr, hands) => {
+        let n = curr; let count = 0;
+        do { n = (n % gameState.totalPlayers) + 1; count++; } while (hands[n].length === 0 && count < gameState.totalPlayers);
+        return n;
       };
 
       const drawCard = (deck, hand) => (deck.length === 0 ? { newDeck: deck, finalHand: hand } : { newDeck: deck.slice(1), finalHand: [...hand, deck[0]] });
 
       const applyResolveTurn = (prevState, captured, newHand, turn) => {
         let newBoard = [...prevState.board]; captured.forEach(idx => { if (newBoard[idx]) newBoard[idx].player = turn; });
-        const isP1 = turn === 1; const currentDeck = isP1 ? prevState.p1Deck : prevState.p2Deck;
-        const { newDeck, finalHand } = drawCard(currentDeck, newHand);
-        const nextP1Hand = isP1 ? finalHand : prevState.p1Hand; const nextP2Hand = isP1 ? prevState.p2Hand : finalHand;
+        let newHands = {...prevState.hands}; let newDecks = {...prevState.decks};
+        const { newDeck, finalHand } = drawCard(prevState.decks[turn], newHand);
+        newHands[turn] = finalHand; newDecks[turn] = newDeck;
+        
         const isBoardFull = !newBoard.includes(null);
-        const gameOver = (nextP1Hand.length === 0 && nextP2Hand.length === 0) || isBoardFull;
-        let finalBaseScores = prevState.finalBaseScores; if (gameOver && !finalBaseScores) finalBaseScores = { 1: prevState.comboScores[1], 2: prevState.comboScores[2] };
-        return { board: newBoard, p1Deck: isP1 ? newDeck : prevState.p1Deck, p2Deck: isP1 ? prevState.p2Deck : newDeck, p1Hand: nextP1Hand, p2Hand: nextP2Hand, isAnimating: false, turn: turn === 1 ? 2 : 1, gameOver, finalBaseScores, tallyState: gameOver ? 'start' : 'none', scoringQueue: [], currentScoringEvent: null, pendingResolveInfo: null };
+        const allHandsEmpty = Object.values(newHands).every(h => h.length === 0);
+        const gameOver = isBoardFull || allHandsEmpty;
+        
+        let finalBaseScores = prevState.finalBaseScores; if (gameOver && !finalBaseScores) finalBaseScores = { ...prevState.scores };
+        const nextT = gameOver ? turn : getNextTurn(turn, newHands);
+
+        return { board: newBoard, decks: newDecks, hands: newHands, isAnimating: false, turn: nextT, gameOver, finalBaseScores, tallyState: gameOver ? 'start' : 'none', scoringQueue: [], currentScoringEvent: null, pendingResolveInfo: null };
       };
 
       const playCard = useCallback((cardIdx, boardIdx, isRemote = false) => {
         audioManager.init(); audioManager.playPlaceCard();
         setGameState(prev => {
           if (prev.isAnimating || prev.gameOver || prev.board[boardIdx] !== null) return prev;
-          const isP1 = prev.turn === 1; const hand = isP1 ? prev.p1Hand : prev.p2Hand;
-          if (hand[cardIdx] === undefined) return prev;
+          const hand = prev.hands[prev.turn]; if (hand[cardIdx] === undefined) return prev;
           
           const playedPhase = hand[cardIdx]; let newHand = [...hand]; newHand.splice(cardIdx, 1);
-          let newBoard = [...prev.board]; newBoard[boardIdx] = { phase: playedPhase, player: 0 };
+          let newBoard = [...prev.board]; newBoard[boardIdx] = { phase: playedPhase, player: 0 }; // 0 initially for animation
 
           if (!isRemote && prev.mode === 'online' && roomIdRef.current && db) {
-            const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'moonphase_rooms', roomIdRef.current);
-            updateDoc(roomRef, { lastMove: { cardIdx, boardIdx, player: prev.turn, ts: Date.now() } }).catch(console.error);
+            updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'moonphase_rooms', roomIdRef.current), { lastMove: { cardIdx, boardIdx, player: prev.turn, ts: Date.now() } }).catch(console.error);
           }
 
-          const edges = BOARDS[prev.boardType].edges; let events = []; let totalCaptured = new Set();
+          const edges = getBoardPool(prev.totalPlayers)[prev.boardType].edges; let events = []; let totalCaptured = new Set();
           getNeighbors(boardIdx, edges).forEach(n => {
             const neighbor = newBoard[n];
             if (neighbor) {
@@ -405,7 +391,7 @@
           const sequencesList = findSequences(newBoard, boardIdx, edges);
           sequencesList.forEach((seq, i) => { events.push({ id: `seq-${Date.now()}-${i}`, type: 'sequence', cells: seq, points: seq.length, name: '月相變化' }); seq.forEach(n => totalCaptured.add(n)); });
 
-          return { ...prev, board: newBoard, p1Hand: isP1 ? newHand : prev.p1Hand, p2Hand: isP1 ? prev.p2Hand : newHand, selectedCardIdx: null, isAnimating: true, scoringQueue: events.length > 0 ? events.slice(1) : [], currentScoringEvent: events.length > 0 ? events[0] : null, pendingResolveInfo: { captured: Array.from(totalCaptured), newHand, turn: prev.turn } };
+          return { ...prev, board: newBoard, hands: {...prev.hands, [prev.turn]: newHand}, selectedCardIdx: null, isAnimating: true, scoringQueue: events.length > 0 ? events.slice(1) : [], currentScoringEvent: events.length > 0 ? events[0] : null, pendingResolveInfo: { captured: Array.from(totalCaptured), newHand, turn: prev.turn } };
         });
       }, []);
 
@@ -414,7 +400,7 @@
         if (gameState.currentScoringEvent) {
           const type = gameState.currentScoringEvent.type;
           if (type === 'identical') audioManager.playIdentical(); else if (type === 'complementary') audioManager.playComplementary(); else if (type === 'sequence') audioManager.playSequence();
-          const timer = setTimeout(() => { setGameState(prev => { let newScores = { ...prev.comboScores }; newScores[prev.pendingResolveInfo.turn] += prev.currentScoringEvent.points; return { ...prev, comboScores: newScores, currentScoringEvent: null }; }); }, 1500); return () => clearTimeout(timer);
+          const timer = setTimeout(() => { setGameState(prev => { let newS = { ...prev.scores }; newS[prev.pendingResolveInfo.turn] += prev.currentScoringEvent.points; return { ...prev, scores: newS, currentScoringEvent: null }; }); }, 1500); return () => clearTimeout(timer);
         } else if (gameState.pendingResolveInfo) {
           if (gameState.scoringQueue.length > 0) {
             const gapTimer = setTimeout(() => { setGameState(prev => ({ ...prev, currentScoringEvent: prev.scoringQueue[0], scoringQueue: prev.scoringQueue.slice(1) })); }, 100); return () => clearTimeout(gapTimer);
@@ -425,31 +411,35 @@
       }, [gameState.currentScoringEvent, gameState.isAnimating, gameState.scoringQueue.length, gameState.pendingResolveInfo]);
 
       useEffect(() => {
-        if (gameState.tallyState === 'start') { setTimeout(() => setGameState(p => ({ ...p, tallyState: 'p1' })), 1200); } 
-        else if (gameState.tallyState === 'p1') { 
+        if (gameState.tallyState === 'start') { setTimeout(() => setGameState(p => ({ ...p, tallyState: 'tally_1' })), 1000); } 
+        else if (gameState.tallyState && gameState.tallyState.startsWith('tally_')) {
+          const pId = parseInt(gameState.tallyState.split('_')[1]);
           audioManager.playTone(880, 'sine', 0.1, 0.2); 
-          setGameState(p => { const p1Territory = p.board.filter(c => c && c.player === 1).length; return { ...p, comboScores: { ...p.comboScores, 1: p.comboScores[1] + p1Territory } }; });
-          setTimeout(() => setGameState(p => ({ ...p, tallyState: 'p2' })), 1500); 
-        } 
-        else if (gameState.tallyState === 'p2') { 
-          audioManager.playTone(880, 'sine', 0.1, 0.2); 
-          setGameState(p => { const p2Territory = p.board.filter(c => c && c.player === 2).length; return { ...p, comboScores: { ...p.comboScores, 2: p.comboScores[2] + p2Territory } }; });
-          setTimeout(() => { 
-            setGameState(p => ({ ...p, tallyState: 'done' })); 
-            if (gameState.mode === 'challenge' && (gameState.comboScores[1] + gameState.board.filter(c => c && c.player === 1).length) <= (gameState.comboScores[2] + gameState.board.filter(c => c && c.player === 2).length)) audioManager.playLose();
-            else audioManager.playWin(); 
-          }, 1500); 
+          setGameState(p => { const territory = p.board.filter(c => c && c.player === pId).length; return { ...p, scores: { ...p.scores, [pId]: p.scores[pId] + territory } }; });
+          setTimeout(() => {
+            const nextP = pId + 1;
+            if (nextP <= gameState.totalPlayers) setGameState(p => ({ ...p, tallyState: `tally_${nextP}` }));
+            else { 
+              setGameState(p => ({ ...p, tallyState: 'done' })); 
+              if (gameState.mode === 'challenge') { if(gameState.scores[1] + gameState.board.filter(c=>c&&c.player===1).length <= gameState.scores[2] + gameState.board.filter(c=>c&&c.player===2).length) audioManager.playLose(); else audioManager.playWin(); }
+              else { audioManager.playWin(); }
+            }
+          }, 1200);
         }
-      }, [gameState.tallyState]);
+      }, [gameState.tallyState, gameState.totalPlayers, gameState.mode]);
 
+      // --- AI Logic ---
       useEffect(() => {
-        if ((gameState.mode === 'single' || gameState.mode === 'challenge') && gameState.turn === 2 && !gameState.isAnimating && !gameState.gameOver) {
+        if (gameState.gameOver || gameState.isAnimating || gameState.mode === 'menu') return;
+        const currentP = gameState.playersInfo[gameState.turn];
+        if (currentP && currentP.type === 'ai') {
           const timer = setTimeout(() => {
-            const edges = BOARDS[gameState.boardType].edges;
+            const edges = getBoardPool(gameState.totalPlayers)[gameState.boardType].edges;
             const emptyCells = gameState.board.map((c, i) => c === null ? i : -1).filter(i => i !== -1);
-            if (gameState.p2Hand.length > 0 && emptyCells.length > 0) {
+            const myHand = gameState.hands[gameState.turn];
+            if (myHand && myHand.length > 0 && emptyCells.length > 0) {
               let allMoves = [];
-              gameState.p2Hand.forEach((phase, cardIdx) => {
+              myHand.forEach((phase, cardIdx) => {
                 emptyCells.forEach(boardIdx => {
                   let simBoard = [...gameState.board]; simBoard[boardIdx] = { phase, player: 0 };
                   let simCapture = new Set(); let comboPts = 0;
@@ -460,33 +450,40 @@
                       else if (isMatch(phase, neighbor.phase)) { simCapture.add(boardIdx); simCapture.add(n); comboPts += 2; }
                     }
                   });
-                  const seqCellsList = findSequences(simBoard, boardIdx, edges);
-                  if (seqCellsList.length > 0) { seqCellsList.forEach(seqCells => { seqCells.forEach(n => simCapture.add(n)); comboPts += seqCells.length; }); }
-                  let pts = comboPts; simCapture.forEach(idx => { if (gameState.board[idx] && gameState.board[idx].player === 1) pts += 1.5; });
+                  findSequences(simBoard, boardIdx, edges).forEach(seqCells => { seqCells.forEach(n => simCapture.add(n)); comboPts += seqCells.length; });
+                  let pts = comboPts; simCapture.forEach(idx => { if (gameState.board[idx] && gameState.board[idx].player !== gameState.turn) pts += 1.5; });
                   allMoves.push({ cardIdx, boardIdx, score: pts });
                 });
               });
 
               if (allMoves.length > 0) {
-                let selectedMove = null;
-                if (aiDifficulty === 'low') { selectedMove = allMoves[Math.floor(Math.random() * allMoves.length)]; } 
-                else if (aiDifficulty === 'medium') { if (Math.random() < 0.5) { allMoves.sort((a, b) => b.score - a.score); const bestScore = allMoves[0].score; const bestMoves = allMoves.filter(m => m.score === bestScore); selectedMove = bestMoves[Math.floor(Math.random() * bestMoves.length)]; } else { selectedMove = allMoves[Math.floor(Math.random() * allMoves.length)]; } } 
-                else { allMoves.sort((a, b) => b.score - a.score); const bestScore = allMoves[0].score; const bestMoves = allMoves.filter(m => m.score === bestScore); selectedMove = bestMoves[Math.floor(Math.random() * bestMoves.length)]; }
+                let selectedMove = null; const diff = currentP.difficulty;
+                if (diff === 'low') { selectedMove = allMoves[Math.floor(Math.random() * allMoves.length)]; } 
+                else if (diff === 'medium') { if (Math.random() < 0.5) { allMoves.sort((a, b) => b.score - a.score); const bests = allMoves.filter(m => m.score === allMoves[0].score); selectedMove = bests[Math.floor(Math.random() * bests.length)]; } else { selectedMove = allMoves[Math.floor(Math.random() * allMoves.length)]; } } 
+                else { allMoves.sort((a, b) => b.score - a.score); const bests = allMoves.filter(m => m.score === allMoves[0].score); selectedMove = bests[Math.floor(Math.random() * bests.length)]; }
                 if (selectedMove) playCard(selectedMove.cardIdx, selectedMove.boardIdx);
               }
             }
           }, 1000); return () => clearTimeout(timer);
         }
-      }, [gameState.turn, gameState.mode, gameState.isAnimating, gameState.gameOver, gameState.board, gameState.p2Hand, gameState.boardType, playCard, aiDifficulty]); 
+      }, [gameState.turn, gameState.mode, gameState.isAnimating, gameState.gameOver, gameState.board, gameState.hands, gameState.boardType, playCard, gameState.playersInfo, gameState.totalPlayers]); 
 
-      const getPlayerLabel = (playerId) => {
-        let label = '';
-        if (gameState.mode === 'single' || gameState.mode === 'challenge') { label = playerId === 1 ? '玩家 (你)' : '電腦 (AI)'; if (playerId === 2) { if (aiDifficulty === 'low') label += ' [低]'; else if (aiDifficulty === 'medium') label += ' [中]'; else label += ' [高]'; } return label; }
-        if (gameState.mode === 'online') return playerId === myPlayerId ? `玩家 ${playerId} (你)` : `玩家 ${playerId} (對手)`; return `玩家 ${playerId}`;
+      // --- Rendering Helpers ---
+      const P_COLORS = {
+        1: { base: 'indigo', hex: '99,102,241', text: 'text-indigo-300', bgText: 'text-indigo-100', border: 'border-indigo-500', ring: 'ring-indigo-400', bg: 'bg-indigo-900', shadow: 'rgba(99,102,241,0.5)' },
+        2: { base: 'rose', hex: '244,63,94', text: 'text-rose-300', bgText: 'text-rose-100', border: 'border-rose-500', ring: 'ring-rose-400', bg: 'bg-rose-900', shadow: 'rgba(244,63,94,0.5)' },
+        3: { base: 'emerald', hex: '52,211,153', text: 'text-emerald-300', bgText: 'text-emerald-100', border: 'border-emerald-500', ring: 'ring-emerald-400', bg: 'bg-emerald-900', shadow: 'rgba(52,211,153,0.5)' },
+        4: { base: 'amber', hex: '251,191,36', text: 'text-amber-300', bgText: 'text-amber-100', border: 'border-amber-500', ring: 'ring-amber-400', bg: 'bg-amber-900', shadow: 'rgba(251,191,36,0.5)' }
       };
 
-      let bottomPlayer = 1, topPlayer = 2;
-      if (gameState.mode === 'online') { bottomPlayer = myPlayerId; topPlayer = myPlayerId === 1 ? 2 : 1; }
+      const getPlayerLabel = (pId) => {
+        let label = `玩家 ${pId}`;
+        const pInfo = gameState.playersInfo[pId];
+        if (pInfo && pInfo.type === 'ai') { label = `電腦${pId}`; if(pInfo.difficulty === 'low') label+='[低]'; else if(pInfo.difficulty === 'high') label+='[高]'; else label+='[中]'; }
+        else if (gameState.mode === 'online' && pId === myPlayerId) label += ' (你)';
+        else if (gameState.mode === 'local' || gameState.mode === 'challenge') { if(pId === 1) label+='(你)'; }
+        return label;
+      };
 
       const wrapperClass = `font-sans text-slate-100 selection:bg-indigo-500/30 transition-all duration-300 ${isPseudoFs ? 'fixed inset-0 z-[9999] bg-slate-950 w-screen h-[100dvh]' : 'w-full h-[100dvh] relative'}`;
       const FullscreenIcon = (nativeFs || isPseudoFs) ? Minimize : Maximize;
@@ -495,42 +492,53 @@
       const VolumeControl = () => (
         <div className="flex items-center space-x-2 bg-slate-800/60 backdrop-blur-md rounded-full px-3 py-1.5 border border-white/10 hover:border-white/30 transition-all">
           <button onClick={toggleMute} className="text-indigo-300 hover:text-white transition-colors flex-shrink-0"><VolumeIcon className="w-5 h-5" /></button>
-          <input type="range" min="0" max="1" step="0.01" value={isMuted ? 0 : volume} onChange={handleVolumeChange} className="w-16 sm:w-24 h-1.5 bg-slate-900 rounded-lg appearance-none cursor-pointer accent-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400" />
+          <input type="range" min="0" max="1" step="0.01" value={isMuted ? 0 : volume} onChange={handleVolumeChange} className="w-16 sm:w-24 h-1.5 bg-slate-900 rounded-lg appearance-none cursor-pointer accent-indigo-400 outline-none" />
         </div>
       );
 
       const renderCard = (phase, index, player, isBoard = false, boardIdx = -1) => {
         if (phase === undefined || phase === null) return null;
         const isNeutral = !isBoard || player === 0;
-        const isTallyingP1 = gameState.tallyState === 'p1' && isBoard && player === 1;
-        const isTallyingP2 = gameState.tallyState === 'p2' && isBoard && player === 2;
-        const isDimmed = isBoard && (gameState.tallyState === 'p1' || gameState.tallyState === 'p2') && !isTallyingP1 && !isTallyingP2;
+        const isTallying = gameState.tallyState === `tally_${player}` && isBoard;
+        const isDimmed = isBoard && gameState.tallyState.startsWith('tally_') && !isTallying;
         const isSelected = !isBoard && gameState.selectedCardIdx === index && player === gameState.turn;
         const isScoringPulse = isBoard && gameState.currentScoringEvent?.cells.includes(boardIdx);
+        
         let isHidden = false;
-        if (!isBoard && index >= 0 && !gameState.gameOver) { if (gameState.mode === 'single' || gameState.mode === 'challenge') isHidden = player === 2; else if (gameState.mode === 'multi') isHidden = player !== gameState.turn; else if (gameState.mode === 'online') isHidden = player !== myPlayerId; }
+        if (!isBoard && index >= 0 && !gameState.gameOver) { 
+          const pInfo = gameState.playersInfo[player];
+          if (pInfo && pInfo.type === 'ai') isHidden = true;
+          else if (gameState.mode === 'online' && player !== myPlayerId) isHidden = true; 
+        }
 
-        let colorClasses = isNeutral ? (isBoard ? 'bg-slate-700/60 border-slate-500 ring-1 ring-slate-500 hover:border-slate-400' : 'bg-gradient-to-br from-slate-700/80 to-slate-800 border-slate-500 shadow-lg hover:border-slate-400') : player === 1 ? 'bg-indigo-900/90 border-indigo-400 ring-2 ring-indigo-400 shadow-[0_0_15px_rgba(99,102,241,0.5)]' : 'bg-rose-900/90 border-rose-400 ring-2 ring-rose-400 shadow-[0_0_15px_rgba(244,63,94,0.5)]';
+        let cInfo = P_COLORS[player] || P_COLORS[1];
+        let colorClasses = isNeutral ? (isBoard ? 'bg-slate-700/60 border-slate-500 ring-1 ring-slate-500' : 'bg-gradient-to-br from-slate-700/80 to-slate-800 border-slate-500 shadow-lg') : `${cInfo.bg}/90 ${cInfo.border} ring-2 ${cInfo.ring} shadow-[0_0_15px_${cInfo.shadow}]`;
         if (isHidden) colorClasses = 'bg-slate-800 border-slate-600 shadow-inner';
+        
         let animClasses = '';
-        if (isScoringPulse) animClasses = 'animate-score-pulse ring-[3px] ring-yellow-400 z-50'; else if (isTallyingP1) animClasses = 'scale-110 shadow-[0_0_40px_rgba(129,140,248,1)] z-20 ring-[3px] ring-indigo-300 transition-all duration-300'; else if (isTallyingP2) animClasses = 'scale-110 shadow-[0_0_40px_rgba(251,113,133,1)] z-20 ring-[3px] ring-rose-300 transition-all duration-300'; else if (isDimmed) animClasses = 'opacity-30 grayscale transition-all duration-500';
+        if (isScoringPulse) animClasses = 'animate-score-pulse ring-[3px] ring-yellow-400 z-50'; 
+        else if (isTallying) animClasses = `scale-110 shadow-[0_0_40px_${cInfo.shadow}] z-20 ring-[3px] ${cInfo.ring} transition-all duration-300`; 
+        else if (isDimmed) animClasses = 'opacity-30 grayscale transition-all duration-500';
 
         return (
-          <div key={isBoard ? `board-${boardIdx}` : `hand-${player}-${index}`} onClick={(e) => { e.stopPropagation(); const isMyTurn = (gameState.mode === 'online') ? (gameState.turn === myPlayerId && player === myPlayerId) : (player === gameState.turn); if (!isBoard && isMyTurn && !gameState.isAnimating && gameState.tallyState === 'none') { setGameState(prev => ({ ...prev, selectedCardIdx: prev.selectedCardIdx === index ? null : index })); } }}
+          <div key={isBoard ? `board-${boardIdx}` : `hand-${player}-${index}`} onClick={(e) => { e.stopPropagation(); const canSelect = (gameState.mode === 'online') ? (gameState.turn === myPlayerId && player === myPlayerId) : (player === gameState.turn && gameState.playersInfo[player].type !== 'ai'); if (!isBoard && canSelect && !gameState.isAnimating && gameState.tallyState === 'none') { setGameState(prev => ({ ...prev, selectedCardIdx: prev.selectedCardIdx === index ? null : index })); } }}
             className={`relative flex flex-col items-center justify-center rounded-lg sm:rounded-xl md:rounded-2xl transition-all duration-300 cursor-pointer border ${colorClasses} ${isSelected ? 'ring-2 ring-yellow-400 -translate-y-2 shadow-[0_10px_20px_rgba(250,204,21,0.4)]' : ''} ${animClasses} ${isBoard ? 'absolute inset-0 w-full h-full' : 'card-item shrink-0'}`}>
-            {!isHidden ? ( <React.Fragment><MoonSvg phase={phase} className="w-[50%] h-[50%] mb-[2%]" /><span className={`card-text font-medium tracking-wide ${isNeutral ? 'text-slate-300' : player === 1 ? 'text-indigo-200' : 'text-rose-200'}`}>{PHASES[phase].name}</span></React.Fragment> ) : ( <div className="w-[60%] h-[60%] rounded-full bg-slate-700/50 border border-slate-600/50 flex items-center justify-center"><span className="card-text text-slate-400 opacity-50 font-bold">?</span></div> )}
+            {!isHidden ? ( <React.Fragment><MoonSvg phase={phase} className="w-[50%] h-[50%] mb-[2%]" /><span className={`card-text font-medium tracking-wide ${isNeutral ? 'text-slate-300' : cInfo.bgText}`}>{PHASES[phase].name}</span></React.Fragment> ) : ( <div className="w-[60%] h-[60%] rounded-full bg-slate-700/50 border border-slate-600/50 flex items-center justify-center"><span className="card-text text-slate-400 opacity-50 font-bold">?</span></div> )}
           </div>
         );
       };
 
-      const getPlayerContainerStyle = (player) => { if (gameState.turn !== player || gameState.tallyState !== 'none') return 'bg-transparent border border-transparent'; return player === 1 ? 'bg-indigo-900/20 border border-indigo-500/30 shadow-[0_0_20px_rgba(99,102,241,0.1)]' : 'bg-rose-900/20 border border-rose-500/30 shadow-[0_0_20px_rgba(244,63,94,0.1)]'; };
+      const getPlayerContainerStyle = (pId) => {
+        const cInfo = P_COLORS[pId];
+        if (gameState.turn !== pId || gameState.tallyState !== 'none') return 'bg-transparent border border-transparent';
+        return `${cInfo.bg}/20 border border-${cInfo.base}-500/30 shadow-[0_0_20px_${cInfo.shadow}]`;
+      };
 
-      // === Non-Playing Views (Menu, Leaderboard, Name Input) ===
-      if (['menu', 'lobby', 'waiting', 'tutorial', 'name_input', 'leaderboard'].includes(gameState.mode)) {
+      // === Non-Playing Views ===
+      if (['menu', 'lobby', 'lobby_wait', 'name_input', 'leaderboard', 'local_setup'].includes(gameState.mode)) {
         return (
           <div className={`${wrapperClass} flex flex-col items-center justify-center overflow-y-auto`}>
             <StarryBackground />
-            
             <div className="absolute top-4 right-4 flex space-x-2 items-center z-50">
               <VolumeControl />
               <button onClick={toggleFullscreen} className="p-2 text-indigo-300 hover:text-white bg-slate-800/50 rounded-full border border-white/10 transition-colors flex-shrink-0"><FullscreenIcon className="w-5 h-5" /></button>
@@ -541,49 +549,26 @@
                 <Trophy className="w-16 h-16 text-yellow-400 mb-2 drop-shadow-[0_0_15px_rgba(250,204,21,0.5)]" />
                 <h2 className="text-3xl font-black mb-1 text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-yellow-500">挑戰結束！記錄你的傳奇</h2>
                 <p className="text-indigo-200 mb-6">抵達層數：第 {gameState.challengeData.currentLevel} 層 &nbsp;|&nbsp; 總積分：{gameState.challengeData.totalScore}</p>
-                
-                <div className="w-full max-w-sm mx-auto bg-slate-950 p-4 rounded-xl border border-indigo-500/30 mb-2">
-                  <div className="h-12 flex items-center justify-center text-3xl font-[Rubik] tracking-[0.3em] font-bold text-white">
-                    {playerName || <span className="text-slate-600 animate-pulse">請輸入代號</span>}
-                  </div>
-                </div>
-                <p className="text-xs text-slate-400 mb-2">(限 3 到 8 個英文字母)</p>
-
-                <VirtualKeyboard 
-                  onKeyPress={(key) => setPlayerName(p => p.length < 8 ? p + key : p)}
-                  onDelete={() => setPlayerName(p => p.slice(0, -1))}
-                  onSubmit={submitChallengeScore}
-                  disabledSubmit={playerName.length < 3}
-                />
+                <div className="w-full max-w-sm mx-auto bg-slate-950 p-4 rounded-xl border border-indigo-500/30 mb-2"><div className="h-12 flex items-center justify-center text-3xl font-[Rubik] tracking-[0.3em] font-bold text-white">{playerName || <span className="text-slate-600 animate-pulse">請輸入代號</span>}</div></div>
+                <VirtualKeyboard onKeyPress={(k) => setPlayerName(p => p.length < 8 ? p + k : p)} onDelete={() => setPlayerName(p => p.slice(0, -1))} onSubmit={submitChallengeScore} disabledSubmit={playerName.length < 3} />
                 <button onClick={() => setGameState(prev => ({...prev, mode: 'menu'}))} className="mt-6 text-slate-400 hover:text-white underline text-sm">不儲存，直接回首頁</button>
               </div>
             )}
 
             {gameState.mode === 'leaderboard' && (
               <div className="z-10 flex flex-col items-center p-6 sm:p-8 bg-slate-900/80 backdrop-blur-xl rounded-3xl border border-indigo-500/30 shadow-2xl relative w-full max-w-3xl my-10 mx-4 custom-scroll overflow-y-auto max-h-[80vh]">
-                <h2 className="text-3xl sm:text-4xl font-black mb-6 text-center text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-yellow-500 flex items-center gap-3"><Trophy className="w-8 h-8"/> 挑戰模式全球排行榜</h2>
-                
+                <h2 className="text-3xl sm:text-4xl font-black mb-6 text-center text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-yellow-500 flex items-center gap-3"><Trophy className="w-8 h-8"/> 挑戰排行榜</h2>
                 {isLoadingLb ? ( <div className="text-indigo-300 animate-pulse py-10">載入排行榜資料中...</div> ) : (
                   <div className="w-full bg-slate-950/50 rounded-2xl border border-slate-700 overflow-hidden">
                     <table className="w-full text-left border-collapse">
-                      <thead>
-                        <tr className="bg-slate-800 text-slate-300 text-sm sm:text-base border-b border-slate-700">
-                          <th className="p-3 sm:p-4 text-center w-16">排名</th>
-                          <th className="p-3 sm:p-4">挑戰者代號</th>
-                          <th className="p-3 sm:p-4 text-center">最高層數</th>
-                          <th className="p-3 sm:p-4 text-right">總積分</th>
-                        </tr>
-                      </thead>
+                      <thead><tr className="bg-slate-800 text-slate-300 text-sm sm:text-base border-b border-slate-700"><th className="p-3 text-center w-16">排名</th><th className="p-3">代號</th><th className="p-3 text-center">層數</th><th className="p-3 text-right">積分</th></tr></thead>
                       <tbody>
-                        {leaderboard.length === 0 ? ( <tr><td colSpan="4" className="text-center p-6 text-slate-500">目前尚無挑戰紀錄，成為第一位挑戰者吧！</td></tr> ) : (
+                        {leaderboard.length === 0 ? ( <tr><td colSpan="4" className="text-center p-6 text-slate-500">目前尚無挑戰紀錄</td></tr> ) : (
                           leaderboard.map((entry, idx) => (
                             <tr key={entry.id} className={`border-b border-slate-800/50 hover:bg-slate-800/30 transition-colors ${idx < 3 ? 'font-bold' : ''}`}>
-                              <td className="p-3 sm:p-4 text-center">
-                                {idx === 0 ? <span className="text-2xl">🥇</span> : idx === 1 ? <span className="text-2xl">🥈</span> : idx === 2 ? <span className="text-2xl">🥉</span> : <span className="text-slate-400">{idx + 1}</span>}
-                              </td>
-                              <td className={`p-3 sm:p-4 font-[Rubik] tracking-wider ${idx === 0 ? 'text-yellow-300' : idx === 1 ? 'text-slate-300' : idx === 2 ? 'text-amber-600' : 'text-indigo-200'}`}>{entry.name}</td>
-                              <td className="p-3 sm:p-4 text-center text-emerald-400">第 {entry.level} 層</td>
-                              <td className="p-3 sm:p-4 text-right font-mono text-rose-300">{entry.totalScore}</td>
+                              <td className="p-3 text-center">{idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : idx + 1}</td>
+                              <td className={`p-3 font-[Rubik] tracking-wider ${idx === 0 ? 'text-yellow-300' : idx === 1 ? 'text-slate-300' : idx === 2 ? 'text-amber-600' : 'text-indigo-200'}`}>{entry.name}</td>
+                              <td className="p-3 text-center text-emerald-400">第 {entry.level} 層</td><td className="p-3 text-right font-mono text-rose-300">{entry.totalScore}</td>
                             </tr>
                           ))
                         )}
@@ -591,11 +576,7 @@
                     </table>
                   </div>
                 )}
-                
-                <div className="flex gap-4 mt-8 w-full sm:w-auto">
-                  <button onClick={() => initGame('challenge')} className="flex-1 sm:flex-none py-3 px-6 bg-yellow-600 hover:bg-yellow-500 text-white rounded-xl font-bold transition-all shadow-lg flex items-center justify-center gap-2"><Swords className="w-5 h-5"/> 立即挑戰</button>
-                  <button onClick={() => setGameState(prev => ({...prev, mode: 'menu'}))} className="flex-1 sm:flex-none py-3 px-6 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-bold transition-all flex items-center justify-center gap-2"><Home className="w-5 h-5"/> 回首頁</button>
-                </div>
+                <div className="flex gap-4 mt-8 w-full sm:w-auto"><button onClick={() => initGame('challenge')} className="flex-1 sm:flex-none py-3 px-6 bg-yellow-600 hover:bg-yellow-500 text-white rounded-xl font-bold transition-all shadow-lg flex items-center justify-center gap-2"><Swords className="w-5 h-5"/> 立即挑戰</button><button onClick={() => setGameState(prev => ({...prev, mode: 'menu'}))} className="flex-1 sm:flex-none py-3 px-6 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-bold transition-all flex items-center justify-center gap-2"><Home className="w-5 h-5"/> 回首頁</button></div>
               </div>
             )}
 
@@ -603,154 +584,208 @@
               <div className="z-10 flex flex-col items-center p-8 bg-slate-900/60 backdrop-blur-xl rounded-3xl border border-indigo-500/30 shadow-2xl relative w-full max-w-md my-10 mx-4">
                   <div className="flex items-center space-x-4 mb-6 mt-4"><MoonSvg phase={2} className="w-16 h-16" /><MoonSvg phase={6} className="w-16 h-16" /></div>
                   <h1 className="text-4xl md:text-5xl font-extrabold mb-2 tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-yellow-200 to-yellow-500 drop-shadow-lg text-center">月相陣地戰</h1>
-                  <p className="mb-6 text-indigo-200 text-lg text-center">配對連鎖，染上你的專屬星際色彩！</p>
+                  <p className="mb-6 text-indigo-200 text-lg text-center">四人爭霸，染上你的星際色彩！</p>
                   
                   <div className="w-full flex flex-col gap-3 mb-6">
-                    <button onClick={() => initGame('challenge')} className="group flex items-center justify-center space-x-3 w-full py-5 bg-gradient-to-r from-yellow-600 to-amber-600 hover:from-yellow-500 hover:to-amber-500 text-white rounded-xl font-black text-lg transition-all shadow-[0_0_20px_rgba(217,119,6,0.4)] border border-yellow-400/50">
-                      <Swords className="w-6 h-6 group-hover:scale-110 transition-transform" /><span>線上單人挑戰 (闖關模式)</span>
-                    </button>
-                    <button onClick={() => setGameState(prev => ({...prev, mode: 'leaderboard'}))} className="flex items-center justify-center space-x-2 w-full py-3 bg-slate-800 hover:bg-slate-700 text-yellow-300 border border-slate-600 rounded-xl font-bold transition-all">
-                      <ListIcon className="w-5 h-5" /><span>查看挑戰排行榜</span>
-                    </button>
+                    <button onClick={() => initGame('challenge')} className="group flex items-center justify-center space-x-3 w-full py-5 bg-gradient-to-r from-yellow-600 to-amber-600 hover:from-yellow-500 hover:to-amber-500 text-white rounded-xl font-black text-lg transition-all shadow-[0_0_20px_rgba(217,119,6,0.4)] border border-yellow-400/50"><Swords className="w-6 h-6 group-hover:scale-110 transition-transform" /><span>單人闖關挑戰</span></button>
+                    <button onClick={() => setGameState(prev => ({...prev, mode: 'leaderboard'}))} className="flex items-center justify-center space-x-2 w-full py-3 bg-slate-800 hover:bg-slate-700 text-yellow-300 border border-slate-600 rounded-xl font-bold transition-all">查閱排行榜</button>
                   </div>
-
-                  <div className="w-full bg-slate-800/50 border border-slate-600/50 rounded-xl p-4 mb-6 flex flex-col space-y-4">
-                    <div>
-                      <label className="flex items-center space-x-2 text-sm font-bold text-slate-300 mb-2"><Settings2 className="w-4 h-4" /> <span>自由模式棋盤 (共 20 種)</span></label>
-                      <select value={boardTypePref} onChange={e => setBoardTypePref(e.target.value)} className="w-full bg-slate-900 border border-slate-500 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500">
-                        <option value="random">🎲 隨機抽取 (20種隨機變換)</option>
-                        <option disabled className="text-slate-500">--- 基礎經典圖形 ---</option>
-                        <option value="classic">🔲 九宮格 (9格)</option>
-                        <option value="owl">🦉 貓頭鷹型 (12格)</option>
-                        <option value="tree">🌲 拱門神木 (13格)</option>
-                        <option value="nova">✨ 宇宙新星 (13格)</option>
-                        <option value="hexagon">⬡ 蜂巢核心 (7格)</option>
-                        <option value="pyramid">🔺 星際金字塔 (10格)</option>
-                        <option value="cross">✛ 十字星芒 (13格)</option>
-                        <option value="diamond">♦️ 八面體晶石 (9格)</option>
-                        <option value="hourglass">⏳ 時空沙漏 (11格)</option>
-                        <option value="orbital">🪐 星空軌道環 (10格)</option>
-                        <option disabled className="text-slate-500">--- 究極不對稱地圖 ---</option>
-                        <option value="meteor">☄️ 流星拖尾 (10格)</option>
-                        <option value="dipper">🥄 北斗七星 (7格)</option>
-                        <option value="crescent">🌙 弦月灣岸 (8格)</option>
-                        <option value="flag">🏴 陣地殘旗 (10格)</option>
-                        <option value="lightning">⚡ 狂暴落雷 (10格)</option>
-                        <option value="mountain">⛰️ 斷崖孤山 (11格)</option>
-                        <option value="satellite">🛰️ 衛星通訊 (9格)</option>
-                        <option value="vortex">🌀 單向旋渦 (11格)</option>
-                        <option value="nebula">🌌 星雲裂隙 (12格)</option>
-                        <option value="comet">☄️ 雙尾彗星 (10格)</option>
-                      </select>
-                    </div>
-                    <div className="pt-2 border-t border-slate-600/50">
-                      <label className="flex items-center space-x-2 text-sm font-bold text-slate-300 mb-2"><Brain className="w-4 h-4" /> <span>自由單人 AI 難度</span></label>
-                      <select value={aiDifficulty} onChange={e => setAiDifficulty(e.target.value)} className="w-full bg-slate-900 border border-slate-500 text-white rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500">
-                        <option value="low">🟢 低 (新手友善，隨機出牌)</option>
-                        <option value="medium">🟡 中 (有時聰明，有時隨機)</option>
-                        <option value="high">🔴 高 (全力以赴，最佳策略)</option>
-                      </select>
-                    </div>
-                  </div>
-
                   <div className="flex flex-col space-y-3 w-full">
-                    <button onClick={() => initGame('single')} className="flex items-center justify-center space-x-3 w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold transition-all"><User className="w-5 h-5" /><span>自由單人 (對戰電腦)</span></button>
-                    <button onClick={() => initGame('multi')} className="flex items-center justify-center space-x-3 w-full py-3 bg-rose-800 hover:bg-rose-700 text-white border border-rose-500/50 rounded-xl font-bold transition-all"><Users className="w-5 h-5" /><span>雙人遊戲 (本地同機)</span></button>
-                    <button onClick={() => { audioManager.init(); setGameState(prev => ({...prev, mode: 'lobby'})); }} className="flex items-center justify-center space-x-3 w-full py-3 bg-emerald-700 hover:bg-emerald-600 text-white border border-emerald-500/50 rounded-xl font-bold transition-all"><Globe className="w-5 h-5" /><span>連線對戰 (線上雙人)</span></button>
+                    <button onClick={() => setGameState(prev => ({...prev, mode: 'local_setup'}))} className="flex items-center justify-center space-x-3 w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold transition-all shadow-lg"><Users className="w-6 h-6" /><span>自由對戰 (單/多人同機)</span></button>
+                    <button onClick={() => { audioManager.init(); setGameState(prev => ({...prev, mode: 'lobby'})); }} className="flex items-center justify-center space-x-3 w-full py-4 bg-emerald-700 hover:bg-emerald-600 text-white border border-emerald-500/50 rounded-xl font-bold transition-all"><Globe className="w-6 h-6" /><span>線上房間連線對戰</span></button>
                   </div>
               </div>
             )}
-            {/* Lobby / Waiting Screens omitted for brevity (they remain identical to previous version but are wrapped here) */}
+
+            {gameState.mode === 'local_setup' && (
+              <div className="z-10 flex flex-col items-center p-8 bg-slate-900/60 backdrop-blur-xl rounded-3xl border border-indigo-500/30 shadow-2xl relative w-full max-w-md my-10 mx-4">
+                <h2 className="text-3xl font-black mb-6 text-white text-center">自由對戰設定</h2>
+                <div className="w-full bg-slate-800/50 border border-slate-600/50 rounded-xl p-5 mb-6 flex flex-col space-y-5">
+                  <div>
+                    <label className="block text-sm font-bold text-slate-300 mb-2">參戰總人數 (2~4人)</label>
+                    <div className="flex gap-2">
+                      {[2,3,4].map(n => <button key={n} onClick={() => {setLocalTotalPlayers(n); if(localHumanCount>n) setLocalHumanCount(n); setBoardTypePref('random');}} className={`flex-1 py-2 rounded-lg font-bold border ${localTotalPlayers===n ? 'bg-indigo-600 text-white border-indigo-400' : 'bg-slate-700 text-slate-300 border-slate-600'}`}>{n} 人</button>)}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-slate-300 mb-2">真實玩家數量 (不足補電腦)</label>
+                    <div className="flex gap-2">
+                      {Array.from({length: localTotalPlayers}, (_,i)=>i+1).map(n => <button key={n} onClick={() => setLocalHumanCount(n)} className={`flex-1 py-2 rounded-lg font-bold border ${localHumanCount===n ? 'bg-rose-600 text-white border-rose-400' : 'bg-slate-700 text-slate-300 border-slate-600'}`}>{n} 人</button>)}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-slate-300 mb-2">電腦難度</label>
+                    <select value={aiDifficulty} onChange={e => setAiDifficulty(e.target.value)} className="w-full bg-slate-900 border border-slate-500 text-white rounded-lg px-3 py-2 outline-none"><option value="low">低</option><option value="medium">中</option><option value="high">高</option></select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-slate-300 mb-2">選擇棋盤 (限此人數)</label>
+                    <select value={boardTypePref} onChange={e => setBoardTypePref(e.target.value)} className="w-full bg-slate-900 border border-slate-500 text-white rounded-lg px-3 py-2 outline-none">
+                      <option value="random">🎲 隨機抽取 ({localTotalPlayers===2?'10':5}種)</option>
+                      {Object.entries(getBoardPool(localTotalPlayers)).map(([k, v]) => <option key={k} value={k}>{v.name}</option>)}
+                    </select>
+                  </div>
+                </div>
+                <div className="flex w-full gap-3"><button onClick={() => setGameState(prev => ({...prev, mode: 'menu'}))} className="flex-1 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-bold">返回</button><button onClick={() => initGame('local')} className="flex-[2] py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold shadow-lg">開始對戰</button></div>
+              </div>
+            )}
+
+            {gameState.mode === 'lobby' && (
+              <div className="z-10 flex flex-col items-center p-8 bg-slate-900/60 backdrop-blur-xl rounded-3xl border border-indigo-500/30 shadow-2xl relative w-full max-w-md my-10 mx-4">
+                <h1 className="text-3xl font-extrabold mb-8 text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 to-emerald-500 drop-shadow-lg text-center mt-4">線上連線大廳</h1>
+                {!user ? ( <p className="text-indigo-200 animate-pulse">連線伺服器中...</p> ) : (
+                   <div className="w-full flex flex-col space-y-6">
+                     <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-600">
+                       <label className="block text-sm font-bold text-slate-300 mb-2">建立房間 - 設定總人數</label>
+                       <div className="flex gap-2 mb-4">
+                         {[2,3,4].map(n => <button key={n} onClick={() => setOnlineMaxPlayers(n)} className={`flex-1 py-2 rounded-lg font-bold border ${onlineMaxPlayers===n ? 'bg-emerald-600 text-white border-emerald-400' : 'bg-slate-700 text-slate-300 border-slate-600'}`}>{n} 人</button>)}
+                       </div>
+                       <button onClick={createRoom} className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold shadow-lg">建立新房間</button>
+                     </div>
+                     <div className="relative flex items-center py-2"><div className="flex-grow border-t border-slate-600"></div><span className="flex-shrink-0 mx-4 text-slate-400">或加入房間</span><div className="flex-grow border-t border-slate-600"></div></div>
+                     <div className="flex flex-col space-y-2">
+                       <input type="text" maxLength="6" placeholder="輸入六位數字代碼" value={joinCode} onChange={(e) => setJoinCode(e.target.value.replace(/\D/g, ''))} className="w-full bg-slate-800 border border-slate-600 rounded-xl py-3 px-4 text-center text-2xl font-mono tracking-[0.2em] text-white outline-none focus:border-emerald-400" />
+                       <button onClick={() => joinRoom(joinCode)} className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold">加入</button>
+                     </div>
+                   </div>
+                )}
+                <button onClick={() => setGameState(prev => ({ ...prev, mode: 'menu' }))} className="mt-8 text-slate-400 hover:text-white flex items-center space-x-2"><Home className="w-4 h-4" /> <span>返回首頁</span></button>
+              </div>
+            )}
+
+            {gameState.mode === 'lobby_wait' && onlineRoomData && (
+              <div className="z-10 flex flex-col items-center p-8 bg-slate-900/60 backdrop-blur-xl rounded-3xl border border-emerald-500/30 shadow-2xl relative w-full max-w-md my-10 mx-4">
+                <h2 className="text-xl font-bold text-slate-300">房間代碼</h2>
+                <div className="text-6xl font-black font-mono tracking-widest text-emerald-400 mb-6 drop-shadow-[0_0_15px_rgba(52,211,153,0.5)] select-all">{roomId}</div>
+                <div className="w-full bg-slate-800 p-4 rounded-xl border border-slate-600 mb-6">
+                  <h3 className="text-center font-bold text-slate-400 mb-4 border-b border-slate-700 pb-2">玩家列表 ({Object.keys(onlineRoomData.players).length}/{onlineRoomData.maxPlayers})</h3>
+                  <div className="flex flex-col gap-2">
+                    {Array.from({length: onlineRoomData.maxPlayers}, (_,i)=>i+1).map(pId => {
+                      const pEntry = Object.entries(onlineRoomData.players).find(([u,p])=>p.pId===pId);
+                      const isMe = pEntry && pEntry[0] === user.uid;
+                      const isHost = pEntry && pEntry[0] === onlineRoomData.host;
+                      const cInfo = P_COLORS[pId];
+                      return (
+                        <div key={pId} className={`flex justify-between items-center p-3 rounded-lg border ${pEntry ? `bg-${cInfo.base}-900/20 border-${cInfo.base}-500/50` : 'bg-slate-900/50 border-slate-700 border-dashed'}`}>
+                          <span className={`font-bold flex items-center gap-2 ${pEntry ? cInfo.text : 'text-slate-600'}`}>
+                            P{pId} {pEntry ? (isMe?'(你)':'已加入') : '(空缺 - 將補 AI)'} {isHost && '👑'}
+                          </span>
+                          {pEntry && (
+                            <span className={`text-sm font-bold flex items-center gap-1 ${pEntry[1].ready ? 'text-emerald-400':'text-amber-400'}`}>{pEntry[1].ready ? <><CheckCircle className="w-4 h-4"/>已準備</> : '準備中...'}</span>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+                
+                {onlineRoomData.host === user.uid ? (
+                  <button onClick={startOnlineGame} disabled={Object.values(onlineRoomData.players).some(p => !p.ready && p.pId !== 1)} className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 disabled:text-slate-400 text-white rounded-xl font-bold transition-all shadow-lg text-lg">
+                    {Object.values(onlineRoomData.players).some(p => !p.ready && p.pId !== 1) ? '等待其他人準備...' : '全員就緒，開始對戰！'}
+                  </button>
+                ) : (
+                  <button onClick={toggleReadyOnline} className={`w-full py-4 rounded-xl font-bold transition-all shadow-lg text-lg ${onlineRoomData.players[user.uid]?.ready ? 'bg-slate-600 text-slate-300' : 'bg-indigo-600 hover:bg-indigo-500 text-white'}`}>
+                    {onlineRoomData.players[user.uid]?.ready ? '取消準備' : '我準備好了！'}
+                  </button>
+                )}
+                <button onClick={() => setGameState(prev => ({ ...prev, mode: 'menu' }))} className="mt-6 text-slate-400 hover:text-white flex items-center space-x-2"><RotateCcw className="w-4 h-4" /> <span>離開房間</span></button>
+              </div>
+            )}
           </div>
         );
       }
 
-      const currentBoardConfig = BOARDS[gameState.boardType];
+      const currentBoardConfig = getBoardPool(gameState.totalPlayers)[gameState.boardType];
       let currentScoreTextClass = ''; let currentScoreNumClass = '';
       if (gameState.currentScoringEvent) {
         if (gameState.currentScoringEvent.type === 'identical') { currentScoreTextClass = 'score-identical'; currentScoreNumClass = 'score-num-identical'; }
         else if (gameState.currentScoringEvent.type === 'complementary') { currentScoreTextClass = 'score-complementary'; currentScoreNumClass = 'score-num-complementary'; }
         else { currentScoreTextClass = 'score-sequence'; currentScoreNumClass = 'score-num-sequence'; }
       }
-      const portraitMult = 1.1 + 2 * (currentBoardConfig.cardScale * 1.25);
-      const landscapeMult = 1.1 + 2 * currentBoardConfig.cardScale;
+      
+      const portraitMult = 1.2 + 2 * (currentBoardConfig.cardScale * 1.25);
+      const landscapeMult = 1.2 + 2 * currentBoardConfig.cardScale;
+
+      // Ranking sort for game over
+      const sortedPlayers = Object.keys(gameState.scores).map(pId => parseInt(pId)).sort((a,b) => gameState.scores[b] - gameState.scores[a]);
 
       return (
         <div className={`game-wrapper ${wrapperClass} flex flex-col`} style={{ '--card-scale': currentBoardConfig.cardScale, '--portrait-mult': portraitMult, '--landscape-mult': landscapeMult }}>
           <StarryBackground />
 
-          {/* 挑戰模式頂部狀態列 */}
-          {gameState.mode === 'challenge' && (
-            <div className="absolute top-2 left-1/2 -translate-x-1/2 z-[60] flex items-center gap-3 sm:gap-6 bg-slate-900/80 px-4 sm:px-6 py-2 rounded-full border border-yellow-500/40 shadow-[0_0_15px_rgba(234,179,8,0.2)] backdrop-blur-md">
-              <span className="text-yellow-400 font-bold text-sm sm:text-base flex items-center gap-1"><Swords className="w-4 h-4"/> 第 {gameState.challengeData.currentLevel} / 20 層</span>
-              <span className="text-slate-500 text-xs">|</span>
-              <span className="text-indigo-300 font-bold text-sm sm:text-base tracking-wider">總積分: <span className="font-mono text-white">{gameState.challengeData.totalScore}</span></span>
+          {/* Top Status Bar */}
+          <div className="z-10 w-full flex justify-between items-center px-2 sm:px-4 py-1 shrink-0 max-w-full mx-auto bg-slate-900/50 backdrop-blur-sm border-b border-white/5">
+            <div className="flex space-x-2 items-center">
+              <button onClick={() => setGameState(prev => ({ ...prev, mode: 'menu' }))} className="p-1.5 text-indigo-300 hover:text-white bg-slate-800/80 rounded-full border border-white/10 flex-shrink-0"><Home className="w-4 h-4" /></button>
+              <VolumeControl />
             </div>
-          )}
+            <div className="flex flex-col items-end">
+              {gameState.mode === 'challenge' && <span className="text-xs sm:text-sm font-bold text-yellow-400 tracking-widest">第 {gameState.challengeData.currentLevel} 層 | 積分: {gameState.challengeData.totalScore}</span>}
+              {gameState.mode === 'online' && ( <span className={`text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full border mb-0.5 ${gameState.turn === myPlayerId ? 'bg-emerald-900 border-emerald-500 text-emerald-300 animate-pulse' : 'bg-slate-800 border-slate-600 text-slate-400'}`}>房間 {roomId}</span> )}
+              <span className="text-[10px] text-slate-400 uppercase tracking-widest">{currentBoardConfig.name}</span>
+            </div>
+          </div>
 
-          {(gameState.tallyState === 'start' || gameState.tallyState === 'p1' || gameState.tallyState === 'p2') && (
+          {/* Tally / Game Over Overlays */}
+          {gameState.tallyState !== 'none' && gameState.tallyState !== 'done' && (
             <div className="absolute inset-0 z-[100] flex items-center justify-center pointer-events-none">
-               <div className="bg-slate-900/90 text-white px-6 py-4 rounded-full text-xl sm:text-2xl font-bold animate-bounce shadow-2xl border border-slate-500 text-center flex flex-col gap-2">
-                  {gameState.tallyState === 'start' && <span>遊戲結束！開始結算領地...</span>}
-                  {gameState.tallyState === 'p1' && <span>結算 你 的領地... <br/><span className="text-indigo-400">+{gameState.board.filter(c => c && c.player === 1).length} 分</span></span>}
-                  {gameState.tallyState === 'p2' && <span>結算 {getPlayerLabel(2).split(' ')[0]} 領地... <br/><span className="text-rose-400">+{gameState.board.filter(c => c && c.player === 2).length} 分</span></span>}
+               <div className="bg-slate-900/95 text-white px-6 py-4 rounded-full text-lg sm:text-xl font-bold animate-pulse shadow-2xl border border-slate-500 text-center">
+                  {gameState.tallyState === 'start' && <span>遊戲結束！結算領地...</span>}
+                  {gameState.tallyState.startsWith('tally_') && (() => {
+                    const tId = parseInt(gameState.tallyState.split('_')[1]); const cInfo = P_COLORS[tId];
+                    return <span>結算 {getPlayerLabel(tId)} 領地... <span className={`${cInfo.text} ml-2`}>+{gameState.board.filter(c => c && c.player === tId).length} 分</span></span>;
+                  })()}
                </div>
             </div>
           )}
 
           {gameState.tallyState === 'done' && (
-            <div className="absolute inset-0 z-[200] flex items-center justify-center bg-slate-950/80 backdrop-blur-sm">
-              <div className="bg-slate-900 border border-indigo-500/50 p-6 sm:p-10 rounded-3xl shadow-[0_0_50px_rgba(99,102,241,0.2)] flex flex-col items-center text-center w-full max-w-lg mx-4">
-                
+            <div className="absolute inset-0 z-[200] flex items-center justify-center bg-slate-950/80 backdrop-blur-md">
+              <div className="bg-slate-900 border border-indigo-500/50 p-6 sm:p-8 rounded-3xl shadow-[0_0_50px_rgba(99,102,241,0.2)] flex flex-col items-center text-center w-full max-w-xl mx-4 max-h-[90vh] overflow-y-auto">
                 {gameState.mode === 'challenge' ? (
-                  // === 挑戰模式結算介面 ===
                   <React.Fragment>
-                    {gameState.comboScores[1] > gameState.comboScores[2] ? (
+                    {sortedPlayers[0] === 1 && gameState.scores[1] > gameState.scores[sortedPlayers[1]] ? (
                       <React.Fragment>
                         <Trophy className="w-16 h-16 text-emerald-400 mb-2 drop-shadow-[0_0_15px_rgba(52,211,153,0.5)]" />
-                        <h2 className="text-3xl font-black mb-4 text-emerald-300">本層挑戰成功！</h2>
+                        <h2 className="text-3xl font-black mb-4 text-emerald-300">挑戰成功！</h2>
                         <div className="text-lg text-slate-300 mb-6 bg-slate-800/50 px-6 py-4 rounded-xl border border-slate-600 w-full">
-                          <p className="mb-2">本局獲得 <span className="text-indigo-300 font-bold text-xl">{gameState.comboScores[1]}</span> 分</p>
-                          <p>目前總積分累積至 <span className="text-yellow-400 font-bold text-2xl">{gameState.challengeData.totalScore + gameState.comboScores[1]}</span> 分</p>
+                          <p>本局 <span className="text-indigo-300 font-bold">{gameState.scores[1]}</span> 分 vs AI <span className="text-rose-300">{gameState.scores[2]}</span> 分</p>
+                          <p className="mt-2">目前總積分 <span className="text-yellow-400 font-bold text-2xl">{gameState.challengeData.totalScore + gameState.scores[1]}</span> 分</p>
                         </div>
-                        <button onClick={nextChallengeLevel} className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-lg shadow-[0_0_15px_rgba(52,211,153,0.4)] transition-all">
-                          {gameState.challengeData.currentLevel >= 20 ? '完成終極挑戰！記錄成績' : '繼續深入下一層 進入'}
-                        </button>
+                        <button onClick={nextChallengeLevel} className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-lg transition-all">{gameState.challengeData.currentLevel >= 20 ? '完成終極挑戰！記錄成績' : '繼續深入下一層'}</button>
                       </React.Fragment>
                     ) : (
                       <React.Fragment>
-                        <div className="w-16 h-16 rounded-full bg-rose-900/50 flex items-center justify-center mb-2 border-2 border-rose-500 shadow-[0_0_15px_rgba(244,63,94,0.5)]"><XIcon className="w-8 h-8 text-rose-400" /></div>
+                        <div className="w-16 h-16 rounded-full bg-rose-900/50 flex items-center justify-center mb-2 border-2 border-rose-500"><XIcon className="w-8 h-8 text-rose-400" /></div>
                         <h2 className="text-3xl font-black mb-4 text-rose-400">挑戰止步於此</h2>
                         <div className="text-lg text-slate-300 mb-6 bg-slate-800/50 px-6 py-4 rounded-xl border border-slate-600 w-full">
-                          <p className="mb-2">你的分數 <span className="text-indigo-300">{gameState.comboScores[1]}</span> 不敵 AI的 <span className="text-rose-300">{gameState.comboScores[2]}</span></p>
-                          <p>最終總積分定格於 <span className="text-yellow-400 font-bold text-2xl">{gameState.challengeData.totalScore + gameState.comboScores[1]}</span> 分</p>
+                          <p>不敵 AI，最終總積分定格於 <span className="text-yellow-400 font-bold text-2xl">{gameState.challengeData.totalScore + gameState.scores[1]}</span> 分</p>
                         </div>
-                        <button onClick={() => setGameState(prev => ({...prev, mode: 'name_input', challengeData: {...prev.challengeData, totalScore: prev.challengeData.totalScore + gameState.comboScores[1]}}))} className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold text-lg shadow-lg transition-all">
-                          記錄本次挑戰成績
-                        </button>
+                        <button onClick={() => setGameState(prev => ({...prev, mode: 'name_input', challengeData: {...prev.challengeData, totalScore: prev.challengeData.totalScore + gameState.scores[1]}}))} className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold text-lg transition-all">記錄本次挑戰成績</button>
                       </React.Fragment>
                     )}
                   </React.Fragment>
                 ) : (
-                  // === 一般模式結算介面 ===
                   <React.Fragment>
-                    <Trophy className="w-16 h-16 text-yellow-400 mb-4 drop-shadow-[0_0_15px_rgba(250,204,21,0.5)]" />
-                    <h2 className="text-3xl sm:text-4xl font-black mb-6 text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-yellow-500">遊戲結算</h2>
-                    <div className="flex w-full justify-around mb-8 gap-4">
-                      <div className="flex flex-col items-center flex-1 bg-indigo-900/20 p-4 rounded-2xl border border-indigo-500/30">
-                        <span className="text-indigo-300 font-bold mb-3">{getPlayerLabel(1).split(' ')[0]}</span>
-                        <div className="flex items-baseline gap-1 mt-1"><span className="text-xs text-slate-400">總分</span><span className="text-4xl sm:text-5xl font-black text-indigo-100">{gameState.comboScores[1]}</span></div>
-                      </div>
-                      <div className="flex flex-col items-center flex-1 bg-rose-900/20 p-4 rounded-2xl border border-rose-500/30">
-                        <span className="text-rose-300 font-bold mb-3">{getPlayerLabel(2).split(' ')[0]}</span>
-                        <div className="flex items-baseline gap-1 mt-1"><span className="text-xs text-slate-400">總分</span><span className="text-4xl sm:text-5xl font-black text-rose-100">{gameState.comboScores[2]}</span></div>
-                      </div>
+                    <Trophy className="w-12 h-12 text-yellow-400 mb-2 drop-shadow-[0_0_15px_rgba(250,204,21,0.5)]" />
+                    <h2 className="text-2xl sm:text-3xl font-black mb-4 text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-yellow-500">結算排行榜</h2>
+                    
+                    <div className="w-full flex flex-col gap-2 mb-6">
+                      {sortedPlayers.map((pId, idx) => {
+                        const cInfo = P_COLORS[pId];
+                        return (
+                          <div key={pId} className={`flex justify-between items-center p-3 rounded-xl border ${idx === 0 ? `bg-${cInfo.base}-900/40 border-${cInfo.base}-400 scale-105 shadow-lg` : 'bg-slate-800/50 border-slate-600'}`}>
+                            <div className="flex items-center gap-3">
+                              <span className="text-2xl">{idx===0?'👑':idx+1}</span>
+                              <span className={`font-bold ${cInfo.text}`}>{getPlayerLabel(pId)}</span>
+                            </div>
+                            <span className={`text-2xl font-black ${cInfo.bgText}`}>{gameState.scores[pId]}</span>
+                          </div>
+                        )
+                      })}
                     </div>
-                    <div className="text-xl sm:text-2xl font-bold mb-8 text-white flex items-center justify-center">
-                      {gameState.comboScores[1] > gameState.comboScores[2] ? ( <span>🏆 你 <span className="text-indigo-400">(藍方)</span> 獲勝！</span> ) : gameState.comboScores[2] > gameState.comboScores[1] ? ( <span>🏆 {getPlayerLabel(2).split(' ')[0]} <span className="text-rose-400">(紅方)</span> 獲勝！</span> ) : ( <span>🤝 雙方平手！</span> )}
-                    </div>
+                    
                     <div className="flex w-full space-x-4">
-                      <button onClick={() => initGame(gameState.mode)} className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold flex items-center justify-center space-x-2"><RotateCcw className="w-5 h-5" /> <span>再打一局</span></button>
+                      {((gameState.mode==='online' && myPlayerId===1) || gameState.mode!=='online') && <button onClick={handlePlayAgain} className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold flex items-center justify-center space-x-2"><RotateCcw className="w-5 h-5" /> <span>再打一局</span></button>}
                       <button onClick={() => setGameState(prev => ({ ...prev, mode: 'menu' }))} className="flex-1 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-bold flex items-center justify-center space-x-2"><Home className="w-5 h-5" /> <span>回主選單</span></button>
                     </div>
                   </React.Fragment>
@@ -759,38 +794,46 @@
             </div>
           )}
 
-          {/* 頂部系統列 */}
-          <div className="z-10 w-full flex justify-between items-center px-4 py-2 shrink-0 max-w-[1400px] mx-auto">
-            <div className="flex space-x-2 items-center">
-              <button onClick={() => setGameState(prev => ({ ...prev, mode: 'menu' }))} className="p-2 text-indigo-300 hover:text-white bg-slate-900/50 rounded-full border border-white/10 flex-shrink-0"><Home className="w-5 h-5" /></button>
-              <VolumeControl />
-            </div>
-            <div className="flex flex-col items-end">
-              {gameState.mode === 'online' && ( <span className={`text-xs sm:text-sm font-bold px-3 py-1 rounded-full border mb-1 ${gameState.turn === myPlayerId ? 'bg-emerald-900 border-emerald-500/30 text-emerald-300 animate-pulse' : 'bg-slate-800 border-slate-600 text-slate-400'}`}>{gameState.turn === myPlayerId ? '輪到你了！' : '等待對手...'} ({roomId})</span> )}
-              <span className="text-xs text-indigo-200/50 uppercase tracking-widest">{currentBoardConfig.name}</span>
-            </div>
-          </div>
-
-          {/* 遊戲主核心區塊 */}
-          <div className="z-10 w-full max-w-[1400px] mx-auto flex portrait:flex-col landscape:flex-row justify-center items-center flex-1 min-h-0 pb-2 px-2 gap-4 sm:gap-8 shrink-0">
-            {/* Player 2 */}
-            <div className={`flex portrait:flex-col landscape:flex-col items-center justify-center p-3 sm:p-4 rounded-2xl sm:rounded-3xl transition-colors shrink-0 ${getPlayerContainerStyle(topPlayer)}`}>
-              <div className="flex portrait:flex-row landscape:flex-col justify-between w-full portrait:px-2 landscape:py-2 mb-2 landscape:mb-0 portrait:order-1 landscape:order-1 items-center gap-2">
-                <span className={`text-sm sm:text-base font-bold ${topPlayer === 1 ? 'text-indigo-300' : 'text-rose-300'}`}>{getPlayerLabel(topPlayer)}</span>
-                <span className={`text-xl sm:text-2xl font-black ${topPlayer === 1 ? 'text-indigo-100' : 'text-rose-100'}`}>{gameState.comboScores[topPlayer]}分</span>
-              </div>
-              <div className="flex portrait:flex-row landscape:flex-col justify-center gap-2 sm:gap-4 w-full portrait:order-2 landscape:order-2">
-                {(topPlayer === 1 ? gameState.p1Hand : gameState.p2Hand).map((phase, i) => renderCard(phase, i, topPlayer))}
-              </div>
-            </div>
+          {/* 遊戲主核心區塊 - Dynamic Layout */}
+          <div className="z-10 w-full max-w-[1400px] mx-auto flex flex-1 min-h-0 relative items-center justify-center overflow-hidden">
             
+            {/* Player Hand Panels */}
+            {Array.from({length: gameState.totalPlayers}, (_,i)=>i+1).map(pId => {
+              const isTop = (gameState.totalPlayers===2 && pId===2) || (gameState.totalPlayers===3 && (pId===2||pId===3)) || (gameState.totalPlayers===4 && (pId===2||pId===3));
+              const isLeft = (gameState.totalPlayers===3 && pId===2) || (gameState.totalPlayers===4 && (pId===2||pId===1));
+              
+              // Absolute positioning for 4 corners style
+              let posClass = "";
+              if (gameState.totalPlayers === 2) { posClass = pId===1 ? "bottom-2 left-1/2 -translate-x-1/2" : "top-2 left-1/2 -translate-x-1/2"; }
+              else if (gameState.totalPlayers === 3) {
+                if(pId===1) posClass = "bottom-2 left-1/2 -translate-x-1/2"; else if(pId===2) posClass = "top-2 left-2"; else posClass = "top-2 right-2";
+              }
+              else {
+                if(pId===1) posClass = "bottom-2 left-2"; else if(pId===2) posClass = "top-2 left-2"; else if(pId===3) posClass = "top-2 right-2"; else posClass = "bottom-2 right-2";
+              }
+
+              const cInfo = P_COLORS[pId];
+              
+              return (
+                <div key={pId} className={`absolute z-20 flex ${isTop?'flex-col-reverse':'flex-col'} items-center p-1.5 sm:p-2 rounded-2xl transition-colors ${getPlayerContainerStyle(pId)} ${posClass}`}>
+                  <div className={`flex flex-row justify-center gap-1 sm:gap-2 ${(isTop)?'mt-1':'mb-1'}`}>
+                    {gameState.hands[pId].map((phase, i) => renderCard(phase, i, pId))}
+                  </div>
+                  <div className={`flex flex-row justify-between w-full px-2 items-center gap-2 bg-slate-950/40 rounded-full border border-${cInfo.base}-500/20 px-3 py-0.5`}>
+                    <span className={`text-[10px] sm:text-xs font-bold truncate max-w-[80px] sm:max-w-[100px] ${cInfo.text}`}>{getPlayerLabel(pId)}</span>
+                    <span className={`text-sm sm:text-base font-black ${cInfo.bgText}`}>{gameState.scores[pId]}</span>
+                  </div>
+                </div>
+              );
+            })}
+
             {/* 中間棋盤區 */}
-            <div className="relative bg-slate-900/60 rounded-[1.5rem] sm:rounded-[2rem] backdrop-blur-lg border border-slate-700/50 shadow-2xl shrink-0 board-container flex items-center justify-center">
+            <div className="relative bg-slate-900/40 rounded-[2rem] sm:rounded-[3rem] backdrop-blur-md border border-slate-700/50 shadow-2xl shrink-0 board-container flex items-center justify-center">
               {gameState.currentScoringEvent && (
                 <div key={gameState.currentScoringEvent.id} className="absolute inset-0 flex items-center justify-center pointer-events-none z-[100]">
                   <div className="animate-float-score flex flex-col items-center">
-                    <span className={`text-[length:clamp(2rem,6vmin,4rem)] font-black tracking-widest scoring-text pb-2 ${currentScoreTextClass}`}>{gameState.currentScoringEvent.name}</span>
-                    <span className={`text-[length:clamp(2.5rem,7vmin,5rem)] font-black scoring-text mt-1 drop-shadow-md ${currentScoreNumClass}`}>+{gameState.currentScoringEvent.points}</span>
+                    <span className={`text-[length:clamp(1.5rem,5vmin,3rem)] font-black tracking-widest scoring-text pb-1 ${currentScoreTextClass}`}>{gameState.currentScoringEvent.name}</span>
+                    <span className={`text-[length:clamp(2rem,6vmin,4rem)] font-black scoring-text mt-0 drop-shadow-md ${currentScoreNumClass}`}>+{gameState.currentScoringEvent.points}</span>
                   </div>
                 </div>
               )}
@@ -804,29 +847,18 @@
                     else { isScoringEdge = ev.cells.includes(edge[0]) && ev.cells.includes(edge[1]); }
                   }
                   let strokeColor = "rgba(71, 85, 105, 0.3)"; let strokeW = "1.2";
-                  if (isScoringEdge) { strokeColor = gameState.turn === 1 ? "rgba(99, 102, 241, 0.9)" : "rgba(244, 63, 94, 0.9)"; strokeW = "2.5"; }
+                  if (isScoringEdge) { strokeColor = `rgba(${P_COLORS[gameState.turn].hex}, 0.9)`; strokeW = "2.5"; }
                   return <line key={`edge-${i}`} x1={n1.x} y1={n1.y} x2={n2.x} y2={n2.y} stroke={strokeColor} strokeWidth={strokeW} strokeLinecap="round" className="transition-all duration-500" style={isScoringEdge ? { filter: `drop-shadow(0px 0px 4px ${strokeColor})` } : {}} />;
                 })}
               </svg>
               {gameState.board.map((cell, idx) => {
                 const node = currentBoardConfig.nodes[idx];
                 return (
-                  <div key={`node-${idx}`} className={`absolute z-10 flex items-center justify-center transition-colors card-item ${cell === null ? 'border-2 border-dashed border-slate-500/50 bg-slate-800/30 hover:bg-slate-700/60 cursor-pointer backdrop-blur-sm shadow-inner rounded-lg sm:rounded-xl md:rounded-2xl' : ''}`} style={{ left: `${node.x}%`, top: `${node.y}%`, transform: 'translate(-50%, -50%)' }} onClick={(e) => { e.stopPropagation(); if (cell === null && gameState.selectedCardIdx !== null && (!gameState.isAnimating)) { const canPlay = gameState.mode === 'single' || gameState.mode === 'challenge' ? gameState.turn === 1 : (gameState.mode === 'multi' ? true : (gameState.mode === 'online' ? gameState.turn === myPlayerId : false)); if (canPlay) playCard(gameState.selectedCardIdx, idx, false); } }}>
+                  <div key={`node-${idx}`} className={`absolute z-10 flex items-center justify-center transition-colors card-item ${cell === null ? 'border-2 border-dashed border-slate-500/50 bg-slate-800/30 hover:bg-slate-700/60 cursor-pointer backdrop-blur-sm shadow-inner rounded-full sm:rounded-2xl' : ''}`} style={{ left: `${node.x}%`, top: `${node.y}%`, transform: 'translate(-50%, -50%)' }} onClick={(e) => { e.stopPropagation(); if (cell === null && gameState.selectedCardIdx !== null && (!gameState.isAnimating)) { const pType = gameState.playersInfo[gameState.turn].type; const canPlay = (gameState.mode === 'online') ? gameState.turn === myPlayerId : pType !== 'ai'; if (canPlay) playCard(gameState.selectedCardIdx, idx, false); } }}>
                     {cell && renderCard(cell.phase, -1, cell.player, true, idx)}
                   </div>
                 );
               })}
-            </div>
-
-            {/* Player 1 */}
-            <div className={`flex portrait:flex-col landscape:flex-col items-center justify-center p-3 sm:p-4 rounded-2xl sm:rounded-3xl transition-colors shrink-0 ${getPlayerContainerStyle(bottomPlayer)}`}>
-              <div className="flex portrait:flex-row landscape:flex-col justify-center gap-2 sm:gap-4 w-full portrait:order-1 landscape:order-2">
-                {(bottomPlayer === 1 ? gameState.p1Hand : gameState.p2Hand).map((phase, i) => renderCard(phase, i, bottomPlayer))}
-              </div>
-              <div className="flex portrait:flex-row landscape:flex-col justify-between w-full portrait:px-2 landscape:py-2 mt-2 landscape:mt-0 items-center portrait:order-2 landscape:order-1 gap-2">
-                <span className={`text-sm sm:text-base font-bold ${bottomPlayer === 1 ? 'text-indigo-300' : 'text-rose-300'}`}>{getPlayerLabel(bottomPlayer)}</span>
-                <span className={`text-xl sm:text-2xl font-black ${bottomPlayer === 1 ? 'text-indigo-100' : 'text-rose-100'}`}>{gameState.comboScores[bottomPlayer]}分</span>
-              </div>
             </div>
           </div>
         </div>
