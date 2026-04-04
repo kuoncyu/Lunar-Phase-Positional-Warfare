@@ -85,7 +85,8 @@
         challengeSuccess: '挑戰成功！', challengeFail: '挑戰止步於此', txtYou: '你', txtVsAI: 'vs 電腦', btnNextLvl: '繼續深入下一層', btnFinish100: '完成終極挑戰！記錄成績', btnSaveRecord: '記錄本次挑戰成績',
         rankTitle: '結算排行榜', btnPlayAgain: '再打一局',
         txtLvl: '第', txtLayer: '層', txtRoom: '連線代碼:', txtThinking: '思考中...', txtPerson: '人',
-        phases: ['新月', '眉月', '上弦月', '盈凸月', '滿月', '虧凸月', '下弦月', '殘月']
+        phases: ['新月', '眉月', '上弦月', '盈凸月', '滿月', '虧凸月', '下弦月', '殘月'],
+        boardNames: { tiny_star: '微型星', hexagon: '六邊形', dipper: '北斗七星', diamond: '鑽石', classic: '經典九宮格', pyramid: '金字塔', lightning: '閃電陣', hourglass: '沙漏', owl: '貓頭鷹', nebula: '星雲', tree: '生命之樹', cross: '十字星', satellite: '人造衛星', med_tri: '中型三角', med_star: '中型星芒', vortex: '深空漩渦', lrg_grid: '大型網格', lrg_cross: '大型十字', lrg_flower: '大型花朵', lrg_spiral: '大型螺旋' }
       },
       en: {
         title: 'Moonphase Tactics', subtitle: 'Party & 100-Level Challenge!',
@@ -106,7 +107,8 @@
         challengeSuccess: 'Cleared!', challengeFail: 'Failed!', txtYou: 'You', txtVsAI: 'vs AI', btnNextLvl: 'Next Level', btnFinish100: '100 Lvls Cleared! Save', btnSaveRecord: 'Save Record',
         rankTitle: 'Final Ranking', btnPlayAgain: 'Play Again',
         txtLvl: 'Lvl', txtLayer: '', txtRoom: 'Room:', txtThinking: 'Thinking...', txtPerson: 'P',
-        phases: ['New', 'Waxing C.', 'First Q.', 'Waxing G.', 'Full', 'Waning G.', 'Last Q.', 'Waning C.']
+        phases: ['New', 'Waxing C.', 'First Q.', 'Waxing G.', 'Full', 'Waning G.', 'Last Q.', 'Waning C.'],
+        boardNames: { tiny_star: 'Tiny Star', hexagon: 'Hexagon', dipper: 'Big Dipper', diamond: 'Diamond', classic: 'Classic Grid', pyramid: 'Pyramid', lightning: 'Lightning', hourglass: 'Hourglass', owl: 'Owl', nebula: 'Nebula', tree: 'Tree of Life', cross: 'Cross', satellite: 'Satellite', med_tri: 'Med Triangle', med_star: 'Med Star', vortex: 'Vortex', lrg_grid: 'Large Grid', lrg_cross: 'Large Cross', lrg_flower: 'Large Flower', lrg_spiral: 'Large Spiral' }
       },
       ja: {
         title: '月相タクティクス', subtitle: 'パーティー＆100階層チャレンジ！',
@@ -127,7 +129,8 @@
         challengeSuccess: 'クリア！', challengeFail: 'ゲームオーバー', txtYou: 'あなた', txtVsAI: 'vs CPU', btnNextLvl: '次の階層へ', btnFinish100: '100階層クリア！記録を保存', btnSaveRecord: '記録を保存',
         rankTitle: '最終ランキング', btnPlayAgain: 'もう一度',
         txtLvl: '第', txtLayer: '階', txtRoom: 'ルーム:', txtThinking: '考え中...', txtPerson: '人',
-        phases: ['新月', '三日月', '上弦の月', '十三夜', '満月', '寝待月', '下弦の月', '二十六夜']
+        phases: ['新月', '三日月', '上弦の月', '十三夜', '満月', '寝待月', '下弦の月', '二十六夜'],
+        boardNames: { tiny_star: '小さな星', hexagon: '六角形', dipper: '北斗七星', diamond: 'ダイヤモンド', classic: 'クラシック', pyramid: 'ピラミッド', lightning: '稲妻', hourglass: '砂時計', owl: 'フクロウ', nebula: '星雲', tree: '生命の樹', cross: '十字架', satellite: '衛星', med_tri: '中型三角', med_star: '中型星', vortex: '渦巻き', lrg_grid: '大型グリッド', lrg_cross: '大型十字', lrg_flower: '大型の花', lrg_spiral: '大型螺旋' }
       }
     };
 
@@ -891,7 +894,7 @@
                     <label className="block text-sm font-bold text-slate-300 mb-2">{t.localBoard}</label>
                     <select value={boardTypePref} onChange={e => setBoardTypePref(e.target.value)} className="w-full bg-slate-900 border border-slate-500 text-white rounded-lg px-3 py-2 outline-none">
                       <option value="random">{t.localRandom}</option>
-                      {Object.entries(getBoardPool(localTotalPlayers)).map(([k, v]) => <option key={k} value={k}>{v.name}</option>)}
+                      {Object.entries(getBoardPool(localTotalPlayers)).map(([k, v]) => <option key={k} value={k}>{t.boardNames[k] || k}</option>)}
                     </select>
                   </div>
                 </div>
@@ -974,7 +977,18 @@
       
       const portraitMult = 1.2 + 2 * ((currentBoardConfig.cardScale||0.2) * 1.25);
       const landscapeMult = 1.2 + 2 * (currentBoardConfig.cardScale||0.2);
+      
       const sortedPlayers = Object.keys(gameState.scores).map(pId => parseInt(pId)).sort((a,b) => gameState.scores[b] - gameState.scores[a]);
+      const playerRanks = {};
+      let currentRank = 1;
+      let prevScore = null;
+      sortedPlayers.forEach((pId, idx) => {
+        if (gameState.scores[pId] !== prevScore) {
+          currentRank = idx + 1;
+          prevScore = gameState.scores[pId];
+        }
+        playerRanks[pId] = currentRank;
+      });
 
       return (
         <div className={`game-wrapper ${wrapperClass} flex flex-col`} style={{ '--card-scale': currentBoardConfig.cardScale||0.2, '--portrait-mult': portraitMult, '--landscape-mult': landscapeMult }}>
@@ -988,7 +1002,7 @@
           <div className="z-10 absolute top-4 left-4 sm:left-6 flex flex-col gap-1 items-start shrink-0 pointer-events-none">
             {gameState.mode === 'challenge' && <div className="bg-slate-900/80 px-4 py-1.5 rounded-full border border-yellow-500/50 shadow-lg backdrop-blur-sm"><span className="text-sm sm:text-base font-bold text-yellow-400 tracking-widest drop-shadow-md">{t.txtLvl} {gameState.challengeData.currentLevel} {t.txtLayer} <span className="text-slate-500 mx-2">|</span> {t.totalScore}: {gameState.challengeData.totalScore}</span></div>}
             {gameState.mode === 'online' && ( <div className="bg-slate-900/80 px-4 py-1.5 rounded-full border border-emerald-500/50 shadow-lg backdrop-blur-sm"><span className="text-sm font-bold text-emerald-400">{t.txtRoom} {roomId}</span></div> )}
-            <div className="bg-slate-900/60 px-3 py-1 rounded-full border border-white/10"><span className="text-xs text-slate-300 uppercase tracking-widest">{currentBoardConfig.name}</span></div>
+            <div className="bg-slate-900/60 px-3 py-1 rounded-full border border-white/10"><span className="text-xs text-slate-300 uppercase tracking-widest">{t.boardNames[gameState.boardType] || gameState.boardType}</span></div>
           </div>
           
           <button onClick={() => setGameState(prev => ({ ...prev, mode: 'menu' }))} className="absolute bottom-4 left-4 z-[99] p-3 text-indigo-300 hover:text-white bg-slate-900/80 rounded-full border border-white/10 shadow-lg backdrop-blur-sm"><Home className="w-5 h-5" /></button>
@@ -1039,8 +1053,8 @@
                       {sortedPlayers.map((pId, idx) => {
                         const cInfo = P_COLORS[pId];
                         return (
-                          <div key={pId} className={`flex justify-between items-center p-3 rounded-xl border ${idx === 0 ? `bg-${cInfo.base}-900/40 border-${cInfo.base}-400 scale-105 shadow-lg` : 'bg-slate-800/50 border-slate-600'}`}>
-                            <div className="flex items-center gap-3"><span className="text-2xl">{idx===0?'👑':idx+1}</span><span className={`font-bold ${cInfo.text}`}>{getPlayerLabel(pId)}</span></div>
+                          <div key={pId} className={`flex justify-between items-center p-3 rounded-xl border ${playerRanks[pId] === 1 ? `bg-${cInfo.base}-900/40 border-${cInfo.base}-400 scale-105 shadow-lg` : 'bg-slate-800/50 border-slate-600'}`}>
+                            <div className="flex items-center gap-3"><span className="text-2xl">{playerRanks[pId]===1?'👑':playerRanks[pId]}</span><span className={`font-bold ${cInfo.text}`}>{getPlayerLabel(pId)}</span></div>
                             <span className={`text-2xl font-black ${cInfo.bgText}`}>{gameState.scores[pId]}</span>
                           </div>
                         )
