@@ -14,10 +14,11 @@
   <style>
     body, html { margin: 0; padding: 0; background-color: #020617; overflow: hidden; touch-action: none; font-family: 'Noto Sans TC', sans-serif; }
     
-    /* === 響應式棋盤引擎 === */
+    /* === 響應式棋盤引擎 (已優化空間最大化) === */
     .game-wrapper {
-      --board-size-portrait: min(calc(100vw - 32px), calc((100dvh - 280px) / var(--portrait-mult)));
-      --board-size-landscape: min(calc(100dvh - 40px), calc((100vw - 300px) / var(--landscape-mult)));
+      /* 扣除頂部工具列(~80px)與上下/左右玩家面板的空間，確保不重疊且最大化 */
+      --board-size-portrait: min(calc(100vw - 32px), calc((100dvh - 360px) / var(--portrait-mult)));
+      --board-size-landscape: min(calc(100dvh - 110px), calc((100vw - 340px) / var(--landscape-mult)));
     }
     @media (orientation: portrait) { .game-wrapper { --board-size: var(--board-size-portrait); } }
     @media (orientation: landscape) { .game-wrapper { --board-size: var(--board-size-landscape); } }
@@ -779,21 +780,23 @@
         );
       };
 
+      // 重新設計防遮擋佈局，確保不與上方工具列 (top-0 到 top-20) 重疊
       const getPlayerLayoutClasses = (pId, total) => {
         if (total === 2) {
           if (pId === 1) return "portrait:bottom-6 portrait:left-1/2 portrait:-translate-x-1/2 portrait:flex-col landscape:right-6 landscape:top-1/2 landscape:-translate-y-1/2 landscape:flex-col";
-          if (pId === 2) return "portrait:top-6 portrait:left-1/2 portrait:-translate-x-1/2 portrait:flex-col-reverse landscape:left-6 landscape:top-1/2 landscape:-translate-y-1/2 landscape:flex-col-reverse";
+          // 原本 portrait:top-6 改為 top-24
+          if (pId === 2) return "portrait:top-24 portrait:left-1/2 portrait:-translate-x-1/2 portrait:flex-col-reverse landscape:left-6 landscape:top-1/2 landscape:-translate-y-1/2 landscape:flex-col-reverse";
         }
         if (total === 3) {
           if (pId === 1) return "portrait:bottom-6 portrait:left-1/2 portrait:-translate-x-1/2 portrait:flex-col landscape:right-6 landscape:top-1/2 landscape:-translate-y-1/2 landscape:flex-col";
-          if (pId === 2) return "portrait:top-6 portrait:left-6 portrait:flex-col-reverse landscape:top-6 landscape:left-6 landscape:flex-col-reverse";
-          if (pId === 3) return "portrait:top-6 portrait:right-6 portrait:flex-col-reverse landscape:bottom-6 landscape:left-6 landscape:flex-col";
+          if (pId === 2) return "portrait:top-24 portrait:left-6 portrait:flex-col-reverse landscape:top-24 landscape:left-6 landscape:flex-col-reverse";
+          if (pId === 3) return "portrait:top-24 portrait:right-6 portrait:flex-col-reverse landscape:bottom-6 landscape:left-6 landscape:flex-col";
         }
         if (total === 4) {
           if (pId === 1) return "bottom-6 right-6 flex-col";
           if (pId === 2) return "bottom-6 left-6 flex-col";
-          if (pId === 3) return "top-6 left-6 flex-col-reverse";
-          if (pId === 4) return "top-6 right-6 flex-col-reverse";
+          if (pId === 3) return "top-24 left-6 flex-col-reverse";
+          if (pId === 4) return "top-24 right-6 flex-col-reverse";
         }
         return "";
       };
@@ -810,7 +813,7 @@
           <div className={`${wrapperClass} flex flex-col items-center justify-center overflow-y-auto`}>
             <StarryBackground />
             
-            {/* Settings Gear */}
+            {/* Settings Gear - 僅在非遊戲中保持原位 */}
             <div className="fixed top-4 right-4 z-[9999]">
               <button onClick={() => setShowSettings(true)} className="p-3 text-indigo-300 hover:text-white bg-slate-800/80 rounded-full border border-white/10 shadow-lg hover:rotate-90 transition-all"><SettingsIcon className="w-6 h-6"/></button>
             </div>
@@ -994,18 +997,42 @@
         <div className={`game-wrapper ${wrapperClass} flex flex-col`} style={{ '--card-scale': currentBoardConfig.cardScale||0.2, '--portrait-mult': portraitMult, '--landscape-mult': landscapeMult }}>
           <StarryBackground />
           
-          <div className="fixed top-4 right-4 z-[9999]">
-            <button onClick={() => setShowSettings(true)} className="p-3 text-indigo-300 hover:text-white bg-slate-800/80 rounded-full border border-white/10 shadow-lg hover:rotate-90 transition-all"><SettingsIcon className="w-6 h-6"/></button>
-          </div>
           {showSettings && <SettingsModal onClose={() => setShowSettings(false)} lang={lang} setLang={setLang} bgmTrack={bgmTrack} setBgmTrack={setBgmTrack} bgmVol={bgmVol} setBgmVol={setBgmVol} sfxVol={sfxVol} setSfxVol={setSfxVol} toggleFs={toggleFullscreen} showTutorial={showTutorialInner} setShowTutorial={setShowTutorialInner} t={t} />}
 
-          <div className="z-10 absolute top-4 left-4 sm:left-6 flex flex-col gap-1 items-start shrink-0 pointer-events-none">
-            {gameState.mode === 'challenge' && <div className="bg-slate-900/80 px-4 py-1.5 rounded-full border border-yellow-500/50 shadow-lg backdrop-blur-sm"><span className="text-sm sm:text-base font-bold text-yellow-400 tracking-widest drop-shadow-md">{t.txtLvl} {gameState.challengeData.currentLevel} {t.txtLayer} <span className="text-slate-500 mx-2">|</span> {t.totalScore}: {gameState.challengeData.totalScore}</span></div>}
-            {gameState.mode === 'online' && ( <div className="bg-slate-900/80 px-4 py-1.5 rounded-full border border-emerald-500/50 shadow-lg backdrop-blur-sm"><span className="text-sm font-bold text-emerald-400">{t.txtRoom} {roomId}</span></div> )}
-            <div className="bg-slate-900/60 px-3 py-1 rounded-full border border-white/10"><span className="text-xs text-slate-300 uppercase tracking-widest">{t.boardNames[gameState.boardType] || gameState.boardType}</span></div>
+          {/* === 全新頂部工具列 (Top Toolbar) === */}
+          <div className="absolute top-0 left-0 w-full h-16 sm:h-20 z-[999] flex items-center justify-between px-3 sm:px-6 pointer-events-none">
+            {/* 左側：棋盤名稱 */}
+            <div className="pointer-events-auto bg-slate-900/80 px-3 sm:px-4 py-1.5 rounded-full border border-slate-600/50 shadow-lg backdrop-blur-md flex items-center shrink-0">
+              <span className="text-[10px] sm:text-sm text-slate-300 uppercase tracking-widest font-bold">{t.boardNames[gameState.boardType] || gameState.boardType}</span>
+            </div>
+
+            {/* 中央：遊戲資訊 (挑戰模式 / 線上模式) */}
+            <div className="absolute left-1/2 -translate-x-1/2 pointer-events-auto flex items-center justify-center whitespace-nowrap">
+              {gameState.mode === 'challenge' && (
+                <div className="bg-slate-900/80 px-4 sm:px-6 py-1.5 sm:py-2 rounded-full border border-yellow-500/50 shadow-[0_0_20px_rgba(234,179,8,0.2)] backdrop-blur-md flex items-center gap-2 sm:gap-4">
+                  <span className="text-xs sm:text-lg font-black text-yellow-400 tracking-widest drop-shadow-md">{t.txtLvl} <span className="text-white text-sm sm:text-xl">{gameState.challengeData.currentLevel}</span> {t.txtLayer}</span>
+                  <div className="w-px h-3 sm:h-5 bg-slate-600"></div>
+                  <span className="text-xs sm:text-lg font-bold text-slate-300">{t.totalScore}: <span className="text-emerald-400 text-sm sm:text-xl font-mono">{gameState.challengeData.totalScore}</span></span>
+                </div>
+              )}
+              {gameState.mode === 'online' && (
+                <div className="bg-slate-900/80 px-4 sm:px-6 py-1.5 sm:py-2 rounded-full border border-emerald-500/50 shadow-lg backdrop-blur-md">
+                  <span className="text-xs sm:text-base font-bold text-emerald-400">{t.txtRoom} <span className="text-white tracking-widest font-mono ml-1">{roomId}</span></span>
+                </div>
+              )}
+            </div>
+
+            {/* 右側：回首頁與設定 */}
+            <div className="pointer-events-auto flex items-center gap-2 shrink-0">
+              <button onClick={() => setGameState(prev => ({ ...prev, mode: 'menu' }))} className="p-2 sm:p-2.5 text-slate-300 hover:text-white bg-slate-900/80 hover:bg-rose-900/80 rounded-full border border-slate-600/50 hover:border-rose-500/50 shadow-lg backdrop-blur-md transition-all group" title={t.back}>
+                <Home className="w-4 h-4 sm:w-5 sm:h-5 group-hover:scale-110" />
+              </button>
+              <button onClick={() => setShowSettings(true)} className="p-2 sm:p-2.5 text-indigo-300 hover:text-white bg-slate-900/80 hover:bg-indigo-900/80 rounded-full border border-slate-600/50 hover:border-indigo-500/50 shadow-lg backdrop-blur-md transition-all group" title={t.settings}>
+                <SettingsIcon className="w-4 h-4 sm:w-5 sm:h-5 group-hover:rotate-90 transition-transform" />
+              </button>
+            </div>
           </div>
-          
-          <button onClick={() => setGameState(prev => ({ ...prev, mode: 'menu' }))} className="absolute bottom-4 left-4 z-[99] p-3 text-indigo-300 hover:text-white bg-slate-900/80 rounded-full border border-white/10 shadow-lg backdrop-blur-sm"><Home className="w-5 h-5" /></button>
+          {/* ================================ */}
 
           {gameState.tallyState !== 'none' && gameState.tallyState !== 'done' && (
             <div className="absolute inset-0 z-[100] flex items-center justify-center pointer-events-none">
@@ -1070,7 +1097,7 @@
             </div>
           )}
 
-          <div className="z-10 w-full max-w-[1400px] mx-auto flex flex-1 min-h-0 relative items-center justify-center overflow-hidden">
+          <div className="z-10 w-full max-w-[1400px] mx-auto flex flex-1 min-h-0 relative items-center justify-center overflow-hidden pt-16 sm:pt-20">
             {Array.from({length: gameState.totalPlayers}, (_,i)=>i+1).map(pId => {
               const posClass = getPlayerLayoutClasses(pId, gameState.totalPlayers);
               const cInfo = P_COLORS[pId];
