@@ -332,11 +332,11 @@
         <div className="w-full max-w-md mx-auto mt-6 bg-slate-800/80 p-4 rounded-2xl border border-slate-600/50 shadow-2xl backdrop-blur-md">
           {rows.map((r, i) => ( 
             <div key={i} className="flex justify-center mb-2 gap-1 sm:gap-2">
-              {r.map(k => <button key={k} onClick={() => onKeyPress(k)} disabled={uploadStatus !== 'idle'} className={`keyboard-btn flex-1 py-3 sm:py-4 text-white rounded-xl font-[Rubik] font-bold text-lg sm:text-xl border-slate-900 shadow-md ${uploadStatus !== 'idle' ? 'bg-slate-800 text-slate-500 cursor-not-allowed' : 'bg-slate-700 hover:bg-slate-600'}`}>{k}</button>)}
+              {r.map(k => <button key={k} onClick={() => onKeyPress(k)} disabled={uploadStatus !== 'idle' && uploadStatus !== 'error'} className={`keyboard-btn flex-1 py-3 sm:py-4 text-white rounded-xl font-[Rubik] font-bold text-lg sm:text-xl border-slate-900 shadow-md ${(uploadStatus !== 'idle' && uploadStatus !== 'error') ? 'bg-slate-800 text-slate-500 cursor-not-allowed' : 'bg-slate-700 hover:bg-slate-600'}`}>{k}</button>)}
             </div> 
           ))}
           <div className="flex justify-center gap-2 mt-4">
-            <button onClick={onDelete} disabled={uploadStatus !== 'idle'} className={`keyboard-btn flex-[2] py-3 rounded-xl font-bold flex items-center justify-center shadow-md ${uploadStatus !== 'idle' ? 'bg-slate-800 text-rose-900 border-slate-900 cursor-not-allowed' : 'bg-rose-900/80 hover:bg-rose-800 text-rose-200 border-rose-950'}`}><DeleteIcon className="w-6 h-6"/></button>
+            <button onClick={onDelete} disabled={uploadStatus !== 'idle' && uploadStatus !== 'error'} className={`keyboard-btn flex-[2] py-3 rounded-xl font-bold flex items-center justify-center shadow-md ${(uploadStatus !== 'idle' && uploadStatus !== 'error') ? 'bg-slate-800 text-rose-900 border-slate-900 cursor-not-allowed' : 'bg-rose-900/80 hover:bg-rose-800 text-rose-200 border-rose-950'}`}><DeleteIcon className="w-6 h-6"/></button>
             <button onClick={onSubmit} disabled={btnDisabled} className={`keyboard-btn flex-[5] py-3 rounded-xl font-bold text-lg shadow-md transition-all ${btnClass}`}>{btnText}</button>
           </div>
         </div>
@@ -435,7 +435,7 @@
       const [leaderboard, setLeaderboard] = useState([]);
       const [isLoadingLb, setIsLoadingLb] = useState(false);
       const [aiThinkingPlayer, setAiThinkingPlayer] = useState(null);
-      const [uploadStatus, setUploadStatus] = useState('idle'); // idle, uploading, success, restart
+      const [uploadStatus, setUploadStatus] = useState('idle'); // idle, uploading, success, restart, error
 
       const lastProcessedMoveTs = useRef(0);
       const roomIdRef = useRef('');
@@ -556,20 +556,33 @@
 
       const submitChallengeScore = async () => {
         if (playerName.trim().length < 3 || uploadStatus === 'uploading' || uploadStatus === 'success') return;
-        if (!user || !db) {
-          console.warn("Auth/DB missing");
+        if (typeof db === 'undefined' || !db) {
+          console.error("【上傳失敗】找不到 Firestore (db) 連線物件！");
           setUploadStatus('error');
           return;
         }
         setUploadStatus('uploading');
         try { 
-          await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'moonphase_leaderboard'), { name: playerName.toUpperCase(), level: gameState.challengeData.currentLevel, totalScore: gameState.challengeData.totalScore, uid: user.uid, ts: Date.now() }); 
+          const safeUid = (typeof user !== 'undefined' && user && user.uid) ? user.uid : 'anonymous_' + Math.floor(Math.random() * 100000);
+          const safeAppId = (typeof appId !== 'undefined' && appId) ? appId : 'moonphase-app';
+          
+          const docRef = await addDoc(collection(db, 'artifacts', safeAppId, 'public', 'data', 'moonphase_leaderboard'), { 
+            name: playerName.toUpperCase(), 
+            level: gameState.challengeData.currentLevel || 1, 
+            totalScore: gameState.challengeData.totalScore || 0, 
+            uid: safeUid, 
+            ts: Date.now() 
+          }); 
+          
+          console.log("【上傳成功】資料庫文件 ID:", docRef.id);
           setUploadStatus('success');
+          
           setTimeout(() => {
             setUploadStatus('restart');
           }, 2000);
+          
         } catch(e) { 
-          console.error("Upload Error:", e); 
+          console.error("【上傳失敗詳細原因】:", e.message || e); 
           setUploadStatus('error');
         }
       };
@@ -789,11 +802,9 @@
         );
       };
 
-      // 重新設計防遮擋佈局，確保不與上方工具列 (top-0 到 top-20) 重疊
       const getPlayerLayoutClasses = (pId, total) => {
         if (total === 2) {
           if (pId === 1) return "portrait:bottom-6 portrait:left-1/2 portrait:-translate-x-1/2 portrait:flex-col landscape:right-6 landscape:top-1/2 landscape:-translate-y-1/2 landscape:flex-col";
-          // 原本 portrait:top-6 改為 top-24
           if (pId === 2) return "portrait:top-24 portrait:left-1/2 portrait:-translate-x-1/2 portrait:flex-col-reverse landscape:left-6 landscape:top-1/2 landscape:-translate-y-1/2 landscape:flex-col-reverse";
         }
         if (total === 3) {
@@ -822,7 +833,6 @@
           <div className={`${wrapperClass} flex flex-col items-center justify-center overflow-y-auto`}>
             <StarryBackground />
             
-            {/* Settings Gear - 僅在非遊戲中保持原位 */}
             <div className="fixed top-4 right-4 z-[9999]">
               <button onClick={() => setShowSettings(true)} className="p-3 text-indigo-300 hover:text-white bg-slate-800/80 rounded-full border border-white/10 shadow-lg hover:rotate-90 transition-all"><SettingsIcon className="w-6 h-6"/></button>
             </div>
