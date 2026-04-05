@@ -81,7 +81,7 @@
         lobbyTitle: '線上連線大廳', lobbyCreate: '建立房間 - 設定總人數', btnCreate: '建立新房間', lobbyOr: '或加入房間', lobbyPlaceholder: '輸入六位數字代碼', btnJoin: '加入',
         roomCode: '房間代碼', roomPlayers: '玩家列表', roomYou: '(你)', roomAI: '(空缺 - 將補 AI)', roomReady: '已準備', roomNotReady: '準備中...', btnWait: '等待其他人準備...', btnStartAll: '全員就緒，開始對戰！', btnCancelReady: '取消準備', btnReady: '我準備好了！', btnLeave: '離開房間',
         nameInputTitle: '挑戰結束！記錄你的傳奇', nameInputPlaceholder: '請輸入代號', btnSubmit: '確認上傳', btnSkip: '不儲存，直接回首頁', btnBackMenu: '回首頁',
-        btnUploading: '上傳中...', btnUploadDone: '上傳完成', btnRestartChallenge: '重新挑戰',
+        btnUploading: '上傳中...', btnUploadDone: '上傳完成', btnRestartChallenge: '重新挑戰', btnUploadFail: '上傳失敗 (重試)',
         lbTitle: '極限闖關排行榜', lbLoading: '載入資料中...', lbEmpty: '目前尚無挑戰紀錄', lbRank: '排名', lbName: '代號',
         challengeSuccess: '挑戰成功！', challengeFail: '挑戰止步於此', txtYou: '你', txtVsAI: 'vs 電腦', btnNextLvl: '繼續深入下一層', btnFinish100: '完成終極挑戰！記錄成績', btnSaveRecord: '記錄本次挑戰成績',
         rankTitle: '結算排行榜', btnPlayAgain: '再打一局',
@@ -103,7 +103,7 @@
         lobbyTitle: 'Online Lobby', lobbyCreate: 'Create Room (Players)', btnCreate: 'Create Room', lobbyOr: 'OR', lobbyPlaceholder: 'Enter 6-digit Code', btnJoin: 'Join',
         roomCode: 'Room Code', roomPlayers: 'Players', roomYou: '(You)', roomAI: '(AI)', roomReady: 'Ready', roomNotReady: '...', btnWait: 'Waiting for others...', btnStartAll: 'Start Game!', btnCancelReady: 'Cancel', btnReady: 'Ready!', btnLeave: 'Leave Room',
         nameInputTitle: 'Challenge Over! Save Record', nameInputPlaceholder: 'Enter Name', btnSubmit: 'Submit', btnSkip: 'Skip & Return Home', btnBackMenu: 'Main Menu',
-        btnUploading: 'Uploading...', btnUploadDone: 'Upload Complete', btnRestartChallenge: 'Play Again',
+        btnUploading: 'Uploading...', btnUploadDone: 'Upload Complete', btnRestartChallenge: 'Play Again', btnUploadFail: 'Upload Failed (Retry)',
         lbTitle: 'Challenge Leaderboard', lbLoading: 'Loading...', lbEmpty: 'No records yet', lbRank: '#', lbName: 'ID',
         challengeSuccess: 'Cleared!', challengeFail: 'Failed!', txtYou: 'You', txtVsAI: 'vs AI', btnNextLvl: 'Next Level', btnFinish100: '100 Lvls Cleared! Save', btnSaveRecord: 'Save Record',
         rankTitle: 'Final Ranking', btnPlayAgain: 'Play Again',
@@ -125,7 +125,7 @@
         lobbyTitle: 'オンラインロビー', lobbyCreate: 'ルーム作成 (人数)', btnCreate: 'ルーム作成', lobbyOr: 'または', lobbyPlaceholder: '6桁のコードを入力', btnJoin: '参加',
         roomCode: 'ルームコード', roomPlayers: 'プレイヤー', roomYou: '(あなた)', roomAI: '(CPU)', roomReady: '準備完了', roomNotReady: '準備中...', btnWait: '他のプレイヤーを待っています...', btnStartAll: '全員準備完了、開始！', btnCancelReady: 'キャンセル', btnReady: '準備完了！', btnLeave: '退出',
         nameInputTitle: '挑戦終了！記録を保存', nameInputPlaceholder: '名前を入力', btnSubmit: '送信', btnSkip: '保存せずに戻る', btnBackMenu: 'メインメニュー',
-        btnUploading: 'アップロード中...', btnUploadDone: 'アップロード完了', btnRestartChallenge: '再挑戦',
+        btnUploading: 'アップロード中...', btnUploadDone: 'アップロード完了', btnRestartChallenge: '再挑戦', btnUploadFail: '失敗 (再試行)',
         lbTitle: 'チャレンジランキング', lbLoading: '読み込み中...', lbEmpty: '記録がありません', lbRank: '順位', lbName: '名前',
         challengeSuccess: 'クリア！', challengeFail: 'ゲームオーバー', txtYou: 'あなた', txtVsAI: 'vs CPU', btnNextLvl: '次の階層へ', btnFinish100: '100階層クリア！記録を保存', btnSaveRecord: '記録を保存',
         rankTitle: '最終ランキング', btnPlayAgain: 'もう一度',
@@ -320,9 +320,13 @@
       } else if (uploadStatus === 'restart') {
         btnText = t.btnRestartChallenge; btnDisabled = false;
         btnClass = "bg-indigo-600 hover:bg-indigo-500 text-white border-indigo-900";
+      } else if (uploadStatus === 'error') {
+        btnText = t.btnUploadFail || "上傳失敗 (重試)";
+        btnClass = "bg-rose-600 hover:bg-rose-500 text-white border-rose-900";
+        btnDisabled = disabledSubmit;
       }
 
-      if (btnDisabled) btnClass = "bg-slate-700 text-slate-500 border-slate-800 cursor-not-allowed";
+      if (btnDisabled && uploadStatus !== 'success' && uploadStatus !== 'uploading') btnClass = "bg-slate-700 text-slate-500 border-slate-800 cursor-not-allowed";
 
       return (
         <div className="w-full max-w-md mx-auto mt-6 bg-slate-800/80 p-4 rounded-2xl border border-slate-600/50 shadow-2xl backdrop-blur-md">
@@ -551,7 +555,12 @@
       };
 
       const submitChallengeScore = async () => {
-        if (!user || !db || playerName.trim().length < 3 || uploadStatus !== 'idle') return;
+        if (playerName.trim().length < 3 || uploadStatus === 'uploading' || uploadStatus === 'success') return;
+        if (!user || !db) {
+          console.warn("Auth/DB missing");
+          setUploadStatus('error');
+          return;
+        }
         setUploadStatus('uploading');
         try { 
           await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'moonphase_leaderboard'), { name: playerName.toUpperCase(), level: gameState.challengeData.currentLevel, totalScore: gameState.challengeData.totalScore, uid: user.uid, ts: Date.now() }); 
@@ -560,8 +569,8 @@
             setUploadStatus('restart');
           }, 2000);
         } catch(e) { 
-          console.error(e); 
-          setUploadStatus('idle');
+          console.error("Upload Error:", e); 
+          setUploadStatus('error');
         }
       };
 
@@ -826,7 +835,7 @@
                 <h2 className="text-3xl font-black mb-1 text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-yellow-500">{t.nameInputTitle}</h2>
                 <p className="text-indigo-200 mb-6">{t.txtLvl} {gameState.challengeData.currentLevel} {t.txtLayer} &nbsp;|&nbsp; {t.totalScore}: {gameState.challengeData.totalScore}</p>
                 <div className="w-full max-w-sm mx-auto bg-slate-950 p-4 rounded-xl border border-indigo-500/30 mb-2"><div className="h-12 flex items-center justify-center text-3xl font-[Rubik] tracking-[0.3em] font-bold text-white">{playerName || <span className="text-slate-600 animate-pulse">{t.nameInputPlaceholder}</span>}</div></div>
-                <VirtualKeyboard onKeyPress={(k) => setPlayerName(p => p.length < 8 ? p + k : p)} onDelete={() => setPlayerName(p => p.slice(0, -1))} onSubmit={handleKeyboardAction} disabledSubmit={playerName.length < 3 && uploadStatus === 'idle'} uploadStatus={uploadStatus} t={t} />
+                <VirtualKeyboard onKeyPress={(k) => setPlayerName(p => p.length < 8 ? p + k : p)} onDelete={() => setPlayerName(p => p.slice(0, -1))} onSubmit={handleKeyboardAction} disabledSubmit={playerName.length < 3} uploadStatus={uploadStatus} t={t} />
                 <button onClick={() => { setUploadStatus('idle'); setGameState(prev => ({...prev, mode: 'menu'})); }} className="mt-6 text-slate-400 hover:text-white underline text-sm">{(uploadStatus === 'success' || uploadStatus === 'restart') ? t.btnBackMenu : t.btnSkip}</button>
               </div>
             )}
