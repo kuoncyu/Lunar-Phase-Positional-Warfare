@@ -21,9 +21,11 @@
     /* portrait: 工具列~56px，每個玩家面板約110px */
     @media (orientation: portrait) {
       .game-wrapper { --board-size: min(calc(100vw - 24px), calc(100dvh - 56px - 110px * var(--portrait-mult) - 24px)); }
+      .game-wrapper.challenge-mode { --board-size: min(calc(100vw - 48px), calc(100dvh - 56px - 110px * var(--portrait-mult) - 60px)); }
     }
     @media (orientation: landscape) {
       .game-wrapper { --board-size: min(calc(100dvh - 48px - 16px), calc(100vw - 48px - 110px * var(--landscape-mult) - 24px)); }
+      .game-wrapper.challenge-mode { --board-size: min(calc(100dvh - 64px - 16px), calc(100vw - 80px - 110px * var(--landscape-mult) - 48px)); }
     }
 
     .board-container { width: var(--board-size); height: var(--board-size); flex-shrink: 0; }
@@ -31,24 +33,50 @@
     .card-text { font-size: max(9px, calc(var(--board-size) * var(--card-scale) * 0.15)); }
 
     /* === 非遊戲頁面的容器最大寬度 === */
-    /* 確保 max-w 類在所有解析度下正確運作，並讓容器在大螢幕充分展開 */
+    /* 大螢幕上讓容器充分展開，不再限縮在中央 */
     .max-w-lg  { max-width: min(32rem, 92vw); }
     .max-w-xl  { max-width: min(36rem, 92vw); }
     .max-w-2xl { max-width: min(42rem, 92vw); }
     .max-w-3xl { max-width: min(56rem, 92vw); }
     .max-w-4xl { max-width: min(72rem, 92vw); }
 
+    /* 大廳/選單頁面專用：依螢幕寬度自動放大 */
+    @media (min-width: 1024px) {
+      .max-w-lg  { max-width: min(46rem, 88vw); }
+      .max-w-xl  { max-width: min(52rem, 88vw); }
+      .max-w-2xl { max-width: min(64rem, 88vw); }
+      .max-w-3xl { max-width: min(76rem, 88vw); }
+      .max-w-4xl { max-width: min(90rem, 92vw); }
+    }
+    @media (min-width: 1400px) {
+      .max-w-lg  { max-width: min(52rem, 85vw); }
+      .max-w-xl  { max-width: min(60rem, 85vw); }
+      .max-w-2xl { max-width: min(72rem, 85vw); }
+      .max-w-3xl { max-width: min(88rem, 88vw); }
+      .max-w-4xl { max-width: min(100rem, 92vw); }
+    }
+
     /* === 非遊戲頁面響應式字體縮放 === */
     /* 在大螢幕（≥1024px）上字體額外放大，確保空間被充分利用 */
     @media (min-width: 1024px) {
-      .text-sm   { font-size: 1rem !important; }
-      .text-base { font-size: 1.1rem !important; }
-      .text-lg   { font-size: 1.25rem !important; }
-      .text-xl   { font-size: 1.4rem !important; }
-      .text-2xl  { font-size: 1.7rem !important; }
-      .text-3xl  { font-size: 2rem !important; }
-      .text-4xl  { font-size: 2.5rem !important; }
-      .text-5xl  { font-size: 3rem !important; }
+      .text-sm   { font-size: 1.05rem !important; }
+      .text-base { font-size: 1.15rem !important; }
+      .text-lg   { font-size: 1.3rem !important; }
+      .text-xl   { font-size: 1.5rem !important; }
+      .text-2xl  { font-size: 1.85rem !important; }
+      .text-3xl  { font-size: 2.2rem !important; }
+      .text-4xl  { font-size: 2.8rem !important; }
+      .text-5xl  { font-size: 3.5rem !important; }
+    }
+    @media (min-width: 1400px) {
+      .text-sm   { font-size: 1.1rem !important; }
+      .text-base { font-size: 1.2rem !important; }
+      .text-lg   { font-size: 1.4rem !important; }
+      .text-xl   { font-size: 1.6rem !important; }
+      .text-2xl  { font-size: 2rem !important; }
+      .text-3xl  { font-size: 2.5rem !important; }
+      .text-4xl  { font-size: 3rem !important; }
+      .text-5xl  { font-size: 3.8rem !important; }
     }
 
     /* === 結算特效文字 === */
@@ -96,6 +124,10 @@
       font-size: clamp(14px, 2.8vmin, 20px) !important;
       font-weight: 900 !important;
     }
+
+    /* === 大廳背景：淡化月相裝飾 === */
+    @keyframes moon-bg-float { 0%, 100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-16px) rotate(4deg); } }
+    .bg-moon-deco { position: absolute; animation: moon-bg-float ease-in-out infinite; will-change: transform; }
   </style>
 </head>
 <body class="text-slate-100 selection:bg-indigo-500/30">
@@ -114,7 +146,7 @@
     const TRANSLATIONS = {
       zh: {
         title: '月相陣地戰', subtitle: '派對連線與極限闖關！',
-        btnChallenge: '單人極限闖關 (100層)', btnLeaderboard: '查閱闖關排行榜', btnLocal: '自由派對 (單/多人同機)', btnOnline: '線上房間連線對戰',
+        btnChallenge: '單人極限闖關 (100層)', btnLeaderboard: '查閱闖關排行榜', btnLocal: '自由派對 (單/多人同機)', btnOnline: '線上房間連線對戰', btnMoonInfo: '月相知識',
         settings: '遊戲設定', language: '語言 (Language)', bgmVol: '音樂大小', sfxVol: '音效大小',
         howToPlay: '遊戲玩法教學', fullscreen: '全螢幕切換', about: '關於遊戲', back: '返回',
         aboutText: "設計開發：邱祈雅 老師\n測試校正：郭柏宏 老師\n開發工具：Gemini\n靈感來源：Google Doodle「弦月升起」（Rise of the Half Moon）\n程式版本：20260404",
@@ -131,11 +163,15 @@
         rankTitle: '結算排行榜', btnPlayAgain: '再打一局',
         txtLvl: '第', txtLayer: '層', txtRoom: '連線代碼:', txtThinking: '思考中...', txtPerson: '人',
         phases: ['新月', '眉月', '上弦月', '盈凸月', '滿月', '虧凸月', '下弦月', '殘月'],
+        moonInfoTitle: '月相知識', moonInfoIntro: '月相是指我們在地球上看到月球被太陽照亮部分的明暗形狀變化。隨著月球繞地球公轉，太陽、地球、月球三者的相對位置不斷改變，使月面被照亮的比例與形狀產生規律性的盈虧變化。',
+        moonInfoCycleTitle: '盈虧變化循環', moonInfoCycleText: '一個完整的月相循環稱為「朔望月」，平均約 29.53 天。順序為：新月 → 眉月 → 上弦月 → 盈凸月 → 滿月 → 虧凸月 → 下弦月 → 殘月，再回到新月，如此循環不息。由暗轉亮的過程稱為「盈」，由亮轉暗的過程稱為「虧」。',
+        moonPhaseDates: ['農曆初一', '農曆初二～初六', '農曆初七、初八', '農曆初九～十四', '農曆十五、十六', '農曆十七～二十一', '農曆二十二、二十三', '農曆二十四～三十'],
+        moonPhaseDesc: ['月球運行至太陽與地球之間，背面朝向地球，幾乎完全看不到月亮。', '月球漸漸偏離太陽方向，西方天空出現一道纖細月牙，由暗轉亮，逐漸盈大。', '月球與太陽相距約90°，可見半圓月面，形如英文字母「D」，上半夜可見。', '月面亮部持續擴大，超過半圓但尚未全滿，繼續朝滿月邁進。', '地球位於太陽與月球之間，整個月面被陽光照亮，全夜可見明亮圓月。', '滿月過後月面亮部開始縮小，仍大於半圓，由盈轉虧。', '月球與太陽再次相距約90°，可見半圓月面，形如英文字母「C」，下半夜後可見。', '月面亮部持續縮小成一道細弧，清晨低懸天邊，即將回到新月。'],
         boardNames: { tiny_star: '微型星', hexagon: '六邊形', dipper: '北斗七星', diamond: '鑽石', classic: '經典九宮格', pyramid: '金字塔', lightning: '閃電陣', hourglass: '沙漏', owl: '貓頭鷹', nebula: '星雲', tree: '生命之樹', cross: '十字星', satellite: '人造衛星', med_tri: '中型三角', med_star: '中型星芒', vortex: '深空漩渦', lrg_grid: '大型網格', lrg_cross: '大型十字', lrg_shield: '大型護盾', lrg_star: '大型星陣' }
       },
       en: {
         title: 'Moonphase Tactics', subtitle: 'Party & 100-Level Challenge!',
-        btnChallenge: 'Solo Challenge (100 Lvl)', btnLeaderboard: 'Leaderboard', btnLocal: 'Local Party (1-4P)', btnOnline: 'Online Multiplayer',
+        btnChallenge: 'Solo Challenge (100 Lvl)', btnLeaderboard: 'Leaderboard', btnLocal: 'Local Party (1-4P)', btnOnline: 'Online Multiplayer', btnMoonInfo: 'Moon Phase Guide',
         settings: 'Settings', language: 'Language (語言)', bgmVol: 'Music Vol', sfxVol: 'SFX Vol',
         howToPlay: 'How to Play', fullscreen: 'Toggle Fullscreen', about: 'About', back: 'Back',
         aboutText: "Design & Dev: Teacher Chiu Chi-Ya\nQA & Testing: Teacher Kuo Po-Hung\nDev Tool: Gemini\nInspiration: Google Doodle \"Rise of the Half Moon\"\nVersion: 20260404",
@@ -152,11 +188,15 @@
         rankTitle: 'Final Ranking', btnPlayAgain: 'Play Again',
         txtLvl: 'Lvl', txtLayer: '', txtRoom: 'Room:', txtThinking: 'Thinking...', txtPerson: 'P',
         phases: ['New', 'Waxing C.', 'First Q.', 'Waxing G.', 'Full', 'Waning G.', 'Last Q.', 'Waning C.'],
+        moonInfoTitle: 'Moon Phase Guide', moonInfoIntro: 'Moon phases describe the changing shape of the sunlit part of the Moon as seen from Earth. As the Moon orbits Earth, the relative positions of the Sun, Earth and Moon keep shifting, causing the illuminated portion to grow and shrink in a regular cycle.',
+        moonInfoCycleTitle: 'The Waxing & Waning Cycle', moonInfoCycleText: 'A complete moon-phase cycle is called a "synodic month", averaging about 29.53 days. The order is: New → Waxing Crescent → First Quarter → Waxing Gibbous → Full → Waning Gibbous → Last Quarter → Waning Crescent, then back to New, repeating endlessly. Growing brighter is "waxing"; growing dimmer is "waning".',
+        moonPhaseDates: ['Lunar Day 1', 'Lunar Day 2–6', 'Lunar Day 7–8', 'Lunar Day 9–14', 'Lunar Day 15–16', 'Lunar Day 17–21', 'Lunar Day 22–23', 'Lunar Day 24–30'],
+        moonPhaseDesc: ['The Moon sits between the Sun and Earth with its far side lit, so it is almost invisible from Earth.', "The Moon drifts away from the Sun's direction; a thin crescent appears in the western sky and slowly brightens.", 'The Moon is about 90° from the Sun; half the face is lit, shaped like a "D", visible in the early evening.', 'The lit portion keeps expanding past half, continuing on toward Full Moon.', 'Earth sits between the Sun and Moon; the whole face is lit and visible all night long.', 'After Full Moon the lit portion starts shrinking, still more than half — waxing turns to waning.', 'The Moon is again about 90° from the Sun; half the face is lit, shaped like a "C", visible after midnight.', 'The lit portion shrinks to a thin arc low in the dawn sky, about to return to New Moon.'],
         boardNames: { tiny_star: 'Tiny Star', hexagon: 'Hexagon', dipper: 'Big Dipper', diamond: 'Diamond', classic: 'Classic Grid', pyramid: 'Pyramid', lightning: 'Lightning', hourglass: 'Hourglass', owl: 'Owl', nebula: 'Nebula', tree: 'Tree of Life', cross: 'Cross', satellite: 'Satellite', med_tri: 'Med Triangle', med_star: 'Med Star', vortex: 'Vortex', lrg_grid: 'Large Grid', lrg_cross: 'Large Cross', lrg_shield: 'Large Shield', lrg_star: 'Large Star' }
       },
       ja: {
         title: '月相タクティクス', subtitle: 'パーティー＆100階層チャレンジ！',
-        btnChallenge: 'ソロチャレンジ (100階層)', btnLeaderboard: 'ランキング', btnLocal: 'ローカルパーティー (1-4P)', btnOnline: 'オンライン対戦',
+        btnChallenge: 'ソロチャレンジ (100階層)', btnLeaderboard: 'ランキング', btnLocal: 'ローカルパーティー (1-4P)', btnOnline: 'オンライン対戦', btnMoonInfo: '月相ガイド',
         settings: '設定', language: '言語 (Language)', bgmVol: '音楽音量', sfxVol: '効果音音量',
         howToPlay: '遊び方', fullscreen: 'フルスクリーン切替', about: '概要', back: '戻る',
         aboutText: "設計・開発：邱祈雅 先生\nテスト・校正：郭柏宏 先生\n開発ツール：Gemini\nインスピレーション：Google Doodle「半月の出」\nバージョン：20260404",
@@ -173,6 +213,10 @@
         rankTitle: '最終ランキング', btnPlayAgain: 'もう一度',
         txtLvl: '第', txtLayer: '階', txtRoom: 'ルーム:', txtThinking: '考え中...', txtPerson: '人',
         phases: ['新月', '三日月', '上弦の月', '十三夜', '満月', '寝待月', '下弦の月', '二十六夜'],
+        moonInfoTitle: '月相ガイド', moonInfoIntro: '月相とは、地球から見た月の太陽に照らされた部分の形が変化していく様子のことです。月が地球を周回するにつれて、太陽・地球・月の相対的な位置が変わり、月面の輝いて見える割合と形が規則的に満ち欠けします。',
+        moonInfoCycleTitle: '満ち欠けの周期', moonInfoCycleText: '月相の1周期は「朔望月」と呼ばれ、平均約29.53日です。順序は、新月 → 三日月 → 上弦の月 → 十三夜 → 満月 → 寝待月 → 下弦の月 → 二十六夜 → 新月、というように繰り返されます。暗から明に向かう過程を「満ちる」、明から暗に向かう過程を「欠ける」と呼びます。',
+        moonPhaseDates: ['旧暦一日', '旧暦二日～六日', '旧暦七日・八日', '旧暦九日～十四日', '旧暦十五日・十六日', '旧暦十七日～二十一日', '旧暦二十二日・二十三日', '旧暦二十四日～三十日'],
+        moonPhaseDesc: ['月が太陽と地球の間に入り、地球から見えない面が太陽に照らされるため、ほとんど見えません。', '月が太陽の方向から離れていき、西の空に細い月が現れ、徐々に明るくなっていきます。', '月と太陽の角度が約90度になり、半円形に見えます。アルファベットの「D」の形で、宵のうちに見られます。', '輝いている部分が半円を超えて広がり続け、満月に向かっていきます。', '地球が太陽と月の間に入り、月面全体が照らされ、一晩中明るい満月が見られます。', '満月を過ぎると輝く部分が縮み始めますが、まだ半円より大きい状態です。', '月と太陽の角度が再び約90度になり、半円形に見えます。アルファベットの「C」の形で、深夜以降に見られます。', '輝く部分が細い弓型まで縮み、明け方の空に低く見え、やがて新月に戻ります。'],
         boardNames: { tiny_star: '小さな星', hexagon: '六角形', dipper: '北斗七星', diamond: 'ダイヤモンド', classic: 'クラシック', pyramid: 'ピラミッド', lightning: '稲妻', hourglass: '砂時計', owl: 'フクロウ', nebula: '星雲', tree: '生命の樹', cross: '十字架', satellite: '衛星', med_tri: '中型三角', med_star: '中型星', vortex: '渦巻き', lrg_grid: '大型グリッド', lrg_cross: '大型十字', lrg_shield: '大型シールド', lrg_star: '大型星陣' }
       }
     };
@@ -394,6 +438,33 @@
     const StarryBackground = () => (
       <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none bg-gradient-to-b from-slate-950 via-indigo-950 to-slate-900">
         <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MDAiIGhlaWdodD0iNDAwIj48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSIxIiBmaWxsPSIjZmZmIiBvcGFjaXR5PSIwLjMiLz48Y2lyY2xlIGN4PSIyNTAiIGN5PSIxNTAiIHI9IjEuNSIgZmlsbD0iI2ZmZiIgb3BhY2l0eT0iMC41Ii8+PGNpcmNsZSBjeD0iMzUwIiBjeT0iMzIwIiByPSIxIiBmaWxsPSIjZmZmIiBvcGFjaXR5PSIwLjIiLz48L3N2Zz4=')] bg-repeat opacity-50 animate-pulse"></div>
+      </div>
+    );
+
+    // 大廳/選單背景：許多淡化處理的月相裝飾月亮，緩緩漂浮
+    const BG_MOONS = [
+      { phase: 0, top: '8%',  left: '10%', size: 64,  opacity: 0.10, dur: 22, delay: 0 },
+      { phase: 3, top: '14%', left: '82%', size: 90,  opacity: 0.08, dur: 26, delay: 1 },
+      { phase: 6, top: '30%', left: '50%', size: 50,  opacity: 0.07, dur: 19, delay: 2 },
+      { phase: 1, top: '60%', left: '6%',  size: 80,  opacity: 0.09, dur: 24, delay: 0.5 },
+      { phase: 5, top: '72%', left: '88%', size: 70,  opacity: 0.10, dur: 21, delay: 1.5 },
+      { phase: 4, top: '4%',  left: '40%', size: 56,  opacity: 0.08, dur: 28, delay: 2.5 },
+      { phase: 7, top: '46%', left: '92%', size: 46,  opacity: 0.09, dur: 18, delay: 0.8 },
+      { phase: 2, top: '84%', left: '28%', size: 76,  opacity: 0.08, dur: 25, delay: 1.2 },
+      { phase: 0, top: '38%', left: '18%', size: 38,  opacity: 0.11, dur: 17, delay: 2.2 },
+      { phase: 4, top: '90%', left: '62%', size: 62,  opacity: 0.09, dur: 23, delay: 0.3 },
+      { phase: 6, top: '20%', left: '64%', size: 42,  opacity: 0.10, dur: 20, delay: 1.8 },
+      { phase: 2, top: '54%', left: '38%', size: 34,  opacity: 0.09, dur: 16, delay: 2.8 },
+      { phase: 5, top: '8%',  left: '60%', size: 36,  opacity: 0.08, dur: 27, delay: 0.6 },
+      { phase: 1, top: '78%', left: '48%', size: 48,  opacity: 0.07, dur: 24, delay: 1.4 },
+    ];
+    const MoonPhasesBackdrop = () => (
+      <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
+        {BG_MOONS.map((m, i) => (
+          <div key={i} className="bg-moon-deco" style={{ top: m.top, left: m.left, width: `${m.size}px`, height: `${m.size}px`, opacity: m.opacity, animationDuration: `${m.dur}s`, animationDelay: `${m.delay}s` }}>
+            <MoonSvg phase={m.phase} className="w-full h-full" />
+          </div>
+        ))}
       </div>
     );
 
@@ -1008,15 +1079,18 @@
 
       const getPlayerContainerStyle = (pId) => {
         const cInfo = P_COLORS[pId];
-        if (gameState.turn !== pId || gameState.tallyState !== 'none') return 'bg-transparent border border-transparent';
-        return `${cInfo.bg}/20 border border-${cInfo.base}-500/30 shadow-[0_0_20px_${cInfo.shadow}]`;
+        // 外框常亮（使用代表色）；輪到該玩家時背景也亮起
+        const isActive = gameState.turn === pId && gameState.tallyState === 'none';
+        if (isActive) return `bg-${cInfo.base}-900/30 border-2 border-${cInfo.base}-400 shadow-[0_0_24px_${cInfo.shadow}]`;
+        return `bg-transparent border-2 border-${cInfo.base}-500/50`;
       };
 
       // === Non-Playing Views ===
-      if (['splash', 'menu', 'lobby', 'lobby_wait', 'name_input', 'leaderboard', 'local_setup'].includes(gameState.mode)) {
+      if (['splash', 'menu', 'lobby', 'lobby_wait', 'name_input', 'leaderboard', 'local_setup', 'moonInfo'].includes(gameState.mode)) {
         return (
-          <div className={`${wrapperClass} flex flex-col items-center justify-center overflow-y-auto custom-scroll`}>
+          <div className={`${wrapperClass} flex flex-col items-center justify-center overflow-y-auto custom-scroll px-4 sm:px-6 lg:px-10`}>
             <StarryBackground />
+            <MoonPhasesBackdrop />
             
             <div className="fixed top-4 right-4 z-[9999]">
               <button onClick={() => setShowSettings(true)} className="p-3 text-indigo-300 hover:text-white bg-slate-800/80 rounded-full border border-white/10 shadow-lg hover:rotate-90 transition-all"><SettingsIcon className="w-6 h-6"/></button>
@@ -1039,7 +1113,7 @@
             )}
 
             {gameState.mode === 'leaderboard' && (
-              <div className="z-10 flex flex-col items-center p-6 sm:p-10 landscape:p-6 bg-slate-900/80 backdrop-blur-xl rounded-3xl border border-indigo-500/30 shadow-2xl relative w-full max-w-2xl landscape:max-w-4xl my-4 landscape:my-3 mx-4 max-h-[95vh] overflow-y-auto custom-scroll">
+              <div className="z-10 flex flex-col items-center p-6 sm:p-10 lg:p-12 landscape:p-6 bg-slate-900/80 backdrop-blur-xl rounded-3xl border border-indigo-500/30 shadow-2xl relative w-full max-w-3xl landscape:max-w-5xl lg:max-w-5xl my-4 landscape:my-3 mx-4 max-h-[95vh] overflow-y-auto custom-scroll">
                 <h2 className="text-2xl sm:text-4xl font-black mb-5 sm:mb-7 text-center text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-yellow-500 flex items-center gap-2 sm:gap-3"><Trophy className="w-7 h-7 sm:w-10 sm:h-10 text-yellow-400"/> {t.lbTitle}</h2>
                 {isLoadingLb ? ( <div className="text-indigo-300 animate-pulse py-8 sm:py-12 text-base sm:text-xl">{t.lbLoading}</div> ) : (
                   <div className="w-full bg-slate-950/50 rounded-2xl border border-slate-700 overflow-hidden">
@@ -1063,26 +1137,72 @@
               </div>
             )}
 
+            {gameState.mode === 'moonInfo' && (
+              <div className="z-10 flex flex-col items-center p-6 sm:p-10 lg:p-12 landscape:p-6 bg-slate-900/80 backdrop-blur-xl rounded-3xl border border-purple-500/30 shadow-2xl relative w-full max-w-3xl landscape:max-w-5xl lg:max-w-5xl my-4 landscape:my-3 mx-4 max-h-[95vh] overflow-y-auto custom-scroll">
+                <h2 className="text-2xl sm:text-4xl font-black mb-3 text-center text-transparent bg-clip-text bg-gradient-to-r from-purple-300 to-indigo-400 flex items-center justify-center gap-2 sm:gap-3"><MoonSvg phase={4} className="w-8 h-8 sm:w-11 sm:h-11" /> {t.moonInfoTitle}</h2>
+                <p className="text-indigo-200 text-sm sm:text-base lg:text-lg text-center mb-6 sm:mb-8 max-w-3xl leading-relaxed">{t.moonInfoIntro}</p>
+
+                {/* 八種月相卡片：名稱 + 農曆日期 + 說明 */}
+                <div className="w-full grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-8 sm:mb-10">
+                  {t.phases.map((name, i) => (
+                    <div key={i} className="flex flex-col items-center bg-slate-800/60 border border-slate-600/50 rounded-2xl p-3 sm:p-4 text-center hover:border-purple-400/60 transition-colors">
+                      <MoonSvg phase={i} className="w-12 h-12 sm:w-16 sm:h-16 mb-2" />
+                      <div className="font-bold text-yellow-200 text-sm sm:text-base">{name}</div>
+                      <div className="text-purple-300 text-xs sm:text-sm mb-1.5 font-[Rubik]">{t.moonPhaseDates[i]}</div>
+                      <div className="text-slate-400 text-xs sm:text-sm leading-relaxed">{t.moonPhaseDesc[i]}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* 盈虧變化循環圖 */}
+                <div className="w-full bg-slate-950/50 border border-indigo-500/30 rounded-2xl p-5 sm:p-8 mb-6">
+                  <h3 className="text-lg sm:text-2xl font-bold text-center text-emerald-300 mb-4 sm:mb-6">{t.moonInfoCycleTitle}</h3>
+                  <div className="relative w-full max-w-md mx-auto mb-4" style={{ aspectRatio: '1 / 1' }}>
+                    <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100">
+                      <circle cx="50" cy="50" r="38" fill="none" stroke="#818cf8" strokeOpacity="0.35" strokeWidth="0.6" strokeDasharray="2.5 3" />
+                      <path d="M 50 12 A 38 38 0 0 1 88 50" fill="none" stroke="#facc15" strokeOpacity="0.6" strokeWidth="0.8" markerEnd="url(#arrowYellow)" />
+                      <defs><marker id="arrowYellow" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#facc15" opacity="0.7" /></marker></defs>
+                    </svg>
+                    {t.phases.map((name, i) => {
+                      const angle = (i / 8) * 2 * Math.PI - Math.PI / 2;
+                      const cx = 50 + 38 * Math.cos(angle);
+                      const cy = 50 + 38 * Math.sin(angle);
+                      return (
+                        <div key={i} className="absolute flex flex-col items-center" style={{ left: `${cx}%`, top: `${cy}%`, transform: 'translate(-50%, -50%)', width: '20%' }}>
+                          <MoonSvg phase={i} className="w-8 h-8 sm:w-12 sm:h-12" />
+                          <span className="text-[9px] sm:text-xs text-slate-300 mt-1 text-center whitespace-nowrap">{name}</span>
+                        </div>
+                      );
+                    })}
+                    <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-[9px] sm:text-xs text-slate-500 text-center w-16 sm:w-20 leading-tight">≈29.53 {lang === 'zh' ? '天' : lang === 'ja' ? '日' : 'days'}</div>
+                  </div>
+                  <p className="text-slate-300 text-xs sm:text-base text-center leading-relaxed max-w-2xl mx-auto">{t.moonInfoCycleText}</p>
+                </div>
+
+                <button onClick={() => { audioManager.startLobbyBGM(); setGameState(prev => ({ ...prev, mode: 'menu' })); }} className="w-full py-3 sm:py-4 bg-slate-700 hover:bg-slate-600 text-white rounded-2xl font-bold transition-all flex items-center justify-center gap-2 text-sm sm:text-lg"><Home className="w-5 h-5 sm:w-6 sm:h-6"/> {t.back}</button>
+              </div>
+            )}
+
             {gameState.mode === 'splash' && (
               <div
                 className="z-10 flex flex-col items-center justify-center cursor-pointer select-none w-full h-full min-h-screen"
                 style={{ background: 'transparent' }}
                 onClick={() => { audioManager.init(); audioManager.startLobbyBGM(); setGameState(prev => ({ ...prev, mode: 'menu' })); }}
               >
-                <div className="flex flex-col items-center gap-6 sm:gap-8 animate-pulse" style={{ animationDuration: '3s' }}>
+                <div className="flex flex-col items-center gap-6 sm:gap-8 lg:gap-12 animate-pulse" style={{ animationDuration: '3s' }}>
                   {/* 月亮雙圖 */}
-                  <div className="flex items-center gap-6 sm:gap-10">
-                    <MoonSvg phase={2} className="w-20 h-20 sm:w-32 sm:h-32" />
-                    <MoonSvg phase={4} className="w-24 h-24 sm:w-40 sm:h-40" style={{ filter: 'drop-shadow(0px 0px 30px rgba(254,240,138,0.8))' }} />
-                    <MoonSvg phase={6} className="w-20 h-20 sm:w-32 sm:h-32" />
+                  <div className="flex items-center gap-6 sm:gap-10 lg:gap-16">
+                    <MoonSvg phase={2} className="w-20 h-20 sm:w-32 sm:h-32 lg:w-44 lg:h-44" />
+                    <MoonSvg phase={4} className="w-24 h-24 sm:w-40 sm:h-40 lg:w-56 lg:h-56" style={{ filter: 'drop-shadow(0px 0px 30px rgba(254,240,138,0.8))' }} />
+                    <MoonSvg phase={6} className="w-20 h-20 sm:w-32 sm:h-32 lg:w-44 lg:h-44" />
                   </div>
                   {/* 標題 */}
-                  <h1 className="text-5xl sm:text-7xl landscape:text-6xl font-extrabold tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-yellow-200 via-yellow-400 to-yellow-200 drop-shadow-lg text-center leading-tight px-4">
+                  <h1 className="text-5xl sm:text-7xl lg:text-8xl landscape:text-6xl font-extrabold tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-yellow-200 via-yellow-400 to-yellow-200 drop-shadow-lg text-center leading-tight px-4">
                     {t.title}
                   </h1>
-                  <p className="text-indigo-300 text-base sm:text-xl landscape:text-lg text-center opacity-80">{t.subtitle}</p>
+                  <p className="text-indigo-300 text-base sm:text-xl lg:text-2xl landscape:text-lg text-center opacity-80">{t.subtitle}</p>
                   {/* 點擊提示 */}
-                  <div className="mt-4 sm:mt-6 px-8 py-3 sm:px-12 sm:py-4 rounded-full border border-yellow-400/40 bg-yellow-400/10 text-yellow-300 font-bold text-base sm:text-xl tracking-wider" style={{ animation: 'score-pulse 2s ease-in-out infinite' }}>
+                  <div className="mt-4 sm:mt-6 lg:mt-8 px-8 py-3 sm:px-12 sm:py-4 lg:px-16 lg:py-5 rounded-full border border-yellow-400/40 bg-yellow-400/10 text-yellow-300 font-bold text-base sm:text-xl lg:text-2xl tracking-wider" style={{ animation: 'score-pulse 2s ease-in-out infinite' }}>
                     ✦ 點擊任意處開始 ✦
                   </div>
                 </div>
@@ -1090,27 +1210,30 @@
             )}
 
             {gameState.mode === 'menu' && (
-              <div className="z-10 flex flex-col landscape:flex-row landscape:items-stretch items-center p-6 sm:p-10 landscape:p-6 bg-slate-900/60 backdrop-blur-xl rounded-3xl border border-indigo-500/30 shadow-2xl relative w-full max-w-lg landscape:max-w-4xl my-4 landscape:my-3 mx-4 max-h-[95vh] overflow-y-auto custom-scroll gap-6 landscape:gap-8">
+              <div className="z-10 flex flex-col landscape:flex-row landscape:items-stretch items-center p-6 sm:p-10 lg:p-12 landscape:p-6 bg-slate-900/60 backdrop-blur-xl rounded-3xl border border-indigo-500/30 shadow-2xl relative w-full max-w-xl landscape:max-w-5xl lg:max-w-5xl my-4 landscape:my-3 mx-4 max-h-[95vh] overflow-y-auto custom-scroll gap-6 landscape:gap-8 lg:gap-12">
                 {/* 左側：標題區 */}
                 <div className="flex flex-col items-center landscape:items-start landscape:justify-center landscape:w-2/5 shrink-0">
-                  <div className="flex items-center space-x-3 sm:space-x-4 mb-4 landscape:mb-3"><MoonSvg phase={2} className="w-14 h-14 sm:w-20 sm:h-20 landscape:w-16 landscape:h-16" /><MoonSvg phase={6} className="w-14 h-14 sm:w-20 sm:h-20 landscape:w-16 landscape:h-16" /></div>
-                  <h1 className="text-3xl sm:text-5xl landscape:text-4xl font-extrabold mb-3 tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-yellow-200 to-yellow-500 drop-shadow-lg text-center landscape:text-left leading-tight">{t.title}</h1>
-                  <p className="text-indigo-200 text-sm sm:text-lg landscape:text-base text-center landscape:text-left">{t.subtitle}</p>
+                  <div className="flex items-center space-x-3 sm:space-x-5 lg:space-x-6 mb-4 landscape:mb-3"><MoonSvg phase={2} className="w-16 h-16 sm:w-24 sm:h-24 lg:w-32 lg:h-32 landscape:w-20 landscape:h-20" /><MoonSvg phase={6} className="w-16 h-16 sm:w-24 sm:h-24 lg:w-32 lg:h-32 landscape:w-20 landscape:h-20" /></div>
+                  <h1 className="text-3xl sm:text-5xl lg:text-6xl landscape:text-4xl font-extrabold mb-3 tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-yellow-200 to-yellow-500 drop-shadow-lg text-center landscape:text-left leading-tight">{t.title}</h1>
+                  <p className="text-indigo-200 text-sm sm:text-lg lg:text-xl landscape:text-base text-center landscape:text-left">{t.subtitle}</p>
                 </div>
                 {/* 右側：按鈕區 */}
-                <div className="flex flex-col gap-3 sm:gap-4 w-full landscape:flex-1 landscape:justify-center">
-                  <button onClick={() => initGame('challenge')} className="group flex items-center justify-center space-x-3 py-4 sm:py-5 landscape:py-4 bg-gradient-to-r from-yellow-600 to-amber-600 hover:from-yellow-500 hover:to-amber-500 text-white rounded-2xl font-black text-base sm:text-xl landscape:text-lg transition-all shadow-[0_0_20px_rgba(217,119,6,0.4)] border border-yellow-400/50"><Swords className="w-6 h-6 sm:w-7 sm:h-7 group-hover:scale-110 transition-transform shrink-0" /><span>{t.btnChallenge}</span></button>
-                  <button onClick={() => setGameState(prev => ({...prev, mode: 'leaderboard'}))} className="flex items-center justify-center space-x-2 py-3 sm:py-4 landscape:py-3 bg-slate-800 hover:bg-slate-700 text-yellow-300 border border-slate-600 rounded-2xl font-bold text-base sm:text-lg landscape:text-base transition-all"><Trophy className="w-5 h-5 sm:w-6 sm:h-6 shrink-0" /><span>{t.btnLeaderboard}</span></button>
-                  <div className="flex flex-col sm:flex-row landscape:flex-row gap-3 sm:gap-4">
-                    <button onClick={() => setGameState(prev => ({...prev, mode: 'local_setup'}))} className="flex-1 flex items-center justify-center space-x-2 sm:space-x-3 py-3 sm:py-4 landscape:py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl font-bold text-base sm:text-lg landscape:text-base transition-all shadow-lg"><Users className="w-5 h-5 sm:w-6 sm:h-6 shrink-0" /><span>{t.btnLocal}</span></button>
-                    <button onClick={() => { audioManager.init(); setGameState(prev => ({...prev, mode: 'lobby'})); }} className="flex-1 flex items-center justify-center space-x-2 sm:space-x-3 py-3 sm:py-4 landscape:py-3 bg-emerald-700 hover:bg-emerald-600 text-white border border-emerald-500/50 rounded-2xl font-bold text-base sm:text-lg landscape:text-base transition-all"><Globe className="w-5 h-5 sm:w-6 sm:h-6 shrink-0" /><span>{t.btnOnline}</span></button>
+                <div className="flex flex-col gap-3 sm:gap-4 lg:gap-5 w-full landscape:flex-1 landscape:justify-center">
+                  <button onClick={() => initGame('challenge')} className="group flex items-center justify-center space-x-3 py-4 sm:py-5 lg:py-6 landscape:py-4 bg-gradient-to-r from-yellow-600 to-amber-600 hover:from-yellow-500 hover:to-amber-500 text-white rounded-2xl font-black text-base sm:text-xl lg:text-2xl landscape:text-lg transition-all shadow-[0_0_20px_rgba(217,119,6,0.4)] border border-yellow-400/50"><Swords className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 group-hover:scale-110 transition-transform shrink-0" /><span>{t.btnChallenge}</span></button>
+                  <div className="flex flex-col sm:flex-row landscape:flex-row gap-3 sm:gap-4 lg:gap-5">
+                    <button onClick={() => setGameState(prev => ({...prev, mode: 'leaderboard'}))} className="flex-1 flex items-center justify-center space-x-2 py-3 sm:py-4 lg:py-5 landscape:py-3 bg-slate-800 hover:bg-slate-700 text-yellow-300 border border-slate-600 rounded-2xl font-bold text-base sm:text-lg lg:text-xl landscape:text-base transition-all"><Trophy className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7 shrink-0" /><span>{t.btnLeaderboard}</span></button>
+                    <button onClick={() => setGameState(prev => ({...prev, mode: 'moonInfo'}))} className="flex-1 flex items-center justify-center space-x-2 py-3 sm:py-4 lg:py-5 landscape:py-3 bg-purple-900/60 hover:bg-purple-800/70 text-purple-200 border border-purple-500/40 rounded-2xl font-bold text-base sm:text-lg lg:text-xl landscape:text-base transition-all"><MoonSvg phase={3} className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7 shrink-0" /><span>{t.btnMoonInfo}</span></button>
+                  </div>
+                  <div className="flex flex-col sm:flex-row landscape:flex-row gap-3 sm:gap-4 lg:gap-5">
+                    <button onClick={() => setGameState(prev => ({...prev, mode: 'local_setup'}))} className="flex-1 flex items-center justify-center space-x-2 sm:space-x-3 py-3 sm:py-4 lg:py-5 landscape:py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl font-bold text-base sm:text-lg lg:text-xl landscape:text-base transition-all shadow-lg"><Users className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7 shrink-0" /><span>{t.btnLocal}</span></button>
+                    <button onClick={() => { audioManager.init(); setGameState(prev => ({...prev, mode: 'lobby'})); }} className="flex-1 flex items-center justify-center space-x-2 sm:space-x-3 py-3 sm:py-4 lg:py-5 landscape:py-3 bg-emerald-700 hover:bg-emerald-600 text-white border border-emerald-500/50 rounded-2xl font-bold text-base sm:text-lg lg:text-xl landscape:text-base transition-all"><Globe className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7 shrink-0" /><span>{t.btnOnline}</span></button>
                   </div>
                 </div>
               </div>
             )}
 
             {gameState.mode === 'local_setup' && (
-              <div className="z-10 flex flex-col items-center p-6 sm:p-10 landscape:p-6 bg-slate-900/60 backdrop-blur-xl rounded-3xl border border-indigo-500/30 shadow-2xl relative w-full max-w-lg landscape:max-w-3xl my-4 landscape:my-3 mx-4 max-h-[95vh] overflow-y-auto custom-scroll">
+              <div className="z-10 flex flex-col items-center p-6 sm:p-10 lg:p-12 landscape:p-6 bg-slate-900/60 backdrop-blur-xl rounded-3xl border border-indigo-500/30 shadow-2xl relative w-full max-w-xl landscape:max-w-4xl lg:max-w-4xl my-4 landscape:my-3 mx-4 max-h-[95vh] overflow-y-auto custom-scroll">
                 <h2 className="text-2xl sm:text-4xl landscape:text-3xl font-black mb-5 landscape:mb-4 text-white text-center">{t.localSetupTitle}</h2>
                 <div className="w-full bg-slate-800/50 border border-slate-600/50 rounded-2xl p-5 sm:p-6 mb-5 landscape:mb-4 flex flex-col landscape:grid landscape:grid-cols-2 gap-4 landscape:gap-5">
                   <div>
@@ -1142,7 +1265,7 @@
             )}
 
             {gameState.mode === 'lobby' && (
-              <div className="z-10 flex flex-col w-full max-w-2xl landscape:max-w-5xl my-4 mx-4 max-h-[95vh] overflow-y-auto custom-scroll">
+              <div className="z-10 flex flex-col w-full max-w-3xl landscape:max-w-6xl lg:max-w-6xl my-4 mx-4 max-h-[95vh] overflow-y-auto custom-scroll">
                 {/* 標題列 */}
                 <div className="flex items-center justify-between mb-4 sm:mb-6 px-1">
                   <button onClick={() => { audioManager.startLobbyBGM(); setGameState(prev => ({ ...prev, mode: 'menu' })); }} className="flex items-center gap-2 text-slate-400 hover:text-white bg-slate-800/80 px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl border border-slate-600 text-sm sm:text-base font-bold transition-all"><Home className="w-4 h-4 sm:w-5 sm:h-5" /> <span>{t.back}</span></button>
@@ -1207,7 +1330,7 @@
             )}
 
             {gameState.mode === 'lobby_wait' && onlineRoomData && (
-              <div className="z-10 flex flex-col w-full max-w-xl landscape:max-w-4xl my-4 mx-4 max-h-[95vh] overflow-y-auto custom-scroll gap-4">
+              <div className="z-10 flex flex-col w-full max-w-2xl landscape:max-w-5xl lg:max-w-5xl my-4 mx-4 max-h-[95vh] overflow-y-auto custom-scroll gap-4">
                 {/* 標題：房間代碼 */}
                 <div className="bg-slate-900/80 backdrop-blur-xl rounded-3xl border border-emerald-500/30 p-5 sm:p-7 shadow-2xl text-center">
                   <p className="text-xs sm:text-sm font-bold text-slate-400 uppercase tracking-widest mb-1">{t.roomCode}</p>
@@ -1294,7 +1417,7 @@
       });
 
       return (
-        <div className={`game-wrapper ${wrapperClass} flex flex-col`}>
+        <div className={`game-wrapper ${gameState.mode === "challenge" ? "challenge-mode" : ""} ${wrapperClass} flex flex-col`}>
           <StarryBackground />
           
           {showSettings && <SettingsModal onClose={() => setShowSettings(false)} lang={lang} setLang={setLang} bgmVol={bgmVol} setBgmVol={setBgmVol} sfxVol={sfxVol} setSfxVol={setSfxVol} toggleFs={toggleFullscreen} showTutorial={showTutorialInner} setShowTutorial={setShowTutorialInner} t={t} />}
@@ -1413,7 +1536,7 @@
               const isActive = gameState.turn === pId && gameState.tallyState === 'none';
               const isRow = (dir === 'top' || dir === 'bottom');
               return (
-                <div key={pId} className={`flex ${isRow ? 'flex-col items-center' : 'flex-row items-center'} gap-1 p-1.5 rounded-2xl transition-all duration-300 shrink-0 ${isActive ? `${cInfo.bg}/20 border border-${cInfo.base}-500/40 shadow-[0_0_20px_${cInfo.shadow}]` : 'border border-transparent'}`}>
+                <div key={pId} className={`flex ${isRow ? 'flex-col items-center' : 'flex-row items-center'} gap-1 p-1.5 rounded-2xl transition-all duration-300 shrink-0 ${getPlayerContainerStyle(pId)}`}>
                   {(dir === 'bottom' || dir === 'right') && (
                     <div className={`relative flex flex-row justify-between items-center gap-2 bg-slate-950/60 rounded-full border border-${cInfo.base}-500/30 px-3 py-1 shadow-md ${isRow ? 'w-full' : 'flex-col h-full py-3 px-1'}`}>
                       <span className={`player-name-text font-bold truncate max-w-[100px] sm:max-w-[140px] ${cInfo.text}`}>{getPlayerLabel(pId)}</span>
