@@ -564,6 +564,129 @@
       );
     };
 
+    const FESTIVALS = [
+      { region: '🇨🇳 中華文化圈', emoji: '🥮', name: '中秋節', date: '農曆八月十五（滿月）', moon: 4, desc: '又稱「月圓節」，是最具代表性的月亮節日。家人圍坐賞月、吃月餅，象徵團圓與豐收。月餅圓形設計即源自對滿月的崇敬。民間流傳嫦娥奔月、吳剛伐桂等神話，更添節日神秘色彩。' },
+      { region: '🇨🇳 中華文化圈', emoji: '🕯️', name: '元宵節', date: '農曆正月十五（滿月）', moon: 4, desc: '農曆新年後第一個滿月之夜，家家戶戶提燈籠、猜燈謎、吃湯圓。古代未婚男女也在此夜相約賞月，因此又有「中國情人節」之稱。燈火與月光相輝映，是一年中最明亮的夜晚之一。' },
+      { region: '🇨🇳 中華文化圈', emoji: '🎆', name: '鬼月開始與結束', date: '農曆七月初一（新月）/ 七月三十（新月）', moon: 0, desc: '農曆七月俗稱「鬼月」，初一新月之夜冥界之門開啟，月黑風高被認為是陰氣最重的時刻。三十日鬼月結束，家家焚燒金紙超渡，月相循環象徵陰陽流轉。' },
+      { region: '🇯🇵 日本', emoji: '🍡', name: '十五夜（お月見）', date: '農曆八月十五（滿月）', moon: 4, desc: '日本賞月節，供奉月見糰子（白色圓形丸子象徵滿月）、芒草（秋收象徵），並祈求豐收。貴族文化中「月見」是吟詩作畫的雅事，松尾芭蕉等俳句大師留下無數詠月名句。' },
+      { region: '🇯🇵 日本', emoji: '🌾', name: '十三夜', date: '農曆九月十三（盈凸月）', moon: 3, desc: '日本特有的「後之月見」習俗，賞農曆九月十三的月亮，供奉栗子與豆類，又稱「栗名月」或「豆名月」。傳統認為只賞十五夜而不賞十三夜是「片月見」，帶來厄運。' },
+      { region: '🇰🇷 韓國', emoji: '🎑', name: '秋夕（추석）', date: '農曆八月十五（滿月）', moon: 4, desc: '韓國最重要的傳統節日之一，相當於中秋節。全家掃墓祭祖，製作並食用松餅（송편），穿著韓服賞月、跳農樂舞。月亮在韓國文化中象徵豐收與家族連結。' },
+      { region: '🇮🇳 印度', emoji: '🪔', name: '排燈節（Diwali）', date: '印度曆卡爾提卡月新月前後', moon: 0, desc: '印度最盛大的「光明節」，選在最黑暗的新月之夜，家家戶戶點亮數以千計的油燈，以光明對抗黑暗，象徵善勝惡、知識勝無知。月相最暗時，人造光明最為燦爛。' },
+      { region: '🇮🇳 印度', emoji: '🙏', name: '卡爾瓦喬特（Karva Chauth）', date: '印度曆卡爾提卡月第四天（上弦月後）', moon: 2, desc: '已婚婦女為丈夫健康長壽而整日齋戒，直到月亮升起後，透過篩子看月亮，再打破禁食。月亮在此節日中象徵愛情與守護，儀式充滿詩意。' },
+      { region: '🌙 伊斯蘭文化圈', emoji: '☪️', name: '齋戒月（Ramadan）', date: '伊斯蘭曆第九個月（新月起始）', moon: 0, desc: '全球十八億穆斯林最神聖的月份，以新月出現為開始、終結標誌。信徒從黎明到日落禁食禁飲，夜晚祈禱、讀古蘭經。月相是伊斯蘭曆的核心，各地宗教學者親眼觀測月牙才宣布齋月開始。' },
+      { region: '🌙 伊斯蘭文化圈', emoji: '🎊', name: '開齋節（Eid al-Fitr）', date: '伊斯蘭曆第十個月新月出現', moon: 1, desc: '齋戒月結束後，以新月出現宣告開齋，是全球穆斯林最歡樂的節日。家人相聚、施捨窮人、互贈禮物。眉月（新月）成為伊斯蘭的標誌性符號，也象徵新的開始。' },
+      { region: '🇹🇭 泰國', emoji: '🪔', name: '水燈節（Loy Krathong）', date: '泰曆十二月滿月', moon: 4, desc: '泰國最浪漫的節日，在滿月之夜，人們將點著蠟燭的蓮花形水燈放入河中，祈求消災解厄、感謝水神。同時施放數千個天燈（孔明燈）升入夜空，與滿月相映，場景極為壯觀。' },
+      { region: '🌍 世界各地', emoji: '🐰', name: '月兔傳說', date: '東亞・中秋滿月', moon: 4, desc: '中國、日本、韓國、墨西哥阿茲特克文明都有「月兔」神話。中文傳說中玉兔在廣寒宮為嫦娥搗藥，日本月兔搗麻糬，阿茲特克神話中神祇將兔子扔向月亮留下陰影。各文明在月面陰影中不約而同看到了兔子的輪廓。' },
+    ];
+
+    function MoonInfoPage({ t, lang, onBack }) {
+      const [moonTab, setMoonTab] = useState('phases');
+      return (
+        <div className="z-10 flex flex-col items-center p-6 sm:p-10 lg:p-12 landscape:p-6 bg-slate-900/80 backdrop-blur-xl rounded-3xl border border-purple-500/30 shadow-2xl relative w-full max-w-3xl landscape:max-w-5xl lg:max-w-5xl my-4 landscape:my-3 mx-4 max-h-[95vh] overflow-y-auto custom-scroll">
+          <h2 className="text-2xl sm:text-4xl font-black mb-4 text-center text-transparent bg-clip-text bg-gradient-to-r from-purple-300 to-indigo-400 flex items-center justify-center gap-2 sm:gap-3"><MoonSvg phase={4} className="w-8 h-8 sm:w-11 sm:h-11" /> {t.moonInfoTitle}</h2>
+
+          {/* Tab 切換 */}
+          <div className="flex w-full max-w-lg gap-2 mb-6 bg-slate-950/60 p-1.5 rounded-2xl border border-slate-700">
+            <button onClick={() => setMoonTab('phases')} className={`flex-1 py-2.5 sm:py-3 rounded-xl font-bold text-sm sm:text-base transition-all ${moonTab === 'phases' ? 'bg-purple-700 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}>🌙 月相知識</button>
+            <button onClick={() => setMoonTab('festivals')} className={`flex-1 py-2.5 sm:py-3 rounded-xl font-bold text-sm sm:text-base transition-all ${moonTab === 'festivals' ? 'bg-amber-700 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}>🎑 月亮節日與文化</button>
+          </div>
+
+          {moonTab === 'phases' && (
+            <React.Fragment>
+              <p className="text-indigo-200 text-sm sm:text-base lg:text-lg text-center mb-6 sm:mb-8 max-w-3xl leading-relaxed">{t.moonInfoIntro}</p>
+              <div className="w-full grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-8 sm:mb-10">
+                {t.phases.map((name, i) => (
+                  <div key={i} className="flex flex-col items-center bg-slate-800/60 border border-slate-600/50 rounded-2xl p-3 sm:p-4 text-center hover:border-purple-400/60 transition-colors">
+                    <MoonSvg phase={i} className="w-12 h-12 sm:w-16 sm:h-16 mb-2" />
+                    <div className="font-bold text-yellow-200 text-sm sm:text-base">{name}</div>
+                    <div className="text-purple-300 text-xs sm:text-sm mb-1.5 font-[Rubik]">{t.moonPhaseDates[i]}</div>
+                    <div className="text-slate-400 text-xs sm:text-sm leading-relaxed">{t.moonPhaseDesc[i]}</div>
+                  </div>
+                ))}
+              </div>
+              <div className="w-full bg-slate-950/50 border border-indigo-500/30 rounded-2xl p-5 sm:p-8 mb-6">
+                <h3 className="text-lg sm:text-2xl font-bold text-center text-emerald-300 mb-4 sm:mb-6">{t.moonInfoCycleTitle}</h3>
+                <div className="relative w-full max-w-md mx-auto mb-4" style={{ aspectRatio: '1 / 1' }}>
+                  <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100">
+                    <defs>
+                      <marker id="arrowCycle" markerWidth="5" markerHeight="5" refX="2.5" refY="2.5" orient="auto"><path d="M0,0.5 L4.5,2.5 L0,4.5 Z" fill="#facc15" opacity="0.9" /></marker>
+                    </defs>
+                    {[0,1,2,3,4,5,6,7].map(i => {
+                      const r = 38;
+                      const a0 = (i / 8) * 2 * Math.PI - Math.PI / 2;
+                      const a1 = ((i + 1) / 8) * 2 * Math.PI - Math.PI / 2;
+                      const aMid = (a0 + a1) / 2;
+                      const x0 = 50 + r * Math.cos(a0);
+                      const y0 = 50 + r * Math.sin(a0);
+                      const x1 = 50 + r * Math.cos(a1);
+                      const y1 = 50 + r * Math.sin(a1);
+                      const xm = 50 + r * Math.cos(aMid);
+                      const ym = 50 + r * Math.sin(aMid);
+                      return (
+                        <g key={i}>
+                          <path d={`M ${x0} ${y0} A ${r} ${r} 0 0 1 ${xm} ${ym}`} fill="none" stroke="#facc15" strokeOpacity="0.6" strokeWidth="0.9" strokeDasharray="2.2 2.5" />
+                          <path d={`M ${xm} ${ym} A ${r} ${r} 0 0 1 ${x1} ${y1}`} fill="none" stroke="#facc15" strokeOpacity="0.6" strokeWidth="0.9" strokeDasharray="2.2 2.5" markerEnd="url(#arrowCycle)" />
+                        </g>
+                      );
+                    })}
+                  </svg>
+                  {t.phases.map((name, i) => {
+                    const angle = (i / 8) * 2 * Math.PI - Math.PI / 2;
+                    const cx = 50 + 38 * Math.cos(angle);
+                    const cy = 50 + 38 * Math.sin(angle);
+                    return (
+                      <div key={i} className="absolute flex flex-col items-center" style={{ left: `${cx}%`, top: `${cy}%`, transform: 'translate(-50%, -50%)', width: '20%' }}>
+                        <MoonSvg phase={i} className="w-8 h-8 sm:w-12 sm:h-12" />
+                        <span className="text-[9px] sm:text-xs text-slate-300 mt-1 text-center whitespace-nowrap">{name}</span>
+                      </div>
+                    );
+                  })}
+                  <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-[9px] sm:text-xs text-slate-500 text-center w-16 sm:w-20 leading-tight">≈29.53 {lang === 'zh' ? '天' : lang === 'ja' ? '日' : 'days'}</div>
+                </div>
+                <p className="text-slate-300 text-xs sm:text-base text-center leading-relaxed max-w-2xl mx-auto">{t.moonInfoCycleText}</p>
+              </div>
+            </React.Fragment>
+          )}
+
+          {moonTab === 'festivals' && (
+            <div className="w-full space-y-4 sm:space-y-5 mb-6">
+              <p className="text-amber-200 text-sm sm:text-base text-center leading-relaxed mb-4 max-w-2xl mx-auto">月亮的盈虧週期深深影響了人類文明的農耕、宗教與節慶。以下是世界各地與月相緊密相連的重要節日與文化傳說。</p>
+              {FESTIVALS.map((f, i) => (
+                <div key={i} className="bg-slate-800/50 border border-amber-500/20 rounded-2xl p-4 sm:p-5 hover:border-amber-400/40 transition-colors">
+                  <div className="flex items-start gap-3 sm:gap-4">
+                    <div className="flex flex-col items-center shrink-0 mt-1">
+                      <MoonSvg phase={f.moon} className="w-10 h-10 sm:w-14 sm:h-14" />
+                      <span className="text-[9px] sm:text-xs text-slate-500 mt-1 text-center">{t.phases[f.moon]}</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
+                        <span className="text-lg sm:text-xl">{f.emoji}</span>
+                        <span className="font-black text-yellow-200 text-base sm:text-lg">{f.name}</span>
+                        <span className="text-xs sm:text-sm text-slate-400 bg-slate-700/60 px-2 py-0.5 rounded-full">{f.region}</span>
+                      </div>
+                      <div className="text-purple-300 text-xs sm:text-sm mb-2 font-[Rubik] flex items-center gap-1">📅 {f.date}</div>
+                      <p className="text-slate-300 text-xs sm:text-sm leading-relaxed">{f.desc}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <div className="bg-slate-950/60 border border-indigo-500/20 rounded-2xl p-4 sm:p-5 mt-2">
+                <h4 className="font-bold text-indigo-300 mb-3 text-sm sm:text-base">🌐 月亮在人類文明中的共同主題</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs sm:text-sm text-slate-300 leading-relaxed">
+                  <div className="flex gap-2"><span className="text-yellow-400 shrink-0">🌑</span><div><strong className="text-white">新月 = 新生與開始</strong><br/>伊斯蘭、猶太、印度等曆法皆以新月為月份起始，象徵重新出發。</div></div>
+                  <div className="flex gap-2"><span className="text-yellow-400 shrink-0">🌕</span><div><strong className="text-white">滿月 = 圓滿與豐收</strong><br/>全球農耕文化將滿月視為播種、收割的最佳時機，也是節慶高峰。</div></div>
+                  <div className="flex gap-2"><span className="text-yellow-400 shrink-0">📅</span><div><strong className="text-white">月亮 = 時間的測量</strong><br/>「月」這個字本身就來自月亮。陰曆以月相為基礎，影響了農業、宗教與社會節律。</div></div>
+                  <div className="flex gap-2"><span className="text-yellow-400 shrink-0">🌊</span><div><strong className="text-white">月亮 = 潮汐與女性</strong><br/>月亮的29.5天週期與人體生理週期相近，許多文化將月亮視為女性能量或生育女神的象徵。</div></div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <button onClick={onBack} className="w-full py-3 sm:py-4 bg-slate-700 hover:bg-slate-600 text-white rounded-2xl font-bold transition-all flex items-center justify-center gap-2 text-sm sm:text-lg"><Home className="w-5 h-5 sm:w-6 sm:h-6"/> {t.back}</button>
+        </div>
+      );
+    }
+
     function App() {
       const [user, setUser] = useState(null);
       const [roomId, setRoomId] = useState('');
@@ -1137,51 +1260,7 @@
               </div>
             )}
 
-            {gameState.mode === 'moonInfo' && (
-              <div className="z-10 flex flex-col items-center p-6 sm:p-10 lg:p-12 landscape:p-6 bg-slate-900/80 backdrop-blur-xl rounded-3xl border border-purple-500/30 shadow-2xl relative w-full max-w-3xl landscape:max-w-5xl lg:max-w-5xl my-4 landscape:my-3 mx-4 max-h-[95vh] overflow-y-auto custom-scroll">
-                <h2 className="text-2xl sm:text-4xl font-black mb-3 text-center text-transparent bg-clip-text bg-gradient-to-r from-purple-300 to-indigo-400 flex items-center justify-center gap-2 sm:gap-3"><MoonSvg phase={4} className="w-8 h-8 sm:w-11 sm:h-11" /> {t.moonInfoTitle}</h2>
-                <p className="text-indigo-200 text-sm sm:text-base lg:text-lg text-center mb-6 sm:mb-8 max-w-3xl leading-relaxed">{t.moonInfoIntro}</p>
-
-                {/* 八種月相卡片：名稱 + 農曆日期 + 說明 */}
-                <div className="w-full grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-8 sm:mb-10">
-                  {t.phases.map((name, i) => (
-                    <div key={i} className="flex flex-col items-center bg-slate-800/60 border border-slate-600/50 rounded-2xl p-3 sm:p-4 text-center hover:border-purple-400/60 transition-colors">
-                      <MoonSvg phase={i} className="w-12 h-12 sm:w-16 sm:h-16 mb-2" />
-                      <div className="font-bold text-yellow-200 text-sm sm:text-base">{name}</div>
-                      <div className="text-purple-300 text-xs sm:text-sm mb-1.5 font-[Rubik]">{t.moonPhaseDates[i]}</div>
-                      <div className="text-slate-400 text-xs sm:text-sm leading-relaxed">{t.moonPhaseDesc[i]}</div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* 盈虧變化循環圖 */}
-                <div className="w-full bg-slate-950/50 border border-indigo-500/30 rounded-2xl p-5 sm:p-8 mb-6">
-                  <h3 className="text-lg sm:text-2xl font-bold text-center text-emerald-300 mb-4 sm:mb-6">{t.moonInfoCycleTitle}</h3>
-                  <div className="relative w-full max-w-md mx-auto mb-4" style={{ aspectRatio: '1 / 1' }}>
-                    <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100">
-                      <circle cx="50" cy="50" r="38" fill="none" stroke="#818cf8" strokeOpacity="0.35" strokeWidth="0.6" strokeDasharray="2.5 3" />
-                      <path d="M 50 12 A 38 38 0 0 1 88 50" fill="none" stroke="#facc15" strokeOpacity="0.6" strokeWidth="0.8" markerEnd="url(#arrowYellow)" />
-                      <defs><marker id="arrowYellow" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#facc15" opacity="0.7" /></marker></defs>
-                    </svg>
-                    {t.phases.map((name, i) => {
-                      const angle = (i / 8) * 2 * Math.PI - Math.PI / 2;
-                      const cx = 50 + 38 * Math.cos(angle);
-                      const cy = 50 + 38 * Math.sin(angle);
-                      return (
-                        <div key={i} className="absolute flex flex-col items-center" style={{ left: `${cx}%`, top: `${cy}%`, transform: 'translate(-50%, -50%)', width: '20%' }}>
-                          <MoonSvg phase={i} className="w-8 h-8 sm:w-12 sm:h-12" />
-                          <span className="text-[9px] sm:text-xs text-slate-300 mt-1 text-center whitespace-nowrap">{name}</span>
-                        </div>
-                      );
-                    })}
-                    <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-[9px] sm:text-xs text-slate-500 text-center w-16 sm:w-20 leading-tight">≈29.53 {lang === 'zh' ? '天' : lang === 'ja' ? '日' : 'days'}</div>
-                  </div>
-                  <p className="text-slate-300 text-xs sm:text-base text-center leading-relaxed max-w-2xl mx-auto">{t.moonInfoCycleText}</p>
-                </div>
-
-                <button onClick={() => { audioManager.startLobbyBGM(); setGameState(prev => ({ ...prev, mode: 'menu' })); }} className="w-full py-3 sm:py-4 bg-slate-700 hover:bg-slate-600 text-white rounded-2xl font-bold transition-all flex items-center justify-center gap-2 text-sm sm:text-lg"><Home className="w-5 h-5 sm:w-6 sm:h-6"/> {t.back}</button>
-              </div>
-            )}
+            {gameState.mode === 'moonInfo' && <MoonInfoPage t={t} lang={lang} onBack={() => { audioManager.startLobbyBGM(); setGameState(prev => ({ ...prev, mode: 'menu' })); }} />}
 
             {gameState.mode === 'splash' && (
               <div
@@ -1222,7 +1301,7 @@
                   <button onClick={() => initGame('challenge')} className="group flex items-center justify-center space-x-3 py-4 sm:py-5 lg:py-6 landscape:py-4 bg-gradient-to-r from-yellow-600 to-amber-600 hover:from-yellow-500 hover:to-amber-500 text-white rounded-2xl font-black text-base sm:text-xl lg:text-2xl landscape:text-lg transition-all shadow-[0_0_20px_rgba(217,119,6,0.4)] border border-yellow-400/50"><Swords className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 group-hover:scale-110 transition-transform shrink-0" /><span>{t.btnChallenge}</span></button>
                   <div className="flex flex-col sm:flex-row landscape:flex-row gap-3 sm:gap-4 lg:gap-5">
                     <button onClick={() => setGameState(prev => ({...prev, mode: 'leaderboard'}))} className="flex-1 flex items-center justify-center space-x-2 py-3 sm:py-4 lg:py-5 landscape:py-3 bg-slate-800 hover:bg-slate-700 text-yellow-300 border border-slate-600 rounded-2xl font-bold text-base sm:text-lg lg:text-xl landscape:text-base transition-all"><Trophy className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7 shrink-0" /><span>{t.btnLeaderboard}</span></button>
-                    <button onClick={() => setGameState(prev => ({...prev, mode: 'moonInfo'}))} className="flex-1 flex items-center justify-center space-x-2 py-3 sm:py-4 lg:py-5 landscape:py-3 bg-purple-900/60 hover:bg-purple-800/70 text-purple-200 border border-purple-500/40 rounded-2xl font-bold text-base sm:text-lg lg:text-xl landscape:text-base transition-all"><MoonSvg phase={3} className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7 shrink-0" /><span>{t.btnMoonInfo}</span></button>
+                    <button onClick={() => { audioManager.init(); audioManager.startLobbyBGM(); setGameState(prev => ({...prev, mode: 'moonInfo'})); }} className="flex-1 flex items-center justify-center space-x-2 py-3 sm:py-4 lg:py-5 landscape:py-3 bg-purple-900/60 hover:bg-purple-800/70 text-purple-200 border border-purple-500/40 rounded-2xl font-bold text-base sm:text-lg lg:text-xl landscape:text-base transition-all"><MoonSvg phase={3} className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7 shrink-0" /><span>{t.btnMoonInfo}</span></button>
                   </div>
                   <div className="flex flex-col sm:flex-row landscape:flex-row gap-3 sm:gap-4 lg:gap-5">
                     <button onClick={() => setGameState(prev => ({...prev, mode: 'local_setup'}))} className="flex-1 flex items-center justify-center space-x-2 sm:space-x-3 py-3 sm:py-4 lg:py-5 landscape:py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl font-bold text-base sm:text-lg lg:text-xl landscape:text-base transition-all shadow-lg"><Users className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7 shrink-0" /><span>{t.btnLocal}</span></button>
