@@ -20,12 +20,12 @@
     /* 簡化：直接用固定扣除值，讓 board-size 自動計算 */
     /* portrait: 工具列~56px，每個玩家面板約110px */
     @media (orientation: portrait) {
-      .game-wrapper { --board-size: min(calc(100vw - 24px), calc(100dvh - 56px - 110px * var(--portrait-mult) - 24px)); }
-      .game-wrapper.challenge-mode { --board-size: min(calc(100vw - 48px), calc(100dvh - 56px - 110px * var(--portrait-mult) - 60px)); }
+      .game-wrapper { --board-size: min(calc(100vw - 24px), calc(100dvh - 56px - 130px * var(--portrait-mult) - 32px)); }
+      .game-wrapper.challenge-mode { --board-size: min(calc(100vw - 48px), calc(100dvh - 56px - 130px * var(--portrait-mult) - 72px)); }
     }
     @media (orientation: landscape) {
-      .game-wrapper { --board-size: min(calc(100dvh - 48px - 16px), calc(100vw - 48px - 110px * var(--landscape-mult) - 24px)); }
-      .game-wrapper.challenge-mode { --board-size: min(calc(100dvh - 64px - 16px), calc(100vw - 80px - 110px * var(--landscape-mult) - 48px)); }
+      .game-wrapper { --board-size: min(calc(100dvh - 48px - 20px), calc(100vw - 48px - 130px * var(--landscape-mult) - 32px)); }
+      .game-wrapper.challenge-mode { --board-size: min(calc(100dvh - 64px - 20px), calc(100vw - 80px - 130px * var(--landscape-mult) - 56px)); }
     }
 
     .board-container { width: var(--board-size); height: var(--board-size); flex-shrink: 0; }
@@ -111,7 +111,7 @@
       html { font-size: 11px; }
     }
     @media (max-height: 500px) and (orientation: landscape) {
-      .game-wrapper { --board-size: min(calc(100dvh - 36px - 12px), calc(100vw - 48px - 110px * var(--landscape-mult) - 24px)); }
+      .game-wrapper { --board-size: min(calc(100dvh - 36px - 12px), calc(100vw - 48px - 130px * var(--landscape-mult) - 32px)); }
     }
     
     /* 玩家名稱放大 */
@@ -174,7 +174,7 @@
         btnChallenge: 'Solo Challenge (100 Lvl)', btnLeaderboard: 'Leaderboard', btnLocal: 'Local Party (1-4P)', btnOnline: 'Online Multiplayer', btnMoonInfo: 'Moon Phase Guide',
         settings: 'Settings', language: 'Language (語言)', bgmVol: 'Music Vol', sfxVol: 'SFX Vol',
         howToPlay: 'How to Play', fullscreen: 'Toggle Fullscreen', about: 'About', back: 'Back',
-        aboutText: "Design & Dev: Teacher Chiu Chi-Ya\nQA & Testing: Teacher Kuo Po-Hung\nDev Tool: Gemini\nInspiration: Google Doodle \"Rise of the Half Moon\"\nVersion: 20260625",
+        aboutText: "Design & Dev: Teacher Chiu Chi-Ya\nQA & Testing: Teacher Kuo Po-Hung\nDev Tool: Gemini\nInspiration: Google Doodle \"Rise of the Half Moon\"\nVersion: 20260404",
         player: 'Player', ai: 'CPU', level: 'Lvl', totalScore: 'Total Score', win: 'Wins', tie: 'Tie', gameOver: 'Game Over! Tallying...',
         tallyBase: 'Tallying', phaseSame: 'Identical Phase', phaseComp: 'Full Moon Match', phaseSeq: 'Phase Sequence',
         localSetupTitle: 'Local Party Setup', localTotalPlayers: 'Total Players (2~4)', localHumans: 'Human Players (Rest = AI)', localDifficulty: 'AI Difficulty', localBoard: 'Board / Map', localRandom: '🎲 Random', btnStart: 'Start Game',
@@ -199,7 +199,7 @@
         btnChallenge: 'ソロチャレンジ (100階層)', btnLeaderboard: 'ランキング', btnLocal: 'ローカルパーティー (1-4P)', btnOnline: 'オンライン対戦', btnMoonInfo: '月相ガイド',
         settings: '設定', language: '言語 (Language)', bgmVol: '音楽音量', sfxVol: '効果音音量',
         howToPlay: '遊び方', fullscreen: 'フルスクリーン切替', about: '概要', back: '戻る',
-        aboutText: "設計・開発：邱祈雅 先生\nテスト・校正：郭柏宏 先生\n開発ツール：Gemini\nインスピレーション：Google Doodle「半月の出」\nバージョン：20260625",
+        aboutText: "設計・開発：邱祈雅 先生\nテスト・校正：郭柏宏 先生\n開発ツール：Gemini\nインスピレーション：Google Doodle「半月の出」\nバージョン：20260404",
         player: 'プレイヤー', ai: 'CPU', level: '階', totalScore: '総スコア', win: '勝利', tie: '引き分け', gameOver: 'ゲーム終了！集計中...',
         tallyBase: '集計中', phaseSame: '同じ月相', phaseComp: '満月のペア', phaseSeq: '月相の連鎖',
         localSetupTitle: 'ローカル対戦設定', localTotalPlayers: '参加人数 (2~4人)', localHumans: 'プレイヤー数 (残りはCPU)', localDifficulty: 'CPUの強さ', localBoard: 'ボード選択', localRandom: '🎲 ランダム', btnStart: '対戦開始',
@@ -565,17 +565,17 @@
     };
 
     const FESTIVALS = [
-      { region: '🇨🇳 中華文化圈', emoji: '🥮', name: '中秋節', date: '農曆八月十五（滿月）', moon: 4, desc: '又稱「月圓節」，是最具代表性的月亮節日。家人圍坐賞月、吃月餅，象徵團圓與豐收。月餅圓形設計即源自對滿月的崇敬。民間流傳嫦娥奔月、吳剛伐桂等神話，更添節日神秘色彩。' },
-      { region: '🇨🇳 中華文化圈', emoji: '🕯️', name: '元宵節', date: '農曆正月十五（滿月）', moon: 4, desc: '農曆新年後第一個滿月之夜，家家戶戶提燈籠、猜燈謎、吃湯圓。古代未婚男女也在此夜相約賞月，因此又有「中國情人節」之稱。燈火與月光相輝映，是一年中最明亮的夜晚之一。' },
-      { region: '🇨🇳 中華文化圈', emoji: '🎆', name: '鬼月開始與結束', date: '農曆七月初一（新月）/ 七月三十（新月）', moon: 0, desc: '農曆七月俗稱「鬼月」，初一新月之夜冥界之門開啟，月黑風高被認為是陰氣最重的時刻。三十日鬼月結束，家家焚燒金紙超渡，月相循環象徵陰陽流轉。' },
-      { region: '🇯🇵 日本', emoji: '🍡', name: '十五夜（お月見）', date: '農曆八月十五（滿月）', moon: 4, desc: '日本賞月節，供奉月見糰子（白色圓形丸子象徵滿月）、芒草（秋收象徵），並祈求豐收。貴族文化中「月見」是吟詩作畫的雅事，松尾芭蕉等俳句大師留下無數詠月名句。' },
-      { region: '🇯🇵 日本', emoji: '🌾', name: '十三夜', date: '農曆九月十三（盈凸月）', moon: 3, desc: '日本特有的「後之月見」習俗，賞農曆九月十三的月亮，供奉栗子與豆類，又稱「栗名月」或「豆名月」。傳統認為只賞十五夜而不賞十三夜是「片月見」，帶來厄運。' },
-      { region: '🇰🇷 韓國', emoji: '🎑', name: '秋夕（추석）', date: '農曆八月十五（滿月）', moon: 4, desc: '韓國最重要的傳統節日之一，相當於中秋節。全家掃墓祭祖，製作並食用松餅（송편），穿著韓服賞月、跳農樂舞。月亮在韓國文化中象徵豐收與家族連結。' },
-      { region: '🇮🇳 印度', emoji: '🪔', name: '排燈節（Diwali）', date: '印度曆卡爾提卡月新月前後', moon: 0, desc: '印度最盛大的「光明節」，選在最黑暗的新月之夜，家家戶戶點亮數以千計的油燈，以光明對抗黑暗，象徵善勝惡、知識勝無知。月相最暗時，人造光明最為燦爛。' },
-      { region: '🇮🇳 印度', emoji: '🙏', name: '卡爾瓦喬特（Karva Chauth）', date: '印度曆卡爾提卡月第四天（上弦月後）', moon: 2, desc: '已婚婦女為丈夫健康長壽而整日齋戒，直到月亮升起後，透過篩子看月亮，再打破禁食。月亮在此節日中象徵愛情與守護，儀式充滿詩意。' },
+      { region: '中華文化圈', emoji: '🥮', name: '中秋節', date: '農曆八月十五（滿月）', moon: 4, desc: '又稱「月圓節」，是最具代表性的月亮節日。家人圍坐賞月、吃月餅，象徵團圓與豐收。月餅圓形設計即源自對滿月的崇敬。民間流傳嫦娥奔月、吳剛伐桂等神話，更添節日神秘色彩。' },
+      { region: '中華文化圈', emoji: '🕯️', name: '元宵節', date: '農曆正月十五（滿月）', moon: 4, desc: '農曆新年後第一個滿月之夜，家家戶戶提燈籠、猜燈謎、吃湯圓。古代未婚男女也在此夜相約賞月，因此又有「中國情人節」之稱。燈火與月光相輝映，是一年中最明亮的夜晚之一。' },
+      { region: '中華文化圈', emoji: '🎆', name: '鬼月開始與結束', date: '農曆七月初一（新月）/ 七月三十（新月）', moon: 0, desc: '農曆七月俗稱「鬼月」，初一新月之夜冥界之門開啟，月黑風高被認為是陰氣最重的時刻。三十日鬼月結束，家家焚燒金紙超渡，月相循環象徵陰陽流轉。' },
+      { region: '日本', emoji: '🍡', name: '十五夜（お月見）', date: '農曆八月十五（滿月）', moon: 4, desc: '日本賞月節，供奉月見糰子（白色圓形丸子象徵滿月）、芒草（秋收象徵），並祈求豐收。貴族文化中「月見」是吟詩作畫的雅事，松尾芭蕉等俳句大師留下無數詠月名句。' },
+      { region: '日本', emoji: '🌾', name: '十三夜', date: '農曆九月十三（盈凸月）', moon: 3, desc: '日本特有的「後之月見」習俗，賞農曆九月十三的月亮，供奉栗子與豆類，又稱「栗名月」或「豆名月」。傳統認為只賞十五夜而不賞十三夜是「片月見」，帶來厄運。' },
+      { region: '韓國', emoji: '🎑', name: '秋夕（추석）', date: '農曆八月十五（滿月）', moon: 4, desc: '韓國最重要的傳統節日之一，相當於中秋節。全家掃墓祭祖，製作並食用松餅（송편），穿著韓服賞月、跳農樂舞。月亮在韓國文化中象徵豐收與家族連結。' },
+      { region: '印度', emoji: '🪔', name: '排燈節（Diwali）', date: '印度曆卡爾提卡月新月前後', moon: 0, desc: '印度最盛大的「光明節」，選在最黑暗的新月之夜，家家戶戶點亮數以千計的油燈，以光明對抗黑暗，象徵善勝惡、知識勝無知。月相最暗時，人造光明最為燦爛。' },
+      { region: '印度', emoji: '🙏', name: '卡爾瓦喬特（Karva Chauth）', date: '印度曆卡爾提卡月第四天（上弦月後）', moon: 2, desc: '已婚婦女為丈夫健康長壽而整日齋戒，直到月亮升起後，透過篩子看月亮，再打破禁食。月亮在此節日中象徵愛情與守護，儀式充滿詩意。' },
       { region: '🌙 伊斯蘭文化圈', emoji: '☪️', name: '齋戒月（Ramadan）', date: '伊斯蘭曆第九個月（新月起始）', moon: 0, desc: '全球十八億穆斯林最神聖的月份，以新月出現為開始、終結標誌。信徒從黎明到日落禁食禁飲，夜晚祈禱、讀古蘭經。月相是伊斯蘭曆的核心，各地宗教學者親眼觀測月牙才宣布齋月開始。' },
       { region: '🌙 伊斯蘭文化圈', emoji: '🎊', name: '開齋節（Eid al-Fitr）', date: '伊斯蘭曆第十個月新月出現', moon: 1, desc: '齋戒月結束後，以新月出現宣告開齋，是全球穆斯林最歡樂的節日。家人相聚、施捨窮人、互贈禮物。眉月（新月）成為伊斯蘭的標誌性符號，也象徵新的開始。' },
-      { region: '🇹🇭 泰國', emoji: '🪔', name: '水燈節（Loy Krathong）', date: '泰曆十二月滿月', moon: 4, desc: '泰國最浪漫的節日，在滿月之夜，人們將點著蠟燭的蓮花形水燈放入河中，祈求消災解厄、感謝水神。同時施放數千個天燈（孔明燈）升入夜空，與滿月相映，場景極為壯觀。' },
+      { region: '泰國', emoji: '🪔', name: '水燈節（Loy Krathong）', date: '泰曆十二月滿月', moon: 4, desc: '泰國最浪漫的節日，在滿月之夜，人們將點著蠟燭的蓮花形水燈放入河中，祈求消災解厄、感謝水神。同時施放數千個天燈（孔明燈）升入夜空，與滿月相映，場景極為壯觀。' },
       { region: '🌍 世界各地', emoji: '🐰', name: '月兔傳說', date: '東亞・中秋滿月', moon: 4, desc: '中國、日本、韓國、墨西哥阿茲特克文明都有「月兔」神話。中文傳說中玉兔在廣寒宮為嫦娥搗藥，日本月兔搗麻糬，阿茲特克神話中神祇將兔子扔向月亮留下陰影。各文明在月面陰影中不約而同看到了兔子的輪廓。' },
     ];
 
@@ -1079,9 +1079,8 @@
             if (nextP <= gameState.totalPlayers) setGameState(p => ({ ...p, tallyState: `tally_${nextP}` }));
             else { 
               setGameState(p => ({ ...p, tallyState: 'done' })); 
-              audioManager.stopBGM();
-              if (gameState.mode === 'challenge') { if(gameState.scores[1] + gameState.board.filter(c=>c&&c.player===1).length <= gameState.scores[2] + gameState.board.filter(c=>c&&c.player===2).length) { audioManager.playLose(); } else { audioManager.playWin(); } audioManager.startGameOverBGM(); }
-              else { audioManager.playWin(); audioManager.startGameOverBGM(); }
+              if (gameState.mode === 'challenge') { const p1Score = gameState.scores[1] + gameState.board.filter(c=>c&&c.player===1).length; const p2Score = gameState.scores[2] + gameState.board.filter(c=>c&&c.player===2).length; if (p1Score <= p2Score) { audioManager.stopBGM(); audioManager.playLose(); audioManager.startGameOverBGM(); } else { audioManager.playWin(); /* BGM continues */ } }
+              else { audioManager.stopBGM(); audioManager.playWin(); audioManager.startGameOverBGM(); }
             }
           }, 1200);
         }
