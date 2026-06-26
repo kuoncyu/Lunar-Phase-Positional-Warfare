@@ -17,20 +17,85 @@
     /* === 響應式棋盤引擎 === */
     .game-wrapper { position: fixed; inset: 0; display: flex; flex-direction: column; }
 
-    /* 簡化：直接用固定扣除值，讓 board-size 自動計算 */
-    /* portrait: 工具列~56px，每個玩家面板約110px */
-    @media (orientation: portrait) {
-      .game-wrapper { --board-size: min(calc(100vw - 24px), calc(100dvh - 56px - 130px * var(--portrait-mult) - 32px)); }
-      .game-wrapper.challenge-mode { --board-size: min(calc(100vw - 48px), calc(100dvh - 56px - 130px * var(--portrait-mult) - 72px)); }
-    }
+    /*
+      landscape: 卡片高度由可用高度反推，確保3張牌+分數列不超出螢幕
+      portrait:  卡片寬度由可用寬度反推，確保橫列面板不超出螢幕
+    */
+
+    /* === LANDSCAPE === */
+    /*
+      --stacked-panels : 左側（最高側）面板垂直堆疊數量
+        2人 → 1  (各側只有1個面板)
+        3人 → 2  (左側2個面板上下疊)
+        4人 → 2  (左右各2個面板上下疊)
+      card-h = (avail-h - 頂部padding - stacked個面板的分數列高 - gap) / (stacked × 3張)
+    */
     @media (orientation: landscape) {
-      .game-wrapper { --board-size: min(calc(100dvh - 48px - 20px), calc(100vw - 48px - 130px * var(--landscape-mult) - 32px)); }
-      .game-wrapper.challenge-mode { --board-size: min(calc(100dvh - 64px - 20px), calc(100vw - 80px - 130px * var(--landscape-mult) - 56px)); }
+      .game-wrapper {
+        --avail-h: calc(100dvh - 56px - 8px);
+        --panel-overhead: calc(44px * var(--stacked-panels) + 8px * (var(--stacked-panels) - 1));
+        --card-h:  calc((var(--avail-h) - var(--panel-overhead)) / (3 * var(--stacked-panels)));
+        --card-w:  calc(var(--card-h) / 1.25);
+        --panel-side-w: calc(var(--card-w) + 20px);
+        --board-size: min(
+          calc(100dvh - 56px - 8px),
+          calc(100vw - 16px - var(--panel-side-w) * var(--landscape-mult) - 16px)
+        );
+      }
+      .game-wrapper.challenge-mode {
+        --avail-h: calc(100dvh - 56px - 8px);
+        --panel-overhead: calc(44px * var(--stacked-panels) + 8px * (var(--stacked-panels) - 1));
+        --card-h:  calc((var(--avail-h) - var(--panel-overhead)) / (3 * var(--stacked-panels)));
+        --card-w:  calc(var(--card-h) / 1.25);
+        --panel-side-w: calc(var(--card-w) + 20px);
+        --board-size: min(
+          calc(100dvh - 56px - 8px),
+          calc(100vw - 24px - var(--panel-side-w) * var(--landscape-mult) - 24px)
+        );
+      }
+    }
+
+    /* === PORTRAIT === */
+    @media (orientation: portrait) {
+      .game-wrapper {
+        --avail-w: calc(100vw - 8px);
+        --card-w:  calc((var(--avail-w) - 12px) / 3.2);
+        --card-h:  calc(var(--card-w) * 1.25);
+        --panel-side-w: calc(var(--card-w) + 16px);
+        --board-size: min(
+          var(--avail-w),
+          calc(100dvh - 56px - (var(--card-h) + 40px) * var(--portrait-mult) - 12px)
+        );
+      }
+      .game-wrapper.challenge-mode {
+        --avail-w: calc(100vw - 16px);
+        --card-w:  calc((var(--avail-w) - 12px) / 3.2);
+        --card-h:  calc(var(--card-w) * 1.25);
+        --panel-side-w: calc(var(--card-w) + 16px);
+        --board-size: min(
+          var(--avail-w),
+          calc(100dvh - 56px - (var(--card-h) + 40px) * var(--portrait-mult) - 24px)
+        );
+      }
+    }
+
+    @media (max-height: 500px) and (orientation: landscape) {
+      .game-wrapper {
+        --avail-h: calc(100dvh - 40px - 8px);
+        --panel-overhead: calc(36px * var(--stacked-panels) + 6px * (var(--stacked-panels) - 1));
+        --card-h:  calc((var(--avail-h) - var(--panel-overhead)) / (3 * var(--stacked-panels)));
+        --card-w:  calc(var(--card-h) / 1.25);
+        --panel-side-w: calc(var(--card-w) + 16px);
+        --board-size: min(
+          var(--avail-h),
+          calc(100vw - 16px - var(--panel-side-w) * var(--landscape-mult) - 16px)
+        );
+      }
     }
 
     .board-container { width: var(--board-size); height: var(--board-size); flex-shrink: 0; }
-    .card-item { width: calc(var(--board-size) * var(--card-scale)); height: calc(var(--board-size) * var(--card-scale) * 1.25); }
-    .card-text { font-size: max(9px, calc(var(--board-size) * var(--card-scale) * 0.15)); }
+    .card-item { width: var(--card-w); height: var(--card-h); }
+    .card-text { font-size: max(9px, calc(var(--card-w) * 0.19)); }
 
     /* === 非遊戲頁面的容器最大寬度 === */
     /* 大螢幕上讓容器充分展開，不再限縮在中央 */
@@ -105,14 +170,12 @@
     /* === 全螢幕縮放支援 === */
     @media (max-width: 360px) {
       html { font-size: 13px; }
-      .game-wrapper { --card-scale-factor: 0.85; }
+      /* card-scale-factor removed */
     }
     @media (max-width: 300px) {
       html { font-size: 11px; }
     }
-    @media (max-height: 500px) and (orientation: landscape) {
-      .game-wrapper { --board-size: min(calc(100dvh - 36px - 12px), calc(100vw - 48px - 130px * var(--landscape-mult) - 32px)); }
-    }
+    /* small landscape handled above */
     
     /* 玩家名稱放大 */
     .player-name-text {
@@ -149,7 +212,7 @@
         btnChallenge: '單人極限闖關 (100層)', btnLeaderboard: '查閱闖關排行榜', btnLocal: '自由派對 (單/多人同機)', btnOnline: '線上房間連線對戰', btnMoonInfo: '月相知識',
         settings: '遊戲設定', language: '語言 (Language)', bgmVol: '音樂大小', sfxVol: '音效大小',
         howToPlay: '遊戲玩法教學', fullscreen: '全螢幕切換', about: '關於遊戲', back: '返回',
-        aboutText: "設計開發：邱祈雅 老師\n測試校正：郭柏宏 老師\n開發工具：Gemini\n靈感來源：Google Doodle「弦月升起」（Rise of the Half Moon）\n程式版本：20260625",
+        aboutText: "設計開發：邱祈雅 老師\n測試校正：郭柏宏 老師\n開發工具：Gemini\n靈感來源：Google Doodle「弦月升起」（Rise of the Half Moon）\n程式版本：20260626",
         player: '玩家', ai: '電腦', level: '層', totalScore: '總積分', win: '獲勝', tie: '平手', gameOver: '遊戲結束！結算領地...',
         tallyBase: '結算領地', phaseSame: '相同月相', phaseComp: '互補滿月', phaseSeq: '月相變化',
         localSetupTitle: '自由對戰設定', localTotalPlayers: '參戰總人數 (2~4人)', localHumans: '真實玩家數量 (不足補電腦)', localDifficulty: '電腦難度', localBoard: '選擇棋盤 (限此人數)', localRandom: '🎲 隨機抽取', btnStart: '開始對戰',
@@ -174,7 +237,7 @@
         btnChallenge: 'Solo Challenge (100 Lvl)', btnLeaderboard: 'Leaderboard', btnLocal: 'Local Party (1-4P)', btnOnline: 'Online Multiplayer', btnMoonInfo: 'Moon Phase Guide',
         settings: 'Settings', language: 'Language (語言)', bgmVol: 'Music Vol', sfxVol: 'SFX Vol',
         howToPlay: 'How to Play', fullscreen: 'Toggle Fullscreen', about: 'About', back: 'Back',
-        aboutText: "Design & Dev: Teacher Chiu Chi-Ya\nQA & Testing: Teacher Kuo Po-Hung\nDev Tool: Gemini\nInspiration: Google Doodle \"Rise of the Half Moon\"\nVersion: 20260625",
+        aboutText: "Design & Dev: Teacher Chiu Chi-Ya\nQA & Testing: Teacher Kuo Po-Hung\nDev Tool: Gemini\nInspiration: Google Doodle \"Rise of the Half Moon\"\nVersion: 20260626",
         player: 'Player', ai: 'CPU', level: 'Lvl', totalScore: 'Total Score', win: 'Wins', tie: 'Tie', gameOver: 'Game Over! Tallying...',
         tallyBase: 'Tallying', phaseSame: 'Identical Phase', phaseComp: 'Full Moon Match', phaseSeq: 'Phase Sequence',
         localSetupTitle: 'Local Party Setup', localTotalPlayers: 'Total Players (2~4)', localHumans: 'Human Players (Rest = AI)', localDifficulty: 'AI Difficulty', localBoard: 'Board / Map', localRandom: '🎲 Random', btnStart: 'Start Game',
@@ -199,7 +262,7 @@
         btnChallenge: 'ソロチャレンジ (100階層)', btnLeaderboard: 'ランキング', btnLocal: 'ローカルパーティー (1-4P)', btnOnline: 'オンライン対戦', btnMoonInfo: '月相ガイド',
         settings: '設定', language: '言語 (Language)', bgmVol: '音楽音量', sfxVol: '効果音音量',
         howToPlay: '遊び方', fullscreen: 'フルスクリーン切替', about: '概要', back: '戻る',
-        aboutText: "設計・開発：邱祈雅 先生\nテスト・校正：郭柏宏 先生\n開発ツール：Gemini\nインスピレーション：Google Doodle「半月の出」\nバージョン：20260625",
+        aboutText: "設計・開発：邱祈雅 先生\nテスト・校正：郭柏宏 先生\n開発ツール：Gemini\nインスピレーション：Google Doodle「半月の出」\nバージョン：20260626",
         player: 'プレイヤー', ai: 'CPU', level: '階', totalScore: '総スコア', win: '勝利', tie: '引き分け', gameOver: 'ゲーム終了！集計中...',
         tallyBase: '集計中', phaseSame: '同じ月相', phaseComp: '満月のペア', phaseSeq: '月相の連鎖',
         localSetupTitle: 'ローカル対戦設定', localTotalPlayers: '参加人数 (2~4人)', localHumans: 'プレイヤー数 (残りはCPU)', localDifficulty: 'CPUの強さ', localBoard: 'ボード選択', localRandom: '🎲 ランダム', btnStart: '対戦開始',
@@ -755,16 +818,20 @@
       useEffect(() => { audioManager.setSfxVolume(sfxVol); }, [sfxVol]);
 
       useEffect(() => {
-        const boardConfig = ALL_BOARDS[gameState.boardType] || ALL_BOARDS['classic'];
-        const cardScale = boardConfig.cardScale || 0.2;
         const total = gameState.totalPlayers || 2;
-        // portraitMult = 上方或下方各自疊放的面板「排數」(2人=每側只有1排, 3/4人=有一側疊2排)
-        // landscapeMult = 左方或右方各自疊放的面板「列數」(2人=每側只有1列, 3/4人=有一側疊2列)
+        // portraitMult: 上下較多那側的面板「行數」
+        //   2人 → 1,  3/4人 → 2
         const portraitMult = (total === 2) ? 1 : 2;
-        const landscapeMult = (total === 2) ? 1 : 2;
+        // landscapeMult: 左右兩側面板欄數之和（board 需讓出的總欄數）
+        //   2人 → 左1欄 右1欄 → 2
+        //   3人 → 左2欄 右1欄 → 3  (注意：左側是2欄是因為2個面板上下疊，各佔1欄)
+        //   4人 → 左2欄 右2欄 → 4
+        const landscapeMult = (total === 2) ? 2 : (total === 3) ? 3 : 4;
+        // stackedPanels: 統一使用 2，讓所有模式卡片大小一致
+        const stackedPanels = 2;
         let el = document.getElementById('game-css-vars');
         if (!el) { el = document.createElement('style'); el.id = 'game-css-vars'; document.head.appendChild(el); }
-        el.textContent = '.game-wrapper { --card-scale: ' + cardScale + '; --portrait-mult: ' + portraitMult + '; --landscape-mult: ' + landscapeMult + '; }';
+        el.textContent = '.game-wrapper { --portrait-mult: ' + portraitMult + '; --landscape-mult: ' + landscapeMult + '; --stacked-panels: ' + stackedPanels + '; }';
       }, [gameState.boardType, gameState.totalPlayers]);
 
       useEffect(() => { const initAuth = async () => { try { if (auth) { if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) { await signInWithCustomToken(auth, __initial_auth_token); } else { await signInAnonymously(auth); } } } catch (e) { console.error(e); } }; initAuth(); if (auth) { const unsubscribe = onAuthStateChanged(auth, setUser); return () => unsubscribe(); } }, []);
@@ -1289,23 +1356,23 @@
             )}
 
             {gameState.mode === 'menu' && (
-              <div className="z-10 flex flex-col landscape:flex-row landscape:items-stretch items-center p-6 sm:p-10 lg:p-12 landscape:p-6 bg-slate-900/60 backdrop-blur-xl rounded-3xl border border-indigo-500/30 shadow-2xl relative w-full max-w-xl landscape:max-w-5xl lg:max-w-5xl my-4 landscape:my-3 mx-4 max-h-[95vh] overflow-y-auto custom-scroll gap-6 landscape:gap-8 lg:gap-12">
+              <div className="z-10 flex flex-col landscape:flex-row landscape:items-stretch items-center p-6 sm:p-10 lg:p-12 landscape:p-8 bg-slate-900/60 backdrop-blur-xl rounded-3xl border border-indigo-500/30 shadow-2xl relative w-full max-w-[95vw] landscape:max-w-[95vw] my-4 landscape:my-4 mx-4 max-h-[95vh] overflow-y-auto custom-scroll gap-6 landscape:gap-10 lg:gap-14">
                 {/* 左側：標題區 */}
                 <div className="flex flex-col items-center landscape:items-start landscape:justify-center landscape:w-2/5 shrink-0">
-                  <div className="flex items-center space-x-3 sm:space-x-5 lg:space-x-6 mb-4 landscape:mb-3"><MoonSvg phase={2} className="w-16 h-16 sm:w-24 sm:h-24 lg:w-32 lg:h-32 landscape:w-20 landscape:h-20" /><MoonSvg phase={6} className="w-16 h-16 sm:w-24 sm:h-24 lg:w-32 lg:h-32 landscape:w-20 landscape:h-20" /></div>
-                  <h1 className="text-3xl sm:text-5xl lg:text-6xl landscape:text-4xl font-extrabold mb-3 tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-yellow-200 to-yellow-500 drop-shadow-lg text-center landscape:text-left leading-tight">{t.title}</h1>
-                  <p className="text-indigo-200 text-sm sm:text-lg lg:text-xl landscape:text-base text-center landscape:text-left">{t.subtitle}</p>
+                  <div className="flex items-center space-x-3 sm:space-x-5 lg:space-x-8 mb-4 landscape:mb-4"><MoonSvg phase={2} className="w-16 h-16 sm:w-28 sm:h-28 lg:w-40 lg:h-40 landscape:w-[clamp(64px,10vw,160px)] landscape:h-[clamp(64px,10vw,160px)]" /><MoonSvg phase={6} className="w-16 h-16 sm:w-28 sm:h-28 lg:w-40 lg:h-40 landscape:w-[clamp(64px,10vw,160px)] landscape:h-[clamp(64px,10vw,160px)]" /></div>
+                  <h1 className="text-3xl sm:text-5xl lg:text-7xl landscape:text-[clamp(2rem,5vw,5rem)] font-extrabold mb-3 tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-yellow-200 to-yellow-500 drop-shadow-lg text-center landscape:text-left leading-tight">{t.title}</h1>
+                  <p className="text-indigo-200 text-sm sm:text-lg lg:text-2xl landscape:text-[clamp(0.9rem,1.8vw,1.6rem)] text-center landscape:text-left">{t.subtitle}</p>
                 </div>
                 {/* 右側：按鈕區 */}
-                <div className="flex flex-col gap-3 sm:gap-4 lg:gap-5 w-full landscape:flex-1 landscape:justify-center">
-                  <button onClick={() => initGame('challenge')} className="group flex items-center justify-center space-x-3 py-4 sm:py-5 lg:py-6 landscape:py-4 bg-gradient-to-r from-yellow-600 to-amber-600 hover:from-yellow-500 hover:to-amber-500 text-white rounded-2xl font-black text-base sm:text-xl lg:text-2xl landscape:text-lg transition-all shadow-[0_0_20px_rgba(217,119,6,0.4)] border border-yellow-400/50"><Swords className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 group-hover:scale-110 transition-transform shrink-0" /><span>{t.btnChallenge}</span></button>
+                <div className="flex flex-col gap-3 sm:gap-4 lg:gap-6 w-full landscape:flex-1 landscape:justify-center">
+                  <button onClick={() => initGame('challenge')} className="group flex items-center justify-center space-x-3 py-4 sm:py-5 lg:py-7 landscape:py-[clamp(1rem,2.5vh,2rem)] bg-gradient-to-r from-yellow-600 to-amber-600 hover:from-yellow-500 hover:to-amber-500 text-white rounded-2xl font-black text-base sm:text-xl lg:text-[clamp(1.2rem,2.2vw,2rem)] landscape:text-[clamp(1rem,1.8vw,1.8rem)] transition-all shadow-[0_0_20px_rgba(217,119,6,0.4)] border border-yellow-400/50"><Swords className="w-6 h-6 sm:w-7 sm:h-7 lg:w-[clamp(1.5rem,2.5vw,2.5rem)] lg:h-[clamp(1.5rem,2.5vw,2.5rem)] group-hover:scale-110 transition-transform shrink-0" /><span>{t.btnChallenge}</span></button>
                   <div className="flex flex-col sm:flex-row landscape:flex-row gap-3 sm:gap-4 lg:gap-5">
-                    <button onClick={() => setGameState(prev => ({...prev, mode: 'leaderboard'}))} className="flex-1 flex items-center justify-center space-x-2 py-3 sm:py-4 lg:py-5 landscape:py-3 bg-slate-800 hover:bg-slate-700 text-yellow-300 border border-slate-600 rounded-2xl font-bold text-base sm:text-lg lg:text-xl landscape:text-base transition-all"><Trophy className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7 shrink-0" /><span>{t.btnLeaderboard}</span></button>
-                    <button onClick={() => { audioManager.init(); audioManager.startLobbyBGM(); setGameState(prev => ({...prev, mode: 'moonInfo'})); }} className="flex-1 flex items-center justify-center space-x-2 py-3 sm:py-4 lg:py-5 landscape:py-3 bg-purple-900/60 hover:bg-purple-800/70 text-purple-200 border border-purple-500/40 rounded-2xl font-bold text-base sm:text-lg lg:text-xl landscape:text-base transition-all"><MoonSvg phase={3} className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7 shrink-0" /><span>{t.btnMoonInfo}</span></button>
+                    <button onClick={() => setGameState(prev => ({...prev, mode: 'leaderboard'}))} className="flex-1 flex items-center justify-center space-x-2 py-3 sm:py-4 lg:py-[clamp(0.8rem,2vh,1.8rem)] landscape:py-[clamp(0.8rem,1.8vh,1.6rem)] bg-slate-800 hover:bg-slate-700 text-yellow-300 border border-slate-600 rounded-2xl font-bold text-base sm:text-lg lg:text-[clamp(1rem,1.8vw,1.6rem)] landscape:text-[clamp(0.9rem,1.5vw,1.5rem)] transition-all"><Trophy className="w-5 h-5 sm:w-6 sm:h-6 lg:w-[clamp(1.2rem,2vw,2rem)] lg:h-[clamp(1.2rem,2vw,2rem)] shrink-0" /><span>{t.btnLeaderboard}</span></button>
+                    <button onClick={() => { audioManager.init(); audioManager.startLobbyBGM(); setGameState(prev => ({...prev, mode: 'moonInfo'})); }} className="flex-1 flex items-center justify-center space-x-2 py-3 sm:py-4 lg:py-[clamp(0.8rem,2vh,1.8rem)] landscape:py-[clamp(0.8rem,1.8vh,1.6rem)] bg-purple-900/60 hover:bg-purple-800/70 text-purple-200 border border-purple-500/40 rounded-2xl font-bold text-base sm:text-lg lg:text-[clamp(1rem,1.8vw,1.6rem)] landscape:text-[clamp(0.9rem,1.5vw,1.5rem)] transition-all"><MoonSvg phase={3} className="w-5 h-5 sm:w-6 sm:h-6 lg:w-[clamp(1.2rem,2vw,2rem)] lg:h-[clamp(1.2rem,2vw,2rem)] shrink-0" /><span>{t.btnMoonInfo}</span></button>
                   </div>
                   <div className="flex flex-col sm:flex-row landscape:flex-row gap-3 sm:gap-4 lg:gap-5">
-                    <button onClick={() => setGameState(prev => ({...prev, mode: 'local_setup'}))} className="flex-1 flex items-center justify-center space-x-2 sm:space-x-3 py-3 sm:py-4 lg:py-5 landscape:py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl font-bold text-base sm:text-lg lg:text-xl landscape:text-base transition-all shadow-lg"><Users className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7 shrink-0" /><span>{t.btnLocal}</span></button>
-                    <button onClick={() => { audioManager.init(); setGameState(prev => ({...prev, mode: 'lobby'})); }} className="flex-1 flex items-center justify-center space-x-2 sm:space-x-3 py-3 sm:py-4 lg:py-5 landscape:py-3 bg-emerald-700 hover:bg-emerald-600 text-white border border-emerald-500/50 rounded-2xl font-bold text-base sm:text-lg lg:text-xl landscape:text-base transition-all"><Globe className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7 shrink-0" /><span>{t.btnOnline}</span></button>
+                    <button onClick={() => setGameState(prev => ({...prev, mode: 'local_setup'}))} className="flex-1 flex items-center justify-center space-x-2 sm:space-x-3 py-3 sm:py-4 lg:py-[clamp(0.8rem,2vh,1.8rem)] landscape:py-[clamp(0.8rem,1.8vh,1.6rem)] bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl font-bold text-base sm:text-lg lg:text-[clamp(1rem,1.8vw,1.6rem)] landscape:text-[clamp(0.9rem,1.5vw,1.5rem)] transition-all shadow-lg"><Users className="w-5 h-5 sm:w-6 sm:h-6 lg:w-[clamp(1.2rem,2vw,2rem)] lg:h-[clamp(1.2rem,2vw,2rem)] shrink-0" /><span>{t.btnLocal}</span></button>
+                    <button onClick={() => { audioManager.init(); setGameState(prev => ({...prev, mode: 'lobby'})); }} className="flex-1 flex items-center justify-center space-x-2 sm:space-x-3 py-3 sm:py-4 lg:py-[clamp(0.8rem,2vh,1.8rem)] landscape:py-[clamp(0.8rem,1.8vh,1.6rem)] bg-emerald-700 hover:bg-emerald-600 text-white border border-emerald-500/50 rounded-2xl font-bold text-base sm:text-lg lg:text-[clamp(1rem,1.8vw,1.6rem)] landscape:text-[clamp(0.9rem,1.5vw,1.5rem)] transition-all"><Globe className="w-5 h-5 sm:w-6 sm:h-6 lg:w-[clamp(1.2rem,2vw,2rem)] lg:h-[clamp(1.2rem,2vw,2rem)] shrink-0" /><span>{t.btnOnline}</span></button>
                   </div>
                 </div>
               </div>
@@ -1679,16 +1746,16 @@
               return (
                 <React.Fragment>
                   {/* portrait */}
-                  <div className="portrait:flex landscape:hidden z-10 w-full flex-1 min-h-0 flex flex-col items-center justify-center gap-2 overflow-hidden pt-14 sm:pt-20 pb-2 px-2">
+                  <div className="portrait:flex landscape:hidden z-10 w-full flex-1 min-h-0 flex flex-col items-center justify-center gap-2 overflow-visible pt-14 sm:pt-20 pb-2 px-2">
                     {renderPlayerPanel(2, 'top')}
                     {boardEl}
                     {renderPlayerPanel(1, 'bottom')}
                   </div>
                   {/* landscape */}
-                  <div className="portrait:hidden landscape:flex z-10 w-full flex-1 min-h-0 flex flex-row items-center justify-center gap-2 overflow-hidden pt-12 pb-2 px-2">
-                    {renderPlayerPanel(2, 'left')}
+                  <div className="portrait:hidden landscape:flex z-10 w-full flex-1 min-h-0 flex flex-row items-center justify-center gap-2 overflow-visible pt-14 pb-2 px-2">
+                    <div className="flex flex-col justify-center shrink-0">{renderPlayerPanel(2, 'left')}</div>
                     {boardEl}
-                    {renderPlayerPanel(1, 'right')}
+                    <div className="flex flex-col justify-center shrink-0">{renderPlayerPanel(1, 'right')}</div>
                   </div>
                 </React.Fragment>
               );
@@ -1697,7 +1764,7 @@
               return (
                 <React.Fragment>
                   {/* portrait: 上列(p2,p3) + 棋盤 + 下(p1) */}
-                  <div className="portrait:flex landscape:hidden z-10 w-full flex-1 min-h-0 flex flex-col items-center justify-center gap-1.5 overflow-hidden pt-14 sm:pt-20 pb-2 px-2">
+                  <div className="portrait:flex landscape:hidden z-10 w-full flex-1 min-h-0 flex flex-col items-center justify-center gap-1.5 overflow-visible pt-14 sm:pt-20 pb-2 px-2">
                     <div className="flex flex-row gap-2 justify-center w-full">
                       {renderPlayerPanel(2, 'top')}
                       {renderPlayerPanel(3, 'top')}
@@ -1706,13 +1773,13 @@
                     {renderPlayerPanel(1, 'bottom')}
                   </div>
                   {/* landscape: 左(p2上,p3下) + 棋盤 + 右(p1) */}
-                  <div className="portrait:hidden landscape:flex z-10 w-full flex-1 min-h-0 flex flex-row items-center justify-center gap-2 overflow-hidden pt-12 pb-2 px-2">
-                    <div className="flex flex-col gap-2 justify-center">
+                  <div className="portrait:hidden landscape:flex z-10 w-full flex-1 min-h-0 flex flex-row items-center justify-center gap-2 overflow-visible pt-14 pb-2 px-2">
+                    <div className="flex flex-col gap-2 justify-center shrink-0">
                       {renderPlayerPanel(2, 'left')}
                       {renderPlayerPanel(3, 'left')}
                     </div>
                     {boardEl}
-                    {renderPlayerPanel(1, 'right')}
+                    <div className="flex flex-col justify-center shrink-0">{renderPlayerPanel(1, 'right')}</div>
                   </div>
                 </React.Fragment>
               );
@@ -1721,7 +1788,7 @@
             return (
               <React.Fragment>
                 {/* portrait: 上列(p3,p4) + 棋盤 + 下列(p1,p2) */}
-                <div className="portrait:flex landscape:hidden z-10 w-full flex-1 min-h-0 flex flex-col items-center justify-center gap-1.5 overflow-hidden pt-14 sm:pt-20 pb-2 px-2">
+                <div className="portrait:flex landscape:hidden z-10 w-full flex-1 min-h-0 flex flex-col items-center justify-center gap-1.5 overflow-visible pt-14 sm:pt-20 pb-2 px-2">
                   <div className="flex flex-row gap-2 justify-center w-full">
                     {renderPlayerPanel(3, 'top')}
                     {renderPlayerPanel(4, 'top')}
@@ -1733,13 +1800,13 @@
                   </div>
                 </div>
                 {/* landscape: 左列(p2,p3) + 棋盤 + 右列(p1,p4) */}
-                <div className="portrait:hidden landscape:flex z-10 w-full flex-1 min-h-0 flex flex-row items-center justify-center gap-2 overflow-hidden pt-12 pb-2 px-2">
-                  <div className="flex flex-col gap-2 justify-center">
+                <div className="portrait:hidden landscape:flex z-10 w-full flex-1 min-h-0 flex flex-row items-center justify-center gap-2 overflow-visible pt-14 pb-2 px-2">
+                  <div className="flex flex-col gap-2 justify-center shrink-0">
                     {renderPlayerPanel(2, 'left')}
                     {renderPlayerPanel(3, 'left')}
                   </div>
                   {boardEl}
-                  <div className="flex flex-col gap-2 justify-center">
+                  <div className="flex flex-col gap-2 justify-center shrink-0">
                     {renderPlayerPanel(1, 'right')}
                     {renderPlayerPanel(4, 'right')}
                   </div>
