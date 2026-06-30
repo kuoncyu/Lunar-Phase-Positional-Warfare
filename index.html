@@ -67,25 +67,25 @@
       .game-wrapper {
         --avail-w: calc(100vw - 8px);
         --card-w-by-width: calc((var(--avail-w) - 12px) / 4);
-        --card-w-by-height: calc((100dvh - 56px - 12px) / 7.5);
+        --card-w-by-height: calc((100dvh - 56px - 12px) / 12);
         --card-w:  min(var(--card-w-by-width), var(--card-w-by-height));
         --card-h:  calc(var(--card-w) * 1.25);
         --panel-side-w: calc(var(--card-w) + 16px);
         --board-size: min(
           var(--avail-w),
-          calc(100dvh - 56px - (var(--card-h) + 40px) * 2 - 12px)
+          calc(100dvh - 56px - (var(--card-h) + 18px) * 2 - 12px)
         );
       }
       .game-wrapper.challenge-mode {
         --avail-w: calc(100vw - 16px);
         --card-w-by-width: calc((var(--avail-w) - 12px) / 4);
-        --card-w-by-height: calc((100dvh - 56px - 24px) / 7.5);
+        --card-w-by-height: calc((100dvh - 56px - 24px) / 12);
         --card-w:  min(var(--card-w-by-width), var(--card-w-by-height));
         --card-h:  calc(var(--card-w) * 1.25);
         --panel-side-w: calc(var(--card-w) + 16px);
         --board-size: min(
           var(--avail-w),
-          calc(100dvh - 56px - (var(--card-h) + 40px) * 2 - 24px)
+          calc(100dvh - 56px - (var(--card-h) + 18px) * 2 - 24px)
         );
       }
     }
@@ -106,7 +106,7 @@
 
     .board-container { width: var(--board-size); height: var(--board-size); flex-shrink: 0; }
     .card-item { width: var(--card-w); height: var(--card-h); }
-    .card-text { font-size: max(9px, calc(var(--card-w) * 0.19)); }
+    .card-text { font-size: max(8px, calc(var(--cell-w, var(--card-w)) * 0.19)); }
 
     /* === 非遊戲頁面的容器最大寬度 === */
     /* 大螢幕上讓容器充分展開，不再限縮在中央 */
@@ -1743,7 +1743,7 @@
                 {gameState.board.map((cell, idx) => {
                   const node = currentBoardConfig.nodes[idx];
                   return (
-                    <div key={`node-${idx}`} className={`absolute z-10 flex items-center justify-center transition-colors card-item ${cell === null ? 'border-2 border-dashed border-slate-500/50 bg-slate-800/30 hover:bg-slate-700/60 cursor-pointer backdrop-blur-sm shadow-inner rounded-full sm:rounded-2xl' : ''}`} style={{ left: `${node.x}%`, top: `${node.y}%`, transform: 'translate(-50%, -50%)' }} onClick={(e) => { e.stopPropagation(); if (cell === null && gameState.selectedCardIdx !== null && (!gameState.isAnimating)) { const pType = gameState.playersInfo[gameState.turn].type; const canPlay = (gameState.mode === 'online') ? gameState.turn === myPlayerId : pType !== 'ai'; if (canPlay) playCard(gameState.selectedCardIdx, idx, false); } }}>
+                    <div key={`node-${idx}`} className={`absolute z-10 flex items-center justify-center transition-colors ${cell === null ? 'border-2 border-dashed border-slate-500/50 bg-slate-800/30 hover:bg-slate-700/60 cursor-pointer backdrop-blur-sm shadow-inner rounded-full sm:rounded-2xl' : ''}`} style={{ left: `${node.x}%`, top: `${node.y}%`, transform: 'translate(-50%, -50%)', width: `min(var(--card-w), calc(var(--board-size) * ${currentBoardConfig.cardScale * 0.72}))`, height: `min(var(--card-h), calc(var(--board-size) * ${currentBoardConfig.cardScale * 0.72} * 1.25))`, '--cell-w': `min(var(--card-w), calc(var(--board-size) * ${currentBoardConfig.cardScale * 0.72}))` }} onClick={(e) => { e.stopPropagation(); if (cell === null && gameState.selectedCardIdx !== null && (!gameState.isAnimating)) { const pType = gameState.playersInfo[gameState.turn].type; const canPlay = (gameState.mode === 'online') ? gameState.turn === myPlayerId : pType !== 'ai'; if (canPlay) playCard(gameState.selectedCardIdx, idx, false); } }}>
                       {cell && renderCard(cell.phase, -1, cell.player, true, idx)}
                     </div>
                   );
