@@ -210,7 +210,7 @@
   <div id="root"></div>
 
   <script type="text/plain" id="app-src">
-    const { initializeApp, getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, collection, getDocs, addDoc } = window._firebase || {};
+    const { initializeApp, getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, setPersistence, browserSessionPersistence, getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, collection, getDocs, addDoc } = window._firebase || {};
 
     const { useState, useEffect, useCallback, useRef } = React;
 
@@ -977,7 +977,13 @@
         el.textContent = '.game-wrapper { --portrait-mult: ' + portraitMult + '; --landscape-mult: ' + landscapeMult + '; --stacked-panels: ' + stackedPanels + '; }';
       }, [gameState.boardType, gameState.totalPlayers]);
 
-      useEffect(() => { const initAuth = async () => { try { if (auth) { if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) { await signInWithCustomToken(auth, __initial_auth_token); } else { await signInAnonymously(auth); } } } catch (e) { console.error(e); } }; initAuth(); if (auth) { const unsubscribe = onAuthStateChanged(auth, setUser); return () => unsubscribe(); } }, []);
+      // 注意：這裡刻意改用 browserSessionPersistence（存在 sessionStorage，僅限單一分頁），
+      // 而不是 Firebase 預設的 browserLocalPersistence（存在 localStorage，同一瀏覽器所有分頁共用）。
+      // 原因：如果同一台電腦、同一個瀏覽器開兩個分頁分別扮演房主與加入者做測試，
+      // 用預設 persistence 兩個分頁會拿到「同一個」匿名 uid，
+      // 加入者 joinRoom 寫入 players.<uid> 時就會直接覆蓋房主自己的那筆資料（同一個 key），
+      // 讓房主從玩家列表消失、房間卡住無法開始遊戲。改成 session persistence 後每個分頁都有獨立的匿名帳號，就不會互相覆蓋。
+      useEffect(() => { const initAuth = async () => { try { if (auth) { if (setPersistence && browserSessionPersistence) { try { await setPersistence(auth, browserSessionPersistence); } catch (pErr) { console.warn('setPersistence failed, falling back to default', pErr); } } if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) { await signInWithCustomToken(auth, __initial_auth_token); } else { await signInAnonymously(auth); } } } catch (e) { console.error(e); } }; initAuth(); if (auth) { const unsubscribe = onAuthStateChanged(auth, setUser); return () => unsubscribe(); } }, []);
 
       // === 聊天室初始化 ===
       const initChat = useCallback(() => {
@@ -1224,7 +1230,14 @@
         try {
           const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'moonphase_rooms', code); const snap = await getDoc(roomRef);
           if (snap.exists() && snap.data().status === 'waiting') {
-            const data = snap.data(); const currentPlayers = Object.keys(data.players).length;
+            const data = snap.data();
+            // 保護：如果這個 uid 已經在房間裡（例如重新整理後重新加入自己已在的房間，
+            // 或極端情況下 persistence 沒生效導致跟房主拿到同一個 uid），
+            // 絕對不要用新的 pId 覆蓋掉既有的那筆資料，直接沿用原本的身分即可，避免把房主自己的資料蓋掉。
+            if (data.players[user.uid]) {
+              setRoomId(code); setMyPlayerId(data.players[user.uid].pId); setGameState(prev => ({ ...prev, mode: 'lobby_wait' })); return;
+            }
+            const currentPlayers = Object.keys(data.players).length;
             if (currentPlayers >= data.maxPlayers) return alert("Room Full");
             let usedPids = Object.values(data.players).map(p=>p.pId); let newPid = 2; while(usedPids.includes(newPid)) newPid++;
             await updateDoc(roomRef, { [`players.${user.uid}`]: { pId: newPid, ready: false } });
@@ -2133,10 +2146,10 @@
   <script type="module">
     // Wait for Firebase module to load, then manually transpile and run the app
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js';
-    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js';
+    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, setPersistence, browserSessionPersistence } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js';
     import { getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, collection, getDocs, addDoc } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
 
-    window._firebase = { initializeApp, getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, collection, getDocs, addDoc };
+    window._firebase = { initializeApp, getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, setPersistence, browserSessionPersistence, getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, collection, getDocs, addDoc };
 
     function runApp() {
       try {
@@ -2180,4 +2193,4 @@
   </script>
 
 </body>
-</html>
+  </html>
