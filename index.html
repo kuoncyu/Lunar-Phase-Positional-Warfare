@@ -416,9 +416,12 @@
     // === 聊天室元件 ===
     const ChatPanel = ({ open, messages, inputVal, setInput, onSend, onToggle, unread, chatBoxRef, t, lang }) => {
       // 拖曳移動：null 代表使用預設 CSS 位置（右下角），一旦拖曳過則改用 left/top 絕對定位
-      const [dragPos, setDragPos] = useState(null); // { left, top }
+      // 按鈕（收合狀態）與面板（展開狀態）各自記住自己的拖曳位置，避免兩者互相干擾
+      const [btnDragPos, setBtnDragPos] = useState(null); // { left, top }
+      const [dragPos, setDragPos] = useState(null); // { left, top }（面板用）
       const panelRef = useRef(null);
-      const dragInfo = useRef({ dragging: false, startX: 0, startY: 0, origLeft: 0, origTop: 0, moved: false });
+      const btnRef = useRef(null);
+      const dragInfo = useRef({ dragging: false, target: 'panel', startX: 0, startY: 0, origLeft: 0, origTop: 0, moved: false });
 
       const clamp = (val, min, max) => Math.min(Math.max(val, min), max);
 
@@ -427,12 +430,13 @@
         const dx = e.clientX - dragInfo.current.startX;
         const dy = e.clientY - dragInfo.current.startY;
         if (Math.abs(dx) > 3 || Math.abs(dy) > 3) dragInfo.current.moved = true;
-        const panel = panelRef.current;
-        const w = panel ? panel.offsetWidth : 300;
-        const h = panel ? panel.offsetHeight : 400;
+        const isBtn = dragInfo.current.target === 'btn';
+        const el = isBtn ? btnRef.current : panelRef.current;
+        const w = el ? el.offsetWidth : (isBtn ? 48 : 300);
+        const h = el ? el.offsetHeight : (isBtn ? 48 : 400);
         const newLeft = clamp(dragInfo.current.origLeft + dx, 4, window.innerWidth - w - 4);
         const newTop = clamp(dragInfo.current.origTop + dy, 4, window.innerHeight - h - 4);
-        setDragPos({ left: newLeft, top: newTop });
+        if (isBtn) setBtnDragPos({ left: newLeft, top: newTop }); else setDragPos({ left: newLeft, top: newTop });
       }, []);
 
       const handlePointerUp = useCallback(() => {
@@ -445,32 +449,68 @@
         const panel = panelRef.current;
         if (!panel) return;
         const rect = panel.getBoundingClientRect();
-        dragInfo.current = { dragging: true, startX: e.clientX, startY: e.clientY, origLeft: rect.left, origTop: rect.top, moved: false };
+        dragInfo.current = { dragging: true, target: 'panel', startX: e.clientX, startY: e.clientY, origLeft: rect.left, origTop: rect.top, moved: false };
         window.addEventListener('pointermove', handlePointerMove);
         window.addEventListener('pointerup', handlePointerUp);
       }, [handlePointerMove, handlePointerUp]);
 
-      // 視窗縮放時，確保面板仍在可視範圍內
+      // 收合狀態下的圓形按鈕也可直接拖曳；放開時若幾乎沒有移動，視為一般點擊，照常觸發開關
+      const handleBtnDragStart = useCallback((e) => {
+        const btn = btnRef.current;
+        if (!btn) return;
+        const rect = btn.getBoundingClientRect();
+        dragInfo.current = { dragging: true, target: 'btn', startX: e.clientX, startY: e.clientY, origLeft: rect.left, origTop: rect.top, moved: false };
+        window.addEventListener('pointermove', handlePointerMove);
+        window.addEventListener('pointerup', handlePointerUp);
+      }, [handlePointerMove, handlePointerUp]);
+
+      const handleBtnClick = useCallback(() => {
+        if (dragInfo.current.moved) { dragInfo.current.moved = false; return; } // 剛拖曳完，這次點擊不算數
+        onToggle();
+      }, [onToggle]);
+
+      // 視窗縮放時，確保面板／按鈕仍在可視範圍內
       useEffect(() => {
-        if (!dragPos) return;
         const handleResize = () => {
-          const panel = panelRef.current;
-          if (!panel) return;
-          const w = panel.offsetWidth, h = panel.offsetHeight;
-          setDragPos(prev => prev ? { left: clamp(prev.left, 4, window.innerWidth - w - 4), top: clamp(prev.top, 4, window.innerHeight - h - 4) } : prev);
+          if (dragPos) {
+            const panel = panelRef.current; const w = panel ? panel.offsetWidth : 300; const h = panel ? panel.offsetHeight : 400;
+            setDragPos(prev => prev ? { left: clamp(prev.left, 4, window.innerWidth - w - 4), top: clamp(prev.top, 4, window.innerHeight - h - 4) } : prev);
+          }
+          if (btnDragPos) {
+            const btn = btnRef.current; const w = btn ? btn.offsetWidth : 48; const h = btn ? btn.offsetHeight : 48;
+            setBtnDragPos(prev => prev ? { left: clamp(prev.left, 4, window.innerWidth - w - 4), top: clamp(prev.top, 4, window.innerHeight - h - 4) } : prev);
+          }
         };
         window.addEventListener('resize', handleResize);
         return () => window.removeEventListener('resize', handleResize);
-      }, [dragPos]);
+      }, [dragPos, btnDragPos]);
 
+      // 若使用者先拖過收合按鈕、才第一次展開面板，讓面板直接出現在按鈕附近，而不是跳回預設角落
+      useEffect(() => {
+        if (open && dragPos === null && btnDragPos !== null) {
+          const w = 300, h = 400;
+          const left = clamp(btnDragPos.left - (w - 48), 4, window.innerWidth - w - 4);
+          const top = clamp(btnDragPos.top - h - 8, 4, window.innerHeight - h - 4);
+          setDragPos({ left, top });
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+      }, [open]);
+
+      const btnPositionStyle = btnDragPos
+        ? { left: `${btnDragPos.left}px`, top: `${btnDragPos.top}px`, right: 'auto', bottom: 'auto' }
+        : { bottom: '80px', right: '16px' };
       const panelPositionStyle = dragPos
         ? { left: `${dragPos.left}px`, top: `${dragPos.top}px`, right: 'auto', bottom: 'auto' }
         : { bottom: '140px', right: '16px' };
 
       return (
         <React.Fragment>
-          {/* 聊天按鈕 */}
-          <button onClick={onToggle} style={{ position: 'fixed', bottom: '80px', right: '16px', zIndex: 9000, width: '48px', height: '48px', borderRadius: '50%', background: 'rgba(15,23,42,0.85)', border: '2px solid rgba(99,102,241,0.5)', color: '#a5b4fc', fontSize: '1.4rem', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', backdropFilter: 'blur(8px)', boxShadow: '0 4px 20px rgba(0,0,0,0.5)', transition: 'all 0.2s' }}>
+          {/* 聊天按鈕（可拖曳，收合狀態下也能移到不會擋到卡牌的位置） */}
+          <button
+            ref={btnRef}
+            onPointerDown={handleBtnDragStart}
+            onClick={handleBtnClick}
+            style={{ position: 'fixed', ...btnPositionStyle, zIndex: 9000, width: '48px', height: '48px', borderRadius: '50%', background: 'rgba(15,23,42,0.85)', border: '2px solid rgba(99,102,241,0.5)', color: '#a5b4fc', fontSize: '1.4rem', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'grab', backdropFilter: 'blur(8px)', boxShadow: '0 4px 20px rgba(0,0,0,0.5)', transition: 'background 0.2s', touchAction: 'none' }}>
             💬
             {unread > 0 && <span style={{ position: 'absolute', top: '-4px', right: '-4px', background: '#e74c3c', color: '#fff', borderRadius: '50%', padding: '1px 5px', fontSize: '0.65rem', fontWeight: 'bold', border: '1px solid #fff', minWidth: '18px', textAlign: 'center' }}>{unread > 9 ? '9+' : unread}</span>}
           </button>
@@ -961,6 +1001,21 @@
         if (req) req.call(docElem).catch(() => setIsPseudoFs(true));
         else setIsPseudoFs(true);
       }, [isPseudoFs]);
+
+      // 從「開場畫面」進入主選單：初始化音效、嘗試全螢幕、切換遊戲畫面到 menu。
+      // 點擊開場畫面與「按任意鍵」共用同一段邏輯。
+      const enterMainMenu = useCallback(() => {
+        audioManager.init(); enterFullscreen(); audioManager.startLobbyBGM();
+        setGameState(prev => prev.mode === 'splash' ? { ...prev, mode: 'menu' } : prev);
+      }, [enterFullscreen]);
+
+      // 開場畫面時，除了點擊／觸控，按下鍵盤任意鍵也直接進入主畫面並全螢幕
+      useEffect(() => {
+        if (gameState.mode !== 'splash') return;
+        const handleSplashKey = () => enterMainMenu();
+        window.addEventListener('keydown', handleSplashKey);
+        return () => window.removeEventListener('keydown', handleSplashKey);
+      }, [gameState.mode, enterMainMenu]);
       
       useEffect(() => { audioManager.setBgmVolume(bgmVol); }, [bgmVol]);
       useEffect(() => { audioManager.setSfxVolume(sfxVol); }, [sfxVol]);
@@ -1580,7 +1635,7 @@
               <div
                 className="z-10 flex flex-col items-center justify-center cursor-pointer select-none w-full h-full min-h-screen"
                 style={{ background: 'transparent' }}
-                onClick={() => { audioManager.init(); enterFullscreen(); audioManager.startLobbyBGM(); setGameState(prev => ({ ...prev, mode: 'menu' })); }}
+                onClick={enterMainMenu}
               >
                 <div className="flex flex-col items-center gap-6 sm:gap-8 lg:gap-12 animate-pulse" style={{ animationDuration: '3s' }}>
                   {/* 月亮雙圖 */}
@@ -1596,7 +1651,7 @@
                   <p className="text-indigo-300 text-base sm:text-xl lg:text-2xl landscape:text-lg text-center opacity-80">{t.subtitle}</p>
                   {/* 點擊提示 */}
                   <div className="mt-4 sm:mt-6 lg:mt-8 px-8 py-3 sm:px-12 sm:py-4 lg:px-16 lg:py-5 rounded-full border border-yellow-400/40 bg-yellow-400/10 text-yellow-300 font-bold text-base sm:text-xl lg:text-2xl tracking-wider" style={{ animation: 'score-pulse 2s ease-in-out infinite' }}>
-                    ✦ 點擊任意處開始 ✦
+                    ✦ 點擊或按任意鍵開始 ✦
                   </div>
                 </div>
               </div>
