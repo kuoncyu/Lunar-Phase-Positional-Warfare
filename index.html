@@ -240,6 +240,7 @@
         rankTitle: '結算排行榜', btnPlayAgain: '再打一局',
         txtLvl: '第', txtLayer: '層', txtRoom: '連線代碼:', txtThinking: '思考中...', txtPerson: '人',
         txtSyncing: '連線中，請稍等...', txtSyncingSub: '偵測到網路延遲，正在重新同步棋盤，請勿操作',
+        txtSyncStuckSub: '同步時間有點久，可能是網路不穩定', btnReconnect: '重新連線', btnLeaveRoom: '離開房間',
         phases: ['新月', '眉月', '上弦月', '盈凸月', '滿月', '虧凸月', '下弦月', '殘月'],
         moonInfoTitle: '月相知識', moonInfoIntro: '月相是指我們在地球上看到月球被太陽照亮部分的明暗形狀變化。隨著月球繞地球公轉，太陽、地球、月球三者的相對位置不斷改變，使月面被照亮的比例與形狀產生規律性的盈虧變化。',
         moonInfoCycleTitle: '盈虧變化循環', moonInfoCycleText: '一個完整的月相循環稱為「朔望月」，平均約 29.53 天。順序為：新月 → 眉月 → 上弦月 → 盈凸月 → 滿月 → 虧凸月 → 下弦月 → 殘月，再回到新月，如此循環不息。由暗轉亮的過程稱為「盈」，由亮轉暗的過程稱為「虧」。',
@@ -267,6 +268,7 @@
         rankTitle: 'Final Ranking', btnPlayAgain: 'Play Again',
         txtLvl: 'Lvl', txtLayer: '', txtRoom: 'Room:', txtThinking: 'Thinking...', txtPerson: 'P',
         txtSyncing: 'Reconnecting, please wait...', txtSyncingSub: 'Network delay detected, resyncing the board. Please don\'t play a move.',
+        txtSyncStuckSub: 'This is taking longer than usual — your connection may be unstable', btnReconnect: 'Reconnect', btnLeaveRoom: 'Leave Room',
         phases: ['New', 'Waxing C.', 'First Q.', 'Waxing G.', 'Full', 'Waning G.', 'Last Q.', 'Waning C.'],
         moonInfoTitle: 'Moon Phase Guide', moonInfoIntro: 'Moon phases describe the changing shape of the sunlit part of the Moon as seen from Earth. As the Moon orbits Earth, the relative positions of the Sun, Earth and Moon keep shifting, causing the illuminated portion to grow and shrink in a regular cycle.',
         moonInfoCycleTitle: 'The Waxing & Waning Cycle', moonInfoCycleText: 'A complete moon-phase cycle is called a "synodic month", averaging about 29.53 days. The order is: New → Waxing Crescent → First Quarter → Waxing Gibbous → Full → Waning Gibbous → Last Quarter → Waning Crescent, then back to New, repeating endlessly. Growing brighter is "waxing"; growing dimmer is "waning".',
@@ -294,6 +296,7 @@
         rankTitle: '最終ランキング', btnPlayAgain: 'もう一度',
         txtLvl: '第', txtLayer: '階', txtRoom: 'ルーム:', txtThinking: '考え中...', txtPerson: '人',
         txtSyncing: '接続中、しばらくお待ちください...', txtSyncingSub: '通信遅延を検出しました。盤面を再同期しています。操作しないでください',
+        txtSyncStuckSub: '同期に時間がかかっています。通信が不安定な可能性があります', btnReconnect: '再接続', btnLeaveRoom: '退出する',
         phases: ['新月', '三日月', '上弦の月', '十三夜', '満月', '寝待月', '下弦の月', '二十六夜'],
         moonInfoTitle: '月相ガイド', moonInfoIntro: '月相とは、地球から見た月の太陽に照らされた部分の形が変化していく様子のことです。月が地球を周回するにつれて、太陽・地球・月の相対的な位置が変わり、月面の輝いて見える割合と形が規則的に満ち欠けします。',
         moonInfoCycleTitle: '満ち欠けの周期', moonInfoCycleText: '月相の1周期は「朔望月」と呼ばれ、平均約29.53日です。順序は、新月 → 三日月 → 上弦の月 → 十三夜 → 満月 → 寝待月 → 下弦の月 → 二十六夜 → 新月、というように繰り返されます。暗から明に向かう過程を「満ちる」、明から暗に向かう過程を「欠ける」と呼びます。',
@@ -907,6 +910,7 @@
       // === 連線同步狀態（避免網路延遲造成棋盤不同步） ===
       const [isSyncing, setIsSyncing] = useState(false); // Firestore 監聽器目前是否讀取本地快取（代表尚未跟伺服器同步）
       const [isOffline, setIsOffline] = useState(typeof navigator !== 'undefined' ? !navigator.onLine : false);
+      const [syncStuck, setSyncStuck] = useState(false); // 「連線不穩」畫面卡太久，提供手動重新連線的選項，避免真的卡死
 
       const [gameState, setGameState] = useState({
         mode: 'splash', boardType: 'classic', board: [], totalPlayers: 2, playersInfo: {}, hands: {}, decks: {}, scores: {},
@@ -917,6 +921,15 @@
       const t = TRANSLATIONS[lang] || TRANSLATIONS.zh;
 
       useEffect(() => { roomIdRef.current = roomId; }, [roomId]);
+
+      // 保險機制：正常情況下 fromCache 應該在一兩秒內自動變回 false。
+      // 如果「同步中」畫面持續超過 8 秒、而瀏覽器又回報自己是連線狀態，代表 Firestore 監聽器可能真的卡住了，
+      // 這時顯示「重新連線」按鈕讓玩家可以手動救回，而不是永遠卡在轉圈圈畫面出不去。
+      useEffect(() => {
+        if (!isSyncing || isOffline) { setSyncStuck(false); return; }
+        const timer = setTimeout(() => setSyncStuck(true), 8000);
+        return () => clearTimeout(timer);
+      }, [isSyncing, isOffline]);
       useEffect(() => { if (user) window._currentUid = user.uid; }, [user]);
 
       // 監聽瀏覽器本身的網路連線狀態，第一時間反應斷線（不用等 Firestore 逾時）
@@ -1051,7 +1064,12 @@
       }, []);
 
       useEffect(() => {
-        if (!roomId || !user || !db || (gameState.mode !== 'online' && gameState.mode !== 'lobby_wait')) return;
+        // 注意：這裡刻意不把 gameState.mode 放進依賴陣列。
+        // lobby_wait -> online 只是「同一個房間」內的狀態切換，監聽器應該持續存活；
+        // 如果把 mode 放進依賴，每次開始遊戲都會把舊監聽器關掉、重新訂閱一個全新的 onSnapshot，
+        // 而全新的監聽器第一次回呼幾乎一定是 fromCache:true，畫面就會在「準備開始遊戲」的瞬間
+        // 卡進「連線不穩」的阻擋畫面，運氣不好時甚至久久等不到伺服器確認、看起來像卡死。
+        if (!roomId || !user || !db) return;
         const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'moonphase_rooms', roomId);
         const unsubscribe = onSnapshot(roomRef, (snap) => {
           // metadata.fromCache 為 true 代表這筆資料是本地快取而非伺服器最新狀態（通常發生在斷線／網路不穩時），
@@ -1061,6 +1079,7 @@
           setOnlineRoomData(data);
           if (data.status === 'playing') {
             setGameState(prev => {
+              if (prev.mode !== 'online' && prev.mode !== 'lobby_wait') return prev; // 已經離開線上房間，不要再套用房間更新
               if (prev.mode !== 'online' || (data.round && data.round !== prev.round)) {
                 lastProcessedMoveTs.current = 0; 
                 return { ...prev, mode: 'online', boardType: data.initialState.boardType, ...data.initialState, turn: 1, finalBaseScores: null, isAnimating: false, gameOver: false, tallyState: 'none', selectedCardIdx: null, scoringQueue: [], currentScoringEvent: null, pendingResolveInfo: null, round: data.round || 1 };
@@ -1071,7 +1090,7 @@
           }
         }, (err) => { console.error('Room sync error', err); setIsSyncing(true); });
         return () => unsubscribe();
-      }, [roomId, user, myPlayerId, gameState.mode]);
+      }, [roomId, user, myPlayerId]);
 
       const fetchLeaderboard = async () => {
         if (!user || !db) return; setIsLoadingLb(true);
@@ -1235,6 +1254,14 @@
       };
 
       const handlePlayAgain = () => { if (gameState.mode === 'online' && myPlayerId === 1) { startOnlineGame(); } else if (gameState.mode !== 'online') { initGame(gameState.mode); } };
+
+      // 離開房間／回主選單：務必清掉 roomId，onSnapshot 監聽器才會確實斷線，
+      // 避免舊房間的更新繼續套用到畫面上，或留著一個沒人用的監聽器。
+      const leaveOnlineRoom = () => {
+        audioManager.startLobbyBGM();
+        if (roomId) { setRoomId(''); setOnlineRoomData(null); setMyPlayerId(1); lastProcessedMoveTs.current = 0; setIsSyncing(false); setSyncStuck(false); }
+        setGameState(prev => ({ ...prev, mode: 'menu' }));
+      };
 
       const getNextTurn = (curr, hands) => { let n = curr; let count = 0; do { n = (n % gameState.totalPlayers) + 1; count++; } while (hands[n] && hands[n].length === 0 && count < gameState.totalPlayers); return n; };
       const drawCard = (deck, hand) => (deck.length === 0 ? { newDeck: deck, finalHand: hand } : { newDeck: deck.slice(1), finalHand: [...hand, deck[0]] });
@@ -1754,7 +1781,7 @@
                         {onlineRoomData.players[user.uid]?.ready ? t.btnCancelReady : t.btnReady}
                       </button>
                     )}
-                    <button onClick={() => { audioManager.startLobbyBGM(); setGameState(prev => ({ ...prev, mode: 'menu' })); }}
+                    <button onClick={leaveOnlineRoom}
                       className="w-full py-3 sm:py-4 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-2xl font-bold text-sm sm:text-lg flex items-center justify-center gap-2 border border-slate-600 transition-all">
                       <RotateCcw className="w-4 h-4 sm:w-5 sm:h-5" /> {t.btnLeave}
                     </button>
@@ -1810,7 +1837,13 @@
               <div className="bg-slate-900/95 text-white px-6 py-5 sm:px-10 sm:py-7 rounded-2xl border border-amber-400/60 shadow-2xl flex flex-col items-center text-center max-w-[85%] sm:max-w-sm">
                 <div className="w-9 h-9 sm:w-11 sm:h-11 mb-3 rounded-full border-4 border-amber-400/30 border-t-amber-400 animate-spin"></div>
                 <span className="text-base sm:text-xl font-black text-amber-300 tracking-wide">{t.txtSyncing}</span>
-                <span className="mt-2 text-xs sm:text-sm text-slate-300">{t.txtSyncingSub}</span>
+                <span className="mt-2 text-xs sm:text-sm text-slate-300">{syncStuck ? t.txtSyncStuckSub : t.txtSyncingSub}</span>
+                {syncStuck && (
+                  <div className="mt-4 flex gap-3 w-full">
+                    <button onClick={() => window.location.reload()} className="flex-1 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-900 rounded-xl font-black text-sm sm:text-base transition-all">{t.btnReconnect}</button>
+                    <button onClick={leaveOnlineRoom} className="flex-1 py-2.5 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-bold text-sm sm:text-base transition-all">{t.btnLeaveRoom}</button>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -1840,7 +1873,7 @@
 
             {/* 右側：回首頁與設定 */}
             <div className="pointer-events-auto flex items-center gap-1 sm:gap-2 shrink-0">
-              <button onClick={() => { audioManager.startLobbyBGM(); setGameState(prev => ({ ...prev, mode: 'menu' })); }} className="p-1.5 sm:p-2.5 text-slate-300 hover:text-white bg-slate-900/80 hover:bg-rose-900/80 rounded-full border border-slate-600/50 hover:border-rose-500/50 shadow-lg backdrop-blur-md transition-all group" title={t.back}>
+              <button onClick={leaveOnlineRoom} className="p-1.5 sm:p-2.5 text-slate-300 hover:text-white bg-slate-900/80 hover:bg-rose-900/80 rounded-full border border-slate-600/50 hover:border-rose-500/50 shadow-lg backdrop-blur-md transition-all group" title={t.back}>
                 <Home className="w-4 h-4 sm:w-5 sm:h-5 group-hover:scale-110" />
               </button>
               <button onClick={() => setShowSettings(true)} className="p-1.5 sm:p-2.5 text-indigo-300 hover:text-white bg-slate-900/80 hover:bg-indigo-900/80 rounded-full border border-slate-600/50 hover:border-indigo-500/50 shadow-lg backdrop-blur-md transition-all group" title={t.settings}>
@@ -1933,7 +1966,7 @@
                     )}
                     <div className="flex w-full space-x-4">
                       {((gameState.mode==='online' && myPlayerId===1) || gameState.mode!=='online') && <button onClick={handlePlayAgain} className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold flex items-center justify-center space-x-2"><RotateCcw className="w-5 h-5" /> <span>{t.btnPlayAgain}</span></button>}
-                      <button onClick={() => { audioManager.startLobbyBGM(); setGameState(prev => ({ ...prev, mode: 'menu' })); }} className="flex-1 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-bold flex items-center justify-center space-x-2"><Home className="w-5 h-5" /> <span>{t.back}</span></button>
+                      <button onClick={leaveOnlineRoom} className="flex-1 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-bold flex items-center justify-center space-x-2"><Home className="w-5 h-5" /> <span>{t.back}</span></button>
                     </div>
                   </React.Fragment>
                 )}
