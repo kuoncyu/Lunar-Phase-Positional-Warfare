@@ -873,6 +873,17 @@
     function App() {
       const [user, setUser] = useState(null);
       const [roomId, setRoomId] = useState('');
+      // 房間內用來識別「這個人」的 key。不能直接用 Firebase 匿名登入的 user.uid──
+      // 因為同一台裝置／瀏覽器開兩個分頁，Firebase 匿名登入預設會共用同一組 uid，
+      // 這樣一旦第二個分頁加入房間，會用完全相同的 key 覆蓋房主原本在 players 裡的那筆資料，
+      // 導致房主「消失」、遊戲無法開始。改用存在 sessionStorage（分頁各自獨立）的隨機 key 就能避免。
+      const mySessionKey = useState(() => {
+        try {
+          let k = sessionStorage.getItem('moonphase_room_session_key');
+          if (!k) { k = 'p_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36); sessionStorage.setItem('moonphase_room_session_key', k); }
+          return k;
+        } catch (e) { return 'p_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36); }
+      })[0];
       const [joinCode, setJoinCode] = useState('');
       const [myPlayerId, setMyPlayerId] = useState(1);
       const [isPseudoFs, setIsPseudoFs] = useState(false);
@@ -992,15 +1003,18 @@
         return () => { document.removeEventListener('fullscreenchange', handleFsChange); document.removeEventListener('webkitfullscreenchange', handleFsChange); };
       }, []);
       const toggleFullscreen = () => { const docElem = document.documentElement; const isNowFs = !!(document.fullscreenElement || document.webkitFullscreenElement); if (!isNowFs && !isPseudoFs) { const req = docElem.requestFullscreen || docElem.webkitRequestFullscreen; if (req) req.call(docElem).catch(() => setIsPseudoFs(true)); else setIsPseudoFs(true); } else { const exit = document.exitFullscreen || document.webkitExitFullscreen; if (isNowFs && exit) exit.call(document).catch(() => setIsPseudoFs(false)); setIsPseudoFs(false); } };
-      // 只負責「進入」全螢幕，不會像 toggleFullscreen 一樣在已全螢幕時退出
+      // 只負責「進入」全螢幕，不會像 toggleFullscreen 一樣在已全螢幕時退出。
+      // 注意：只在「已經是原生全螢幕」時才提早返回；不能用 isPseudoFs 擋掉後續呼叫──
+      // 否則載入時那次沒有使用者手勢的自動嘗試失敗後，會把 isPseudoFs 設成 true，
+      // 導致之後即使是「按任意鍵／點擊」這種真正的使用者手勢也永遠無法真正進入全螢幕。
       const enterFullscreen = useCallback(() => {
         const isNowFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
-        if (isNowFs || isPseudoFs) return;
+        if (isNowFs) return;
         const docElem = document.documentElement;
         const req = docElem.requestFullscreen || docElem.webkitRequestFullscreen;
-        if (req) req.call(docElem).catch(() => setIsPseudoFs(true));
+        if (req) req.call(docElem).then(() => setIsPseudoFs(false)).catch(() => setIsPseudoFs(true));
         else setIsPseudoFs(true);
-      }, [isPseudoFs]);
+      }, []);
 
       // 從「開場畫面」進入主選單：初始化音效、嘗試全螢幕、切換遊戲畫面到 menu。
       // 點擊開場畫面與「按任意鍵」共用同一段邏輯。
@@ -1137,7 +1151,7 @@
           setIsSyncing(!!(snap.metadata && snap.metadata.fromCache));
           if (!snap.exists()) return; const data = snap.data();
           setOnlineRoomData(data);
-          if (data.players && user && data.players[user.uid]) setMyPlayerId(data.players[user.uid].pId); // 房主換位後，同步自己目前的出牌順序
+          if (data.players && data.players[mySessionKey]) setMyPlayerId(data.players[mySessionKey].pId); // 房主換位後，同步自己目前的出牌順序
           if (data.status === 'playing') {
             setGameState(prev => {
               if (prev.mode !== 'online' && prev.mode !== 'lobby_wait') return prev; // 已經離開線上房間，不要再套用房間更新
@@ -1277,7 +1291,7 @@
         if (!user || !db) return alert("Firebase Offline");
         const newRoomId = Math.floor(1000 + Math.random() * 9000).toString();
         const maxP = onlineTeamMode ? 4 : onlineMaxPlayers;
-        try { await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'moonphase_rooms', newRoomId), { status: 'waiting', createdAt: Date.now(), host: user.uid, maxPlayers: maxP, boardPref: onlineBoardPref, teamMode: onlineTeamMode, teams: onlineTeamMode ? { 1: 'A', 2: 'B', 3: 'A', 4: 'B' } : null, players: { [user.uid]: { pId: 1, ready: true } }, round: 1 }); setRoomId(newRoomId); setMyPlayerId(1); setGameState(prev => ({ ...prev, mode: 'lobby_wait' })); } catch (e) { console.error(e); }
+        try { await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'moonphase_rooms', newRoomId), { status: 'waiting', createdAt: Date.now(), host: mySessionKey, maxPlayers: maxP, boardPref: onlineBoardPref, teamMode: onlineTeamMode, teams: onlineTeamMode ? { 1: 'A', 2: 'B', 3: 'A', 4: 'B' } : null, players: { [mySessionKey]: { pId: 1, ready: true, uid: user.uid } }, round: 1 }); setRoomId(newRoomId); setMyPlayerId(1); setGameState(prev => ({ ...prev, mode: 'lobby_wait' })); } catch (e) { console.error(e); }
       };
       
       const joinRoom = async (code) => {
@@ -1288,7 +1302,7 @@
             const data = snap.data(); const currentPlayers = Object.keys(data.players).length;
             if (currentPlayers >= data.maxPlayers) return alert("Room Full");
             let usedPids = Object.values(data.players).map(p=>p.pId); let newPid = 2; while(usedPids.includes(newPid)) newPid++;
-            await updateDoc(roomRef, { [`players.${user.uid}`]: { pId: newPid, ready: false } });
+            await updateDoc(roomRef, { [`players.${mySessionKey}`]: { pId: newPid, ready: false, uid: user.uid } });
             setRoomId(code); setMyPlayerId(newPid); setGameState(prev => ({ ...prev, mode: 'lobby_wait' }));
           } else { alert("Not Found"); }
         } catch (e) { console.error(e); }
@@ -1296,14 +1310,14 @@
 
       const toggleReadyOnline = async () => {
         if (!roomId || !user || !db || !onlineRoomData) return;
-        const isReady = onlineRoomData.players[user.uid].ready;
-        await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'moonphase_rooms', roomId), { [`players.${user.uid}.ready`]: !isReady });
+        const isReady = onlineRoomData.players[mySessionKey].ready;
+        await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'moonphase_rooms', roomId), { [`players.${mySessionKey}.ready`]: !isReady });
       };
 
       // 以下三個函式僅供房主在「連線大廳」（lobby_wait）使用：隨機分組／點隊伍顏色換隊／點 P 換出牌順序。
       // 邏輯與單機多人模式的 swapLocalTeam 相同：一律採「與另一位互換」的方式，確保永遠維持 2v2，不會出現 3v1。
       const randomizeOnlineTeams = async () => {
-        if (!roomId || !user || !db || !onlineRoomData || onlineRoomData.host !== user.uid) return;
+        if (!roomId || !user || !db || !onlineRoomData || onlineRoomData.host !== mySessionKey) return;
         const shuffled = [1, 2, 3, 4].sort(() => Math.random() - 0.5);
         const half = new Set(shuffled.slice(0, 2));
         const nt = {}; [1, 2, 3, 4].forEach(p => nt[p] = half.has(p) ? 'A' : 'B');
@@ -1311,7 +1325,7 @@
       };
 
       const swapOnlineTeam = async (pId) => {
-        if (!roomId || !user || !db || !onlineRoomData || onlineRoomData.host !== user.uid) return;
+        if (!roomId || !user || !db || !onlineRoomData || onlineRoomData.host !== mySessionKey) return;
         const teams = onlineRoomData.teams || { 1: 'A', 2: 'B', 3: 'A', 4: 'B' };
         const otherTeam = teams[pId] === 'A' ? 'B' : 'A';
         const partnerId = [1, 2, 3, 4].find(x => x !== pId && teams[x] === otherTeam);
@@ -1321,7 +1335,7 @@
 
       // 點擊某個 P 位：第一次點選記住該位，第二次點選另一個「有玩家」的 P 位，兩者互換出牌順序（互換 pId）
       const handleOrderSwapClick = async (pId) => {
-        if (!roomId || !user || !db || !onlineRoomData || onlineRoomData.host !== user.uid) return;
+        if (!roomId || !user || !db || !onlineRoomData || onlineRoomData.host !== mySessionKey) return;
         const entry = Object.entries(onlineRoomData.players).find(([, p]) => p.pId === pId);
         if (!entry) return; // 空位（AI 候補）無法參與換位
         if (orderSwapPid === null) { setOrderSwapPid(pId); return; }
@@ -1343,11 +1357,11 @@
         if (!bId || bId === 'random') bId = getActualBoardId(totalP);
         const initData = generateInitData('online', totalP, humanCount, bId, teamMode, teams);
         for(let i=1; i<=totalP; i++) initData.playersInfo[i] = { type: 'ai', difficulty: 'medium' };
-        Object.entries(onlineRoomData.players).forEach(([uid, p]) => { initData.playersInfo[p.pId] = { type: 'human', uid }; });
+        Object.entries(onlineRoomData.players).forEach(([key, p]) => { initData.playersInfo[p.pId] = { type: 'human', uid: key }; });
         try { await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'moonphase_rooms', roomId), { status: 'playing', initialState: initData, round: (onlineRoomData.round || 1) + 1, lastMove: null }); } catch (e) { console.error(e); }
       };
 
-      const handlePlayAgain = () => { if (gameState.mode === 'online' && myPlayerId === 1) { startOnlineGame(); } else if (gameState.mode !== 'online') { initGame(gameState.mode); } };
+      const handlePlayAgain = () => { if (gameState.mode === 'online' && onlineRoomData && onlineRoomData.host === mySessionKey) { startOnlineGame(); } else if (gameState.mode !== 'online') { initGame(gameState.mode); } };
 
       // 離開房間／回主選單：務必清掉 roomId，onSnapshot 監聽器才會確實斷線，
       // 避免舊房間的更新繼續套用到畫面上，或留著一個沒人用的監聽器。
@@ -1835,11 +1849,11 @@
                       <h3 className="font-black text-slate-300 text-sm sm:text-lg uppercase tracking-widest">
                         {t.roomPlayers} <span className="text-emerald-400">({Object.keys(onlineRoomData.players).length}/{onlineRoomData.maxPlayers})</span>
                       </h3>
-                      {onlineRoomData.host === user.uid && onlineRoomData.teamMode && (
+                      {onlineRoomData.host === mySessionKey && onlineRoomData.teamMode && (
                         <button onClick={randomizeOnlineTeams} className="text-xs sm:text-sm px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-white font-bold whitespace-nowrap">{t.teamRandomize}</button>
                       )}
                     </div>
-                    {onlineRoomData.host === user.uid && (
+                    {onlineRoomData.host === mySessionKey && (
                       <p className="text-center text-[11px] sm:text-xs text-amber-300/90 font-bold mb-3">
                         {orderSwapPid !== null ? t.roomOrderSelectHint : t.roomHostHint}
                       </p>
@@ -1847,9 +1861,9 @@
                     <div className="flex flex-col gap-2 sm:gap-3">
                       {Array.from({length: onlineRoomData.maxPlayers}, (_,i)=>i+1).map(pId => {
                         const pEntry = Object.entries(onlineRoomData.players).find(([u,p])=>p.pId===pId);
-                        const isMe = pEntry && pEntry[0] === user.uid;
+                        const isMe = pEntry && pEntry[0] === mySessionKey;
                         const isHost = pEntry && pEntry[0] === onlineRoomData.host;
-                        const amHost = onlineRoomData.host === user.uid;
+                        const amHost = onlineRoomData.host === mySessionKey;
                         const cInfo = P_COLORS[pId];
                         const teams = onlineRoomData.teams || { 1: 'A', 2: 'B', 3: 'A', 4: 'B' };
                         const isTeamA = teams[pId] === 'A';
@@ -1889,16 +1903,16 @@
 
                   {/* 操作按鈕區 */}
                   <div className="flex flex-col gap-3 landscape:w-56 sm:landscape:w-72 justify-center">
-                    {onlineRoomData.host === user.uid ? (
+                    {onlineRoomData.host === mySessionKey ? (
                       <button onClick={startOnlineGame}
-                        disabled={Object.values(onlineRoomData.players).some(p => !p.ready && p.pId !== 1)}
+                        disabled={Object.entries(onlineRoomData.players).some(([k, p]) => !p.ready && k !== onlineRoomData.host)}
                         className="w-full py-4 sm:py-5 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 disabled:text-slate-500 text-white rounded-2xl font-black transition-all shadow-lg text-base sm:text-xl border border-emerald-400/30 disabled:border-transparent">
-                        {Object.values(onlineRoomData.players).some(p => !p.ready && p.pId !== 1) ? t.btnWait : t.btnStartAll}
+                        {Object.entries(onlineRoomData.players).some(([k, p]) => !p.ready && k !== onlineRoomData.host) ? t.btnWait : t.btnStartAll}
                       </button>
                     ) : (
                       <button onClick={toggleReadyOnline}
-                        className={`w-full py-4 sm:py-5 rounded-2xl font-black transition-all shadow-lg text-base sm:text-xl ${onlineRoomData.players[user.uid]?.ready ? 'bg-slate-700 hover:bg-slate-600 text-slate-300 border border-slate-500' : 'bg-indigo-600 hover:bg-indigo-500 text-white border border-indigo-400/30'}`}>
-                        {onlineRoomData.players[user.uid]?.ready ? t.btnCancelReady : t.btnReady}
+                        className={`w-full py-4 sm:py-5 rounded-2xl font-black transition-all shadow-lg text-base sm:text-xl ${onlineRoomData.players[mySessionKey]?.ready ? 'bg-slate-700 hover:bg-slate-600 text-slate-300 border border-slate-500' : 'bg-indigo-600 hover:bg-indigo-500 text-white border border-indigo-400/30'}`}>
+                        {onlineRoomData.players[mySessionKey]?.ready ? t.btnCancelReady : t.btnReady}
                       </button>
                     )}
                     <button onClick={leaveOnlineRoom}
@@ -2300,4 +2314,4 @@
   </script>
 
 </body>
-</html>
+  </html>
