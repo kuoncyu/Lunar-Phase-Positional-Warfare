@@ -237,7 +237,8 @@
         chanWorld: '世界', chanBattle: '戰鬥', chanTeam: '組隊',
         chanBattleLocked: '需先加入連線房間才能使用', chanTeamLocked: '需開啟團戰模式才能使用',
         quickMsgSettingsTitle: '快捷訊息設定', quickMsgSettingsHint: '自訂聊天室的 8 組快捷訊息，僅儲存在此裝置上',
-        nameInputTitle: '挑戰結束！記錄你的傳奇', nameInputPlaceholder: '請輸入代號', btnSubmit: '確認上傳', btnSkip: '不儲存，直接回首頁', btnBackMenu: '回首頁',
+        nicknameSettingsTitle: '暱稱設定', nicknameSettingsHint: '設定你的暱稱，將套用於聊天室、遊戲內顯示與排行榜', nicknamePlaceholder: '請輸入暱稱',
+        nameInputTitle: '挑戰結束！記錄你的傳奇', nameInputPlaceholder: '尚未設定暱稱', nicknameEditHint: '可至設定調整暱稱', btnSubmit: '確認上傳', btnSkip: '不儲存，直接回首頁', btnBackMenu: '回首頁',
         btnUploading: '上傳中...', btnUploadDone: '上傳完成', btnRestartChallenge: '重新挑戰', btnUploadFail: '上傳失敗 (重試)',
         lbTitle: '極限闖關排行榜', lbLoading: '載入資料中...', lbEmpty: '目前尚無挑戰紀錄', lbRank: '排名', lbName: '代號',
         challengeSuccess: '挑戰成功！', challengeFail: '挑戰止步於此', txtYou: '你', txtVsAI: 'vs 電腦', btnNextLvl: '繼續深入下一層', btnFinish100: '完成終極挑戰！記錄成績', btnSaveRecord: '記錄本次挑戰成績',
@@ -269,7 +270,8 @@
         chanWorld: 'World', chanBattle: 'Battle', chanTeam: 'Team',
         chanBattleLocked: 'Join an online room to use this', chanTeamLocked: 'Enable team mode to use this',
         quickMsgSettingsTitle: 'Quick Messages', quickMsgSettingsHint: 'Customize the 8 quick-chat phrases (saved on this device only)',
-        nameInputTitle: 'Challenge Over! Save Record', nameInputPlaceholder: 'Enter Name', btnSubmit: 'Submit', btnSkip: 'Skip & Return Home', btnBackMenu: 'Main Menu',
+        nicknameSettingsTitle: 'Nickname', nicknameSettingsHint: 'Set your nickname — used in chat, in-game display, and the leaderboard', nicknamePlaceholder: 'Enter nickname',
+        nameInputTitle: 'Challenge Over! Save Record', nameInputPlaceholder: 'No nickname set', nicknameEditHint: 'You can change your nickname in Settings', btnSubmit: 'Submit', btnSkip: 'Skip & Return Home', btnBackMenu: 'Main Menu',
         btnUploading: 'Uploading...', btnUploadDone: 'Upload Complete', btnRestartChallenge: 'Play Again', btnUploadFail: 'Upload Failed (Retry)',
         lbTitle: 'Challenge Leaderboard', lbLoading: 'Loading...', lbEmpty: 'No records yet', lbRank: '#', lbName: 'ID',
         challengeSuccess: 'Cleared!', challengeFail: 'Failed!', txtYou: 'You', txtVsAI: 'vs AI', btnNextLvl: 'Next Level', btnFinish100: '100 Lvls Cleared! Save', btnSaveRecord: 'Save Record',
@@ -301,7 +303,8 @@
         chanWorld: 'ワールド', chanBattle: 'バトル', chanTeam: 'チーム',
         chanBattleLocked: 'オンラインルームに参加してください', chanTeamLocked: 'チームモードを有効にしてください',
         quickMsgSettingsTitle: 'クイックメッセージ', quickMsgSettingsHint: '8つのクイックチャットフレーズをカスタマイズ（この端末にのみ保存）',
-        nameInputTitle: '挑戦終了！記録を保存', nameInputPlaceholder: '名前を入力', btnSubmit: '送信', btnSkip: '保存せずに戻る', btnBackMenu: 'メインメニュー',
+        nicknameSettingsTitle: 'ニックネーム設定', nicknameSettingsHint: 'ニックネームを設定すると、チャット・ゲーム内表示・ランキングに反映されます', nicknamePlaceholder: 'ニックネームを入力',
+        nameInputTitle: '挑戦終了！記録を保存', nameInputPlaceholder: 'ニックネーム未設定', nicknameEditHint: '設定画面でニックネームを変更できます', btnSubmit: '送信', btnSkip: '保存せずに戻る', btnBackMenu: 'メインメニュー',
         btnUploading: 'アップロード中...', btnUploadDone: 'アップロード完了', btnRestartChallenge: '再挑戦', btnUploadFail: '失敗 (再試行)',
         lbTitle: 'チャレンジランキング', lbLoading: '読み込み中...', lbEmpty: '記録がありません', lbRank: '順位', lbName: '名前',
         challengeSuccess: 'クリア！', challengeFail: 'ゲームオーバー', txtYou: 'あなた', txtVsAI: 'vs CPU', btnNextLvl: '次の階層へ', btnFinish100: '100階層クリア！記録を保存', btnSaveRecord: '記録を保存',
@@ -599,19 +602,20 @@
                       ))}
                     </div>
                   )}
+                  {/* 表情／月相／方向：點擊後只插入輸入框（不直接送出），需按下方「發送」才會整串送出；快捷訊息(msg分頁)則維持點擊即直接送出 */}
                   {quickTab === 'emoji' && (
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: '4px' }}>
-                      {QUICK_EMOJIS.map((e, i) => <button key={i} onClick={() => onQuickSend(e)} style={{ fontSize: '1.2rem', padding: '4px 0', borderRadius: '6px', border: 'none', background: 'rgba(255,255,255,0.05)', cursor: 'pointer' }}>{e}</button>)}
+                      {QUICK_EMOJIS.map((e, i) => <button key={i} onClick={() => setInput(prev => (prev + e).slice(0, 60))} style={{ fontSize: '1.2rem', padding: '4px 0', borderRadius: '6px', border: 'none', background: 'rgba(255,255,255,0.05)', cursor: 'pointer' }}>{e}</button>)}
                     </div>
                   )}
                   {quickTab === 'moon' && (
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: '4px' }}>
-                      {QUICK_MOONS.map((e, i) => <button key={i} onClick={() => onQuickSend(e)} style={{ fontSize: '1.2rem', padding: '4px 0', borderRadius: '6px', border: 'none', background: 'rgba(255,255,255,0.05)', cursor: 'pointer' }}>{e}</button>)}
+                      {QUICK_MOONS.map((e, i) => <button key={i} onClick={() => setInput(prev => (prev + e).slice(0, 60))} style={{ fontSize: '1.2rem', padding: '4px 0', borderRadius: '6px', border: 'none', background: 'rgba(255,255,255,0.05)', cursor: 'pointer' }}>{e}</button>)}
                     </div>
                   )}
                   {quickTab === 'dir' && (
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: '4px' }}>
-                      {QUICK_DIRECTIONS.map((e, i) => <button key={i} onClick={() => onQuickSend(e)} style={{ fontSize: '1.2rem', padding: '4px 0', borderRadius: '6px', border: 'none', background: 'rgba(255,255,255,0.05)', cursor: 'pointer' }}>{e}</button>)}
+                      {QUICK_DIRECTIONS.map((e, i) => <button key={i} onClick={() => setInput(prev => (prev + e).slice(0, 60))} style={{ fontSize: '1.2rem', padding: '4px 0', borderRadius: '6px', border: 'none', background: 'rgba(255,255,255,0.05)', cursor: 'pointer' }}>{e}</button>)}
                     </div>
                   )}
                 </div>
@@ -761,7 +765,7 @@
       );
     };
 
-    const SettingsModal = ({ onClose, lang, setLang, bgmVol, setBgmVol, sfxVol, setSfxVol, toggleFs, showTutorial, setShowTutorial, t, quickMessages, setQuickMessages }) => {
+    const SettingsModal = ({ onClose, lang, setLang, bgmVol, setBgmVol, sfxVol, setSfxVol, toggleFs, showTutorial, setShowTutorial, t, quickMessages, setQuickMessages, nickname, setNickname }) => {
       if (showTutorial) return (
         <div className="fixed inset-0 z-[99999] bg-slate-950/95 overflow-y-auto px-4 py-4 sm:py-8 flex flex-col items-center backdrop-blur-md custom-scroll">
           <div className="w-full max-w-3xl bg-slate-900 border border-indigo-500/30 rounded-3xl p-5 sm:p-6 landscape:p-4 shadow-[0_0_50px_rgba(99,102,241,0.15)] relative my-auto">
@@ -808,6 +812,14 @@
               <div className="flex gap-3 mt-2">
                 <button onClick={() => setShowTutorial(true)} className="flex-1 py-2 sm:py-3 bg-slate-800 hover:bg-slate-700 rounded-xl font-bold border border-slate-600 text-sm sm:text-base">{t.howToPlay}</button>
                 <button onClick={toggleFs} className="flex-1 py-2 sm:py-3 bg-slate-800 hover:bg-slate-700 rounded-xl font-bold border border-slate-600 text-sm sm:text-base">{t.fullscreen}</button>
+              </div>
+
+              <div className="bg-slate-950 p-3 sm:p-4 rounded-xl border border-slate-800 mt-2">
+                <h3 className="font-bold text-slate-300 mb-1 text-sm">🏷️ {t.nicknameSettingsTitle}</h3>
+                <p className="text-[10px] sm:text-xs text-slate-500 mb-2">{t.nicknameSettingsHint}</p>
+                <input value={nickname} maxLength={10} placeholder={t.nicknamePlaceholder}
+                  onChange={e => setNickname(e.target.value)}
+                  className="w-full bg-slate-800 border border-slate-600 text-white rounded-lg px-2.5 py-1.5 outline-none text-sm focus:border-indigo-400" />
               </div>
 
               <div className="bg-slate-950 p-3 sm:p-4 rounded-xl border border-slate-800 mt-2">
@@ -1026,7 +1038,15 @@
       useEffect(() => { if (localTeamMode) { setLocalTotalPlayers(4); if (localHumanCount > 4) setLocalHumanCount(4); } }, [localTeamMode]);
       useEffect(() => { if (onlineTeamMode) setOnlineMaxPlayers(4); }, [onlineTeamMode]);
 
-      const [playerName, setPlayerName] = useState('');
+      // 使用者暱稱：於設定中自訂，套用於聊天室、遊戲內玩家標籤與排行榜，儲存在 localStorage 供離線／跨模式共用
+      const [nickname, setNicknameState] = useState(() => {
+        try { return localStorage.getItem('moonphase_nickname_v1') || ''; } catch (e) { return ''; }
+      });
+      const setNickname = useCallback((val) => {
+        const clean = (val || '').slice(0, 10);
+        setNicknameState(clean);
+        try { localStorage.setItem('moonphase_nickname_v1', clean); } catch (e) {}
+      }, []);
       const [leaderboard, setLeaderboard] = useState([]);
       const [isLoadingLb, setIsLoadingLb] = useState(false);
       const [aiThinkingPlayer, setAiThinkingPlayer] = useState(null);
@@ -1114,7 +1134,9 @@
       // 房間訊息未讀計算：獨立於監聽器之外，才能每次都用「當下最新」的隊伍資訊來判斷組隊訊息是否與自己同隊
       useEffect(() => {
         if (roomChatMessages.length === 0) return;
-        const myTeam = (gameState.teamMode && gameState.teams) ? gameState.teams[gameState.mode === 'online' ? myPlayerId : 1] : null;
+        const lobbyTm = !!(onlineRoomData && onlineRoomData.teamMode);
+        const myTeam = (gameState.teamMode && gameState.teams) ? gameState.teams[gameState.mode === 'online' ? myPlayerId : 1]
+          : (lobbyTm ? (onlineRoomData.teams || { 1: 'A', 2: 'B', 3: 'A', 4: 'B' })[myPlayerId] : null);
         let newest = lastRoomChatSeenTs.current; let hasNew = false;
         roomChatMessages.forEach(m => {
           if (m.time <= lastRoomChatSeenTs.current) return;
@@ -1125,7 +1147,7 @@
         });
         lastRoomChatSeenTs.current = newest;
         if (hasNew) setRoomChatUnread(u => u + 1);
-      }, [roomChatMessages, gameState.teamMode, gameState.teams, gameState.mode, myPlayerId]);
+      }, [roomChatMessages, gameState.teamMode, gameState.teams, gameState.mode, myPlayerId, onlineRoomData]);
 
       // 切換聊天分頁：同時清除該分頁對應的未讀數字
       const setChatChannel = useCallback((ch) => {
@@ -1135,8 +1157,14 @@
 
       // 「戰鬥」需已加入連線房間；「組隊」除了要在房間內，該房間還必須開啟團戰模式才能使用
       const chatCanBattle = !!roomId;
-      const chatCanTeam = !!roomId && !!gameState.teamMode;
-      const chatMyTeam = (gameState.teamMode && gameState.teams) ? gameState.teams[gameState.mode === 'online' ? myPlayerId : 1] : null;
+      // 團隊模式資訊：進入實際對局後看 gameState.teamMode／teams；但在等待房間（lobby_wait）階段，遊戲尚未開局、
+      // gameState 還沒套用房間設定，這時改讀 onlineRoomData（房間文件本身的團戰設定），讓「組隊」頻道能在等待室就先解鎖，
+      // 不必等到正式開局才能使用。
+      const lobbyTeamMode = !!(onlineRoomData && onlineRoomData.teamMode);
+      const lobbyTeams = lobbyTeamMode ? (onlineRoomData.teams || { 1: 'A', 2: 'B', 3: 'A', 4: 'B' }) : null;
+      const chatCanTeam = !!roomId && (!!gameState.teamMode || lobbyTeamMode);
+      const chatMyTeam = (gameState.teamMode && gameState.teams) ? gameState.teams[gameState.mode === 'online' ? myPlayerId : 1]
+        : (lobbyTeams ? lobbyTeams[myPlayerId] : null);
       // 依目前分頁篩選出要顯示的訊息：世界＝全域訊息；戰鬥＝房間內所有戰鬥頻道訊息；組隊＝房間內同隊的組隊頻道訊息
       const visibleChatMessages = chatChannel === 'world' ? chatMessages
         : chatChannel === 'battle' ? roomChatMessages.filter(m => m.channel === 'battle')
@@ -1281,18 +1309,20 @@
         if (!text || !db || !user) return;
         if (overrideText === undefined) setChatInput('');
         chatMsgCountSinceReminder.current++;
-        const name = user.displayName || (t.player + (myPlayerId || ''));
+        const name = nickname.trim() || user.displayName || (t.player + (myPlayerId || ''));
         try {
           if (chatChannel === 'world') {
             const chatRef = collection(db, 'artifacts', appId, 'public', 'data', 'moonphase_chat');
             await addDoc(chatRef, { uid: user.uid, name, text, time: Date.now() });
           } else if (roomIdRef.current) {
-            const myTeam = (gameState.teamMode && gameState.teams) ? gameState.teams[gameState.mode === 'online' ? myPlayerId : 1] : null;
+            const lobbyTm = !!(onlineRoomData && onlineRoomData.teamMode);
+            const myTeam = (gameState.teamMode && gameState.teams) ? gameState.teams[gameState.mode === 'online' ? myPlayerId : 1]
+              : (lobbyTm ? (onlineRoomData.teams || { 1: 'A', 2: 'B', 3: 'A', 4: 'B' })[myPlayerId] : null);
             const roomChatRef = collection(db, 'artifacts', appId, 'public', 'data', 'moonphase_rooms', roomIdRef.current, 'room_chat');
             await addDoc(roomChatRef, { uid: user.uid, name, text, time: Date.now(), channel: chatChannel, team: chatChannel === 'team' ? myTeam : null });
           }
         } catch(e) { console.error('Chat send error', e); }
-      }, [chatInput, user, db, myPlayerId, t, chatChannel, gameState.teamMode, gameState.teams, gameState.mode]);
+      }, [chatInput, user, db, myPlayerId, t, chatChannel, gameState.teamMode, gameState.teams, gameState.mode, nickname, onlineRoomData]);
 
       // 快捷表情／月相／方向／快捷訊息按鈕共用：直接把文字送到目前開啟的頻道分頁，不動輸入框
       const sendQuickChat = useCallback((text) => { sendChatMessage(text); }, [sendChatMessage]);
@@ -1435,7 +1465,7 @@
       };
 
       const submitChallengeScore = async () => {
-        if (playerName.trim().length < 3 || uploadStatus === 'uploading' || uploadStatus === 'success') return;
+        if (uploadStatus === 'uploading' || uploadStatus === 'success') return;
         if (typeof db === 'undefined' || !db) {
           console.error("【上傳失敗】找不到 Firestore (db) 連線物件！");
           setUploadStatus('error');
@@ -1445,9 +1475,11 @@
         try { 
           const safeUid = (typeof user !== 'undefined' && user && user.uid) ? user.uid : 'anonymous_' + Math.floor(Math.random() * 100000);
           const safeAppId = (typeof appId !== 'undefined' && appId) ? appId : 'moonphase-app';
+          // 名稱直接沿用設定中的暱稱，不再另外詢問；若尚未設定暱稱則以 GUEST 代替
+          const submitName = (nickname.trim() || 'GUEST').toUpperCase().slice(0, 10);
           
           const docRef = await addDoc(collection(db, 'artifacts', safeAppId, 'public', 'data', 'moonphase_leaderboard'), { 
-            name: playerName.toUpperCase(), 
+            name: submitName, 
             level: gameState.challengeData.currentLevel || 1, 
             totalScore: gameState.challengeData.totalScore || 0, 
             uid: safeUid, 
@@ -1467,10 +1499,9 @@
         }
       };
 
-      const handleKeyboardAction = () => {
+      const handleScoreCardAction = () => {
         if (uploadStatus === 'restart') {
            setUploadStatus('idle');
-           setPlayerName('');
            initGame('challenge');
         } else {
            submitChallengeScore();
@@ -1757,15 +1788,18 @@
       };
 
       const getPlayerLabel = (pId) => {
-        let label = `${t.player} ${pId}`; const pInfo = gameState.playersInfo[pId];
+        const pInfo = gameState.playersInfo[pId];
+        // 自己所在的座位：連線模式看 myPlayerId，本機／單人闖關模式固定是玩家1
+        const isMe = (gameState.mode === 'online' && pId === myPlayerId) || ((gameState.mode === 'local' || gameState.mode === 'challenge') && pId === 1);
+        // 若已在設定中填寫暱稱，自己這個座位改用暱稱顯示，取代預設的「玩家N」
+        let label = (isMe && pInfo && pInfo.type !== 'ai' && nickname.trim()) ? nickname.trim() : `${t.player} ${pId}`;
         if (pInfo && pInfo.type === 'ai') { 
           label = `${t.ai}${pId}`; 
           if(pInfo.difficulty === 'low') label+=`[${t.diffLow}]`; 
           else if(pInfo.difficulty === 'high') label+=`[${t.diffHigh}]`; 
           else label+=`[${t.diffMed}]`; 
         }
-        else if (gameState.mode === 'online' && pId === myPlayerId) label += ` ${t.roomYou}`;
-        else if (gameState.mode === 'local' || gameState.mode === 'challenge') { if(pId === 1) label+=` ${t.roomYou}`; }
+        else if (isMe) { label += ` ${t.roomYou}`; }
         let teamTag = null;
         if (gameState.teamMode && gameState.teams && gameState.teams[pId]) {
           const team = gameState.teams[pId];
@@ -1849,6 +1883,12 @@
 
       // === Non-Playing Views ===
       if (['splash', 'menu', 'lobby', 'lobby_wait', 'name_input', 'leaderboard', 'local_setup', 'moonInfo'].includes(gameState.mode)) {
+        // 排行榜送出按鈕的文字／樣式：依上傳狀態變化，取代原本鍵盤面板內建的邏輯
+        let scoreBtnText = t.btnSubmit, scoreBtnDisabled = false, scoreBtnClass = "bg-emerald-600 hover:bg-emerald-500 text-white";
+        if (uploadStatus === 'uploading') { scoreBtnText = t.btnUploading; scoreBtnDisabled = true; }
+        else if (uploadStatus === 'success') { scoreBtnText = t.btnUploadDone; scoreBtnDisabled = true; }
+        else if (uploadStatus === 'restart') { scoreBtnText = t.btnRestartChallenge; scoreBtnClass = "bg-indigo-600 hover:bg-indigo-500 text-white"; }
+        else if (uploadStatus === 'error') { scoreBtnText = t.btnUploadFail || '上傳失敗 (重試)'; scoreBtnClass = "bg-rose-600 hover:bg-rose-500 text-white"; }
         return (
           <div className={`${wrapperClass} flex flex-col items-center justify-center overflow-y-auto custom-scroll px-4 sm:px-6 lg:px-10`}>
             <StarryBackground />
@@ -1858,7 +1898,7 @@
               <button onClick={() => setShowSettings(true)} className="p-3 text-indigo-300 hover:text-white bg-slate-800/80 rounded-full border border-white/10 shadow-lg hover:rotate-90 transition-all"><SettingsIcon className="w-6 h-6"/></button>
             </div>
 
-            {showSettings && <SettingsModal onClose={() => setShowSettings(false)} lang={lang} setLang={setLang} bgmVol={bgmVol} setBgmVol={setBgmVol} sfxVol={sfxVol} setSfxVol={setSfxVol} toggleFs={toggleFullscreen} showTutorial={showTutorialInner} setShowTutorial={setShowTutorialInner} t={t} quickMessages={quickMessages} setQuickMessages={setQuickMessages} />}
+            {showSettings && <SettingsModal onClose={() => setShowSettings(false)} lang={lang} setLang={setLang} bgmVol={bgmVol} setBgmVol={setBgmVol} sfxVol={sfxVol} setSfxVol={setSfxVol} toggleFs={toggleFullscreen} showTutorial={showTutorialInner} setShowTutorial={setShowTutorialInner} t={t} quickMessages={quickMessages} setQuickMessages={setQuickMessages} nickname={nickname} setNickname={setNickname} />}
 
             {/* 聊天室（浮動按鈕） */}
             {user && <ChatPanel open={chatOpen} messages={visibleChatMessages} inputVal={chatInput} setInput={setChatInput} onSend={sendChatMessage} onToggle={toggleChat} unread={totalChatUnread} chatBoxRef={chatBoxRef} t={t} lang={lang} channel={chatChannel} setChannel={setChatChannel} canBattle={chatCanBattle} canTeam={chatCanTeam} quickMessages={quickMessages} onQuickSend={sendQuickChat} />}
@@ -1868,8 +1908,9 @@
                 <Trophy className="w-14 h-14 sm:w-20 sm:h-20 landscape:w-14 landscape:h-14 text-yellow-400 mb-3 drop-shadow-[0_0_15px_rgba(250,204,21,0.5)]" />
                 <h2 className="text-2xl sm:text-4xl font-black mb-2 text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-yellow-500">{t.nameInputTitle}</h2>
                 <p className="text-indigo-200 mb-5 sm:mb-7 text-sm sm:text-lg">{t.txtLvl} {gameState.challengeData.currentLevel} {t.txtLayer} &nbsp;|&nbsp; {t.totalScore}: {gameState.challengeData.totalScore}</p>
-                <div className="w-full max-w-sm mx-auto bg-slate-950 p-3 sm:p-5 rounded-2xl border border-indigo-500/30 mb-3"><div className="h-12 sm:h-16 flex items-center justify-center text-3xl sm:text-4xl font-[Rubik] tracking-[0.3em] font-bold text-white">{playerName || <span className="text-slate-600 animate-pulse">{t.nameInputPlaceholder}</span>}</div></div>
-                <VirtualKeyboard onKeyPress={(k) => setPlayerName(p => p.length < 8 ? p + k : p)} onDelete={() => setPlayerName(p => p.slice(0, -1))} onSubmit={handleKeyboardAction} disabledSubmit={playerName.length < 3} uploadStatus={uploadStatus} t={t} />
+                <div className="w-full max-w-sm mx-auto bg-slate-950 p-3 sm:p-5 rounded-2xl border border-indigo-500/30 mb-3"><div className="h-12 sm:h-16 flex items-center justify-center text-3xl sm:text-4xl font-[Rubik] tracking-[0.3em] font-bold text-white">{nickname.trim() || <span className="text-slate-600 animate-pulse">{t.nameInputPlaceholder}</span>}</div></div>
+                <p className="text-slate-500 text-xs sm:text-sm mb-4 sm:mb-6">{t.nicknameEditHint}</p>
+                <button onClick={handleScoreCardAction} disabled={scoreBtnDisabled} className={`w-full max-w-sm py-3 sm:py-4 rounded-2xl font-bold text-base sm:text-lg shadow-lg transition-all ${scoreBtnDisabled && uploadStatus !== 'success' && uploadStatus !== 'uploading' ? 'bg-slate-700 text-slate-500 cursor-not-allowed' : scoreBtnClass}`}>{scoreBtnText}</button>
                 <button onClick={() => { setUploadStatus('idle'); audioManager.startLobbyBGM(); setGameState(prev => ({...prev, mode: 'menu'})); }} className="mt-5 sm:mt-7 text-slate-400 hover:text-white underline text-sm sm:text-base">{(uploadStatus === 'success' || uploadStatus === 'restart') ? t.btnBackMenu : t.btnSkip}</button>
               </div>
             )}
@@ -2239,7 +2280,7 @@
         <div className={`game-wrapper ${gameState.mode === "challenge" ? "challenge-mode" : ""} ${wrapperClass} flex flex-col`}>
           <StarryBackground />
           
-          {showSettings && <SettingsModal onClose={() => setShowSettings(false)} lang={lang} setLang={setLang} bgmVol={bgmVol} setBgmVol={setBgmVol} sfxVol={sfxVol} setSfxVol={setSfxVol} toggleFs={toggleFullscreen} showTutorial={showTutorialInner} setShowTutorial={setShowTutorialInner} t={t} quickMessages={quickMessages} setQuickMessages={setQuickMessages} />}
+          {showSettings && <SettingsModal onClose={() => setShowSettings(false)} lang={lang} setLang={setLang} bgmVol={bgmVol} setBgmVol={setBgmVol} sfxVol={sfxVol} setSfxVol={setSfxVol} toggleFs={toggleFullscreen} showTutorial={showTutorialInner} setShowTutorial={setShowTutorialInner} t={t} quickMessages={quickMessages} setQuickMessages={setQuickMessages} nickname={nickname} setNickname={setNickname} />}
 
           {/* 聊天室（遊戲中） */}
           {user && <ChatPanel open={chatOpen} messages={visibleChatMessages} inputVal={chatInput} setInput={setChatInput} onSend={sendChatMessage} onToggle={toggleChat} unread={totalChatUnread} chatBoxRef={chatBoxRef} t={t} lang={lang} channel={chatChannel} setChannel={setChatChannel} canBattle={chatCanBattle} canTeam={chatCanTeam} quickMessages={quickMessages} onQuickSend={sendQuickChat} />}
@@ -2593,4 +2634,4 @@
   </script>
 
 </body>
-</html>
+  </html>
