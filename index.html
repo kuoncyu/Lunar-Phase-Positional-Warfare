@@ -840,12 +840,90 @@
       );
     };
 
+    // 遊戲玩法教學：除了基礎規則分頁（原本內容）外，新增「遊戲模式」「聊天室」「設定功能」三個分頁的說明文字，各語言版本
+    const TUT_MODES = {
+      zh: {
+        challengeTitle: '🏆 單人極限闖關', challengeText: '一路挑戰 100 層關卡，每層都要與電腦對戰並過關才能晉級下一層，最終成績可以上傳到全球排行榜，跟其他玩家比比看誰爬得更高！',
+        localTitle: '👥 自由派對（單機多人）', localText: '同一台裝置上 2～4 人輪流操作，人數不足的空位會自動補上電腦；可以自由選擇棋盤，也能開啟「團隊對戰」讓 4 人分成兩隊對抗。',
+        onlineTitle: '🌐 線上房間連線對戰', onlineText: '建立房間後會拿到一個 4 位數代碼，把代碼分享給朋友輸入即可一起連線對戰，最多 4 人；房主可以設定電腦難度、棋盤與是否開啟團隊對戰。',
+        teamTitle: '⚔️ 團隊對戰模式 (2v2)', teamText: '不管是自由派對還是線上房間都可以開啟，4 人分成白隊與黑隊，隊伍佔領的地盤會合併計算成隊伍總分，還能夠奪取敵方地盤，戰術性更高！',
+        moonTitle: '🌙 月相知識', moonText: '在遊戲大廳可以查看月相的盈虧變化循環，以及各文化（中、日、韓、伊斯蘭、佛教、猶太、西方）的月相相關節慶介紹，純粹是知識補充，不影響任何對戰內容。'
+      },
+      en: {
+        challengeTitle: '🏆 Solo Challenge', challengeText: 'Climb through 100 levels, defeating the AI at each one to advance to the next. Your final result can be submitted to the global leaderboard to see how you rank against other players!',
+        localTitle: '👥 Local Party (Same Device)', localText: '2–4 players take turns on the same device; any empty seats are automatically filled by AI. You can freely pick the board and turn on Team Battle to split 4 players into two teams.',
+        onlineTitle: '🌐 Online Room', onlineText: 'Creating a room gives you a 4-digit code — share it with friends so they can join and play together, up to 4 players. The host can set AI difficulty, the board, and whether Team Battle is on.',
+        teamTitle: '⚔️ Team Battle (2v2)', teamText: 'Available in both Local Party and Online Room. 4 players split into Team White and Team Black; territory captured by teammates is combined into a team score, and you can seize enemy territory for extra tactics.',
+        moonTitle: '🌙 Moon Phase Guide', moonText: 'From the lobby you can browse the full waxing/waning cycle of the Moon, plus moon-related festivals across Chinese, Japanese, Korean, Islamic, Buddhist, Jewish, and Western traditions — purely educational, with no effect on gameplay.'
+      },
+      ja: {
+        challengeTitle: '🏆 ソロチャレンジ', challengeText: '100階層を順番に挑戦し、各階層でCPUを倒して次の階層へ進みます。最終成績はグローバルランキングに登録できるので、他のプレイヤーと競い合えます！',
+        localTitle: '👥 ローカルパーティー（同一端末）', localText: '同じ端末で2～4人が順番に操作し、足りない人数はCPUが自動で補います。ボードは自由に選べ、「チーム対戦」をオンにすると4人が2チームに分かれて対戦できます。',
+        onlineTitle: '🌐 オンラインルーム', onlineText: 'ルームを作成すると4桁のコードが発行され、それを友達に共有すれば一緒に対戦できます（最大4人）。ホストはCPUの強さ、ボード、チーム対戦の有無を設定できます。',
+        teamTitle: '⚔️ チーム対戦モード (2v2)', teamText: 'ローカルパーティーとオンラインルームどちらでも利用可能。4人がホワイトチームとブラックチームに分かれ、獲得した陣地はチームスコアとして合算され、敵陣地を奪うこともできる戦術的なモードです。',
+        moonTitle: '🌙 月相ガイド', moonText: 'ロビーでは月の満ち欠けの周期や、中国・日本・韓国・イスラム・仏教・ユダヤ・西洋など各文化の月にまつわる行事を紹介しています。知識のコンテンツで、対戦内容には影響しません。'
+      }
+    };
+    const TUT_CHAT = {
+      zh: {
+        channelsTitle: '💬 三個頻道分頁', channelsText: '「世界」所有玩家都能看到；「戰鬥」只有在同一個連線房間內的人能看到；「組隊」則只有同隊隊友才能看到，方便討論戰術而不被對手發現。',
+        quickTitle: '⚡ 快捷面板', quickText: '點擊輸入框旁邊的表情按鈕可以打開「訊息／表情／月相／方向」四個分類：「訊息」點下去就會直接送出；其餘三類點擊後只會插入輸入框，需要再按「發送」才會真正送出。',
+        unreadTitle: '🔴 未讀提示與分隔線', unreadText: '聊天按鈕右上角的紅色數字代表未讀訊息數量；打開聊天室時，畫面會自動捲到第一則未讀訊息，並顯示一條「以下為未讀訊息」的分隔線，這段時間即使有新訊息進來也不會被強制拉到最下面，讀完後可以按右下角的 ↓ 按鈕直接跳到最新訊息。',
+        retentionTitle: '🗑️ 訊息保存規則', retentionText: '「世界」頻道最多保留最新 100 則訊息，超過會自動清掉最舊的；「戰鬥」與「組隊」的訊息只在那次連線期間顯示，離開房間或關閉遊戲後就不會再保留。'
+      },
+      en: {
+        channelsTitle: '💬 Three Channel Tabs', channelsText: '"World" is visible to everyone; "Battle" is only visible to players in the same online room; "Team" is only visible to your own teammates, so you can discuss tactics without opponents seeing.',
+        quickTitle: '⚡ Quick Panel', quickText: 'Tap the emoji button next to the input box to open four categories — Messages / Emoji / Moon / Direction. "Messages" send immediately when tapped; the other three just insert into the input box, and you still need to press "Send" to actually send them.',
+        unreadTitle: '🔴 Unread Badge & Divider', unreadText: 'The red number on the chat button shows how many messages are unread. Opening the chat auto-scrolls to the first unread message and shows an "Unread messages below" divider; while it\'s showing, new messages won\'t force-scroll you to the bottom — tap the ↓ button in the corner once you\'re done to jump to the latest message.',
+        retentionTitle: '🗑️ Message Retention', retentionText: 'The "World" channel keeps only the newest 100 messages, automatically dropping older ones beyond that. "Battle" and "Team" messages only exist for that particular session — they won\'t be kept once you leave the room or close the game.'
+      },
+      ja: {
+        channelsTitle: '💬 3つのチャンネルタブ', channelsText: '「ワールド」は全員に見えます。「バトル」は同じオンラインルームの人にのみ見えます。「チーム」は自分のチームメイトにのみ見えるので、相手にバレずに戦術を話し合えます。',
+        quickTitle: '⚡ クイックパネル', quickText: '入力欄横の絵文字ボタンをタップすると「メッセージ／絵文字／月相／方向」の4カテゴリが開きます。「メッセージ」はタップで即送信、他の3つは入力欄に挿入されるだけなので「送信」を押す必要があります。',
+        unreadTitle: '🔴 未読バッジと区切り線', unreadText: 'チャットボタン右上の赤い数字は未読メッセージ数です。チャットを開くと最初の未読メッセージまで自動スクロールし、「以下は未読メッセージ」という区切り線が表示されます。表示中は新しいメッセージが来ても最下部に強制的に移動しません。読み終えたら右下の↓ボタンで最新メッセージへ移動できます。',
+        retentionTitle: '🗑️ メッセージの保存ルール', retentionText: '「ワールド」チャンネルは最新100件のみ保存され、超えると古いものから自動削除されます。「バトル」「チーム」のメッセージはその接続中だけ表示され、ルームを離れるかゲームを閉じると保存されません。'
+      }
+    };
+    const TUT_SETTINGS = {
+      zh: {
+        langTitle: '🌐 語言切換', langText: '支援繁體中文、English、日本語三種語言，切換後會立即套用到整個介面，不需要重新整理頁面。',
+        volTitle: '🔊 音樂與音效音量', volText: '可分別調整背景音樂與音效的大小，設定會保留在這台裝置上。',
+        nicknameTitle: '🏷️ 暱稱設定', nicknameText: '設定好的暱稱會套用在聊天室發言、遊戲內玩家標籤，以及排行榜上顯示的名稱。',
+        quickMsgTitle: '💬 快捷訊息設定', quickMsgText: '可以自訂聊天室「訊息」分類裡的 8 組快捷用語，設定只會存在這台裝置上，不會影響其他玩家。',
+        fullscreenTitle: '🖥️ 全螢幕切換 / 關於遊戲', fullscreenText: '可以一鍵切換全螢幕模式，方便沉浸式遊玩；「關於遊戲」則列出開發團隊資訊與目前程式版本。'
+      },
+      en: {
+        langTitle: '🌐 Language', langText: 'Supports Traditional Chinese, English, and Japanese — switching applies to the whole interface immediately, no page reload needed.',
+        volTitle: '🔊 Music & SFX Volume', volText: 'Adjust background music and sound effect volume independently; settings are saved on this device.',
+        nicknameTitle: '🏷️ Nickname', nicknameText: 'Your nickname is used for chat messages, your in-game player tag, and the name shown on the leaderboard.',
+        quickMsgTitle: '💬 Quick Messages', quickMsgText: 'Customize the 8 quick-chat phrases under the "Messages" category in chat. This is saved only on this device and doesn\'t affect other players.',
+        fullscreenTitle: '🖥️ Fullscreen / About', fullscreenText: 'Toggle fullscreen mode for a more immersive experience; "About" lists the dev team credits and the current app version.'
+      },
+      ja: {
+        langTitle: '🌐 言語切替', langText: '繁体字中国語・English・日本語の3言語に対応しており、切り替えると即座に全体のUIに反映されます（再読み込み不要）。',
+        volTitle: '🔊 音楽・効果音の音量', volText: 'BGMと効果音の音量をそれぞれ調整できます。設定はこの端末に保存されます。',
+        nicknameTitle: '🏷️ ニックネーム設定', nicknameText: '設定したニックネームはチャットの発言、ゲーム内のプレイヤー表示、ランキングの表示名に使われます。',
+        quickMsgTitle: '💬 クイックメッセージ設定', quickMsgText: 'チャットの「メッセージ」カテゴリにある8つのクイックフレーズをカスタマイズできます。設定はこの端末にのみ保存され、他のプレイヤーには影響しません。',
+        fullscreenTitle: '🖥️ フルスクリーン切替 / 概要', fullscreenText: 'ワンタップでフルスクリーンに切り替えて没入感のあるプレイができます。「概要」には開発チームの情報と現在のバージョンが記載されています。'
+      }
+    };
+
     const SettingsModal = ({ onClose, lang, setLang, bgmVol, setBgmVol, sfxVol, setSfxVol, toggleFs, showTutorial, setShowTutorial, t, quickMessages, setQuickMessages, nickname, setNickname }) => {
+      const [tutTab, setTutTab] = useState('rules'); // rules | modes | chat | settings
+      const tm = TUT_MODES[lang] || TUT_MODES.zh, tc = TUT_CHAT[lang] || TUT_CHAT.zh, ts = TUT_SETTINGS[lang] || TUT_SETTINGS.zh;
+      const tutTabLabel = { rules: lang === 'zh' ? '基礎規則' : lang === 'ja' ? '基本ルール' : 'Basic Rules', modes: lang === 'zh' ? '遊戲模式' : lang === 'ja' ? 'ゲームモード' : 'Game Modes', chat: lang === 'zh' ? '聊天室' : lang === 'ja' ? 'チャット' : 'Chat', settings: lang === 'zh' ? '設定功能' : lang === 'ja' ? '設定機能' : 'Settings' };
       if (showTutorial) return (
         <div className="fixed inset-0 z-[99999] bg-slate-950/95 overflow-y-auto px-4 py-4 sm:py-8 flex flex-col items-center backdrop-blur-md custom-scroll">
           <div className="w-full max-w-3xl bg-slate-900 border border-indigo-500/30 rounded-3xl p-5 sm:p-6 landscape:p-4 shadow-[0_0_50px_rgba(99,102,241,0.15)] relative my-auto">
             <button onClick={() => setShowTutorial(false)} className="absolute top-2 right-2 sm:top-4 sm:right-4 p-2 bg-slate-800 rounded-full hover:bg-slate-700 text-white shadow-lg"><XIcon className="w-5 h-5 sm:w-6 sm:h-6"/></button>
             <h2 className="text-2xl sm:text-3xl font-black mb-4 sm:mb-6 text-center text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-yellow-500">{t.howToPlay}</h2>
+            {/* 分頁：基礎規則／遊戲模式／聊天室／設定功能 */}
+            <div className="flex gap-1.5 sm:gap-2 mb-4 sm:mb-6 flex-wrap justify-center">
+              {['rules', 'modes', 'chat', 'settings'].map(k => (
+                <button key={k} onClick={() => setTutTab(k)} className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl font-bold text-xs sm:text-sm border transition-all ${tutTab === k ? 'bg-indigo-600 border-indigo-400 text-white' : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700'}`}>{tutTabLabel[k]}</button>
+              ))}
+            </div>
+            {tutTab === 'rules' && (
             <div className="space-y-4 sm:space-y-6 text-sm sm:text-base text-slate-200">
               <section className="bg-slate-800/40 p-3 sm:p-4 rounded-2xl border border-slate-700">
                 <h3 className="text-lg sm:text-xl font-bold mb-2 text-indigo-300">🎯 {t.tallyBase}</h3>
@@ -860,8 +938,39 @@
                   <div className="bg-slate-900 p-3 sm:p-4 rounded-xl border border-purple-900/50"><h4 className="font-bold text-purple-300 mb-1">🟣 {t.phaseSeq} (+長度 分)</h4><div className="flex items-center gap-1"><div className="w-6 h-8 sm:w-8 sm:h-10 bg-slate-800 rounded-md p-1"><MoonSvg phase={0}/></div><div className="h-0.5 w-3 sm:w-4 bg-purple-400"></div><div className="w-6 h-8 sm:w-8 sm:h-10 bg-slate-800 rounded-md p-1"><MoonSvg phase={1}/></div><div className="h-0.5 w-3 sm:w-4 bg-purple-400"></div><div className="w-6 h-8 sm:w-8 sm:h-10 bg-slate-800 rounded-md p-1"><MoonSvg phase={2}/></div></div></div>
                 </div>
               </section>
-              <button onClick={() => setShowTutorial(false)} className="w-full py-2 sm:py-3 bg-indigo-600 text-white rounded-xl font-bold">{t.back}</button>
             </div>
+            )}
+            {tutTab === 'modes' && (
+            <div className="space-y-3 sm:space-y-4 text-sm sm:text-base text-slate-200">
+              {[['challengeTitle','challengeText'],['localTitle','localText'],['onlineTitle','onlineText'],['teamTitle','teamText'],['moonTitle','moonText']].map(([tk, ck]) => (
+                <section key={tk} className="bg-slate-800/40 p-3 sm:p-4 rounded-2xl border border-slate-700">
+                  <h3 className="text-base sm:text-lg font-bold mb-1.5 text-indigo-300">{tm[tk]}</h3>
+                  <p className="text-slate-300">{tm[ck]}</p>
+                </section>
+              ))}
+            </div>
+            )}
+            {tutTab === 'chat' && (
+            <div className="space-y-3 sm:space-y-4 text-sm sm:text-base text-slate-200">
+              {[['channelsTitle','channelsText'],['quickTitle','quickText'],['unreadTitle','unreadText'],['retentionTitle','retentionText']].map(([tk, ck]) => (
+                <section key={tk} className="bg-slate-800/40 p-3 sm:p-4 rounded-2xl border border-slate-700">
+                  <h3 className="text-base sm:text-lg font-bold mb-1.5 text-indigo-300">{tc[tk]}</h3>
+                  <p className="text-slate-300">{tc[ck]}</p>
+                </section>
+              ))}
+            </div>
+            )}
+            {tutTab === 'settings' && (
+            <div className="space-y-3 sm:space-y-4 text-sm sm:text-base text-slate-200">
+              {[['langTitle','langText'],['volTitle','volText'],['nicknameTitle','nicknameText'],['quickMsgTitle','quickMsgText'],['fullscreenTitle','fullscreenText']].map(([tk, ck]) => (
+                <section key={tk} className="bg-slate-800/40 p-3 sm:p-4 rounded-2xl border border-slate-700">
+                  <h3 className="text-base sm:text-lg font-bold mb-1.5 text-indigo-300">{ts[tk]}</h3>
+                  <p className="text-slate-300">{ts[ck]}</p>
+                </section>
+              ))}
+            </div>
+            )}
+            <button onClick={() => setShowTutorial(false)} className="w-full mt-4 sm:mt-6 py-2 sm:py-3 bg-indigo-600 text-white rounded-xl font-bold">{t.back}</button>
           </div>
         </div>
       );
