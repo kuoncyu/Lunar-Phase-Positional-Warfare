@@ -908,6 +908,7 @@
       const [onlineRoomData, setOnlineRoomData] = useState(null);
       const [onlineBoardPref, setOnlineBoardPref] = useState('random');
       const [onlineTeamMode, setOnlineTeamMode] = useState(false);
+      const [onlineAiDifficulty, setOnlineAiDifficulty] = useState('medium'); // 建立房間時預選的電腦難度，之後在房間內仍可由房主調整
       // 房主在「連線大廳」點擊 P 位時，先記住第一次點的 pId，等點第二個 P 位再互換出牌順序
       const [orderSwapPid, setOrderSwapPid] = useState(null);
 
@@ -1304,7 +1305,7 @@
         if (!user || !db) return alert("Firebase Offline");
         const newRoomId = Math.floor(1000 + Math.random() * 9000).toString();
         const maxP = onlineTeamMode ? 4 : onlineMaxPlayers;
-        try { await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'moonphase_rooms', newRoomId), { status: 'waiting', createdAt: Date.now(), host: mySessionKey, maxPlayers: maxP, boardPref: onlineBoardPref, teamMode: onlineTeamMode, teams: onlineTeamMode ? { 1: 'A', 2: 'B', 3: 'A', 4: 'B' } : null, seats: { 1: mySessionKey, 2: null, 3: null, 4: null }, players: { [mySessionKey]: { ready: true, uid: user.uid } }, round: 1 }); setRoomId(newRoomId); setMyPlayerId(1); setGameState(prev => ({ ...prev, mode: 'lobby_wait' })); } catch (e) { console.error(e); }
+        try { await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'moonphase_rooms', newRoomId), { status: 'waiting', createdAt: Date.now(), host: mySessionKey, maxPlayers: maxP, boardPref: onlineBoardPref, teamMode: onlineTeamMode, teams: onlineTeamMode ? { 1: 'A', 2: 'B', 3: 'A', 4: 'B' } : null, aiDifficulty: onlineAiDifficulty, seats: { 1: mySessionKey, 2: null, 3: null, 4: null }, players: { [mySessionKey]: { ready: true, uid: user.uid } }, round: 1 }); setRoomId(newRoomId); setMyPlayerId(1); setGameState(prev => ({ ...prev, mode: 'lobby_wait' })); } catch (e) { console.error(e); }
       };
 
       // 依 seats（pId -> session key）反查某個 key 目前坐在哪個 pId；找不到回傳 null
@@ -1365,6 +1366,13 @@
         try { await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'moonphase_rooms', roomId), { [`teams.${pId}`]: otherTeam, [`teams.${partnerId}`]: teams[pId] }); } catch (e) { console.error(e); }
       };
 
+      // 房主在等待室內調整電腦難度；寫進房間層級的 aiDifficulty 欄位，讓所有人都能即時看到目前設定，
+      // 開始遊戲時所有電腦座位都會套用這個難度。
+      const setRoomAiDifficulty = async (diff) => {
+        if (!roomId || !user || !db || !onlineRoomData || onlineRoomData.host !== mySessionKey) return;
+        try { await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'moonphase_rooms', roomId), { aiDifficulty: diff }); } catch (e) { console.error(e); }
+      };
+
       // 點擊某個 P 位：第一次點選記住該位，第二次點選另一個「有玩家」的 P 位，兩者互換出牌順序（互換 pId）
       const handleOrderSwapClick = async (pId) => {
         if (!roomId || !user || !db || !onlineRoomData || onlineRoomData.host !== mySessionKey) return;
@@ -1400,7 +1408,8 @@
         let bId = onlineRoomData.boardPref;
         if (!bId || bId === 'random') bId = getActualBoardId(totalP);
         const initData = generateInitData('online', totalP, humanCount, bId, teamMode, teams);
-        for(let i=1; i<=totalP; i++) initData.playersInfo[i] = { type: 'ai', difficulty: 'medium' };
+        const aiDiff = onlineRoomData.aiDifficulty || 'medium';
+        for(let i=1; i<=totalP; i++) initData.playersInfo[i] = { type: 'ai', difficulty: aiDiff };
         Object.entries(seats).forEach(([pidStr, key]) => { if (key) initData.playersInfo[parseInt(pidStr, 10)] = { type: 'human', uid: key }; });
         try { await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'moonphase_rooms', roomId), { status: 'playing', initialState: initData, round: (onlineRoomData.round || 1) + 1, lastMove: null }); } catch (e) { console.error(e); }
       };
@@ -1859,6 +1868,15 @@
                           {Object.entries(getBoardPool(onlineMaxPlayers)).map(([k]) => <option key={k} value={k}>{t.boardNames[k] || k}</option>)}
                         </select>
                       </div>
+                      <div>
+                        <label className="block text-xs sm:text-sm font-bold text-slate-400 mb-2 uppercase tracking-widest">{t.localDifficulty}</label>
+                        <select value={onlineAiDifficulty} onChange={e => setOnlineAiDifficulty(e.target.value)}
+                          className="w-full bg-slate-800 border border-slate-600 text-white rounded-xl px-4 py-3.5 sm:py-4 outline-none text-base sm:text-lg focus:border-emerald-400">
+                          <option value="low">{t.diffLow}</option>
+                          <option value="medium">{t.diffMed}</option>
+                          <option value="high">{t.diffHigh}</option>
+                        </select>
+                      </div>
                       <button onClick={() => setOnlineTeamMode(v => !v)} className={`w-full py-3 sm:py-3.5 rounded-2xl font-black border text-sm sm:text-lg transition-all ${onlineTeamMode ? 'bg-orange-600 text-white border-orange-400' : 'bg-slate-800 text-slate-300 border-slate-600 hover:border-orange-500/50'}`}>
                         {onlineTeamMode ? t.teamModeOn : t.lobbyTeamMode}
                       </button>
@@ -1910,6 +1928,19 @@
                       <span className="font-bold">{t.teamModeOn}</span>
                     </div>
                   )}
+                  <div className="mt-2 inline-flex items-center gap-2 text-xs sm:text-sm text-indigo-200 bg-indigo-900/40 px-4 py-1.5 rounded-full border border-indigo-700/50">
+                    <span className="text-slate-400">{t.localDifficulty}:</span>
+                    {onlineRoomData.host === mySessionKey ? (
+                      <select value={onlineRoomData.aiDifficulty || 'medium'} onChange={e => setRoomAiDifficulty(e.target.value)}
+                        className="bg-slate-800 border border-slate-600 text-white rounded-lg px-2 py-0.5 outline-none text-xs sm:text-sm">
+                        <option value="low">{t.diffLow}</option>
+                        <option value="medium">{t.diffMed}</option>
+                        <option value="high">{t.diffHigh}</option>
+                      </select>
+                    ) : (
+                      <span className="font-bold">{{ low: t.diffLow, medium: t.diffMed, high: t.diffHigh }[onlineRoomData.aiDifficulty || 'medium']}</span>
+                    )}
+                  </div>
                 </div>
 
                 {/* 主體：玩家列表 + 按鈕 (portrait: 上下, landscape: 左右) */}
