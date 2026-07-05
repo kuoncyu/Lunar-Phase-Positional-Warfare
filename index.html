@@ -624,7 +624,7 @@
               <div style={{ display: 'flex', padding: '8px 10px', background: 'rgba(15,20,40,0.8)', borderTop: '1px solid rgba(99,102,241,0.2)', gap: '6px' }}>
                 <button onClick={() => setQuickOpen(v => !v)} style={{ background: quickOpen ? 'rgba(99,102,241,0.4)' : '#1e293b', border: '1px solid rgba(99,102,241,0.4)', color: '#e2e8f0', borderRadius: '8px', padding: '0 10px', fontSize: '1rem', cursor: 'pointer', flexShrink: 0 }}>😊</button>
                 <input value={inputVal} onChange={e => setInput(e.target.value.slice(0,60))} onKeyDown={e => e.key === 'Enter' && onSend()} maxLength={60} placeholder={lang === 'zh' ? '輸入訊息...' : lang === 'ja' ? 'メッセージを入力...' : 'Type a message...'} style={{ flex: 1, padding: '8px 10px', borderRadius: '8px', border: '1px solid rgba(99,102,241,0.4)', background: '#1e293b', color: '#e2e8f0', fontSize: '0.85rem', outline: 'none', minWidth: 0 }} />
-                <button onClick={onSend} style={{ background: '#4f46e5', color: '#fff', border: 'none', padding: '0 14px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem', whiteSpace: 'nowrap' }}>{lang === 'zh' ? '發送' : lang === 'ja' ? '送信' : 'Send'}</button>
+                <button onClick={() => onSend()} style={{ background: '#4f46e5', color: '#fff', border: 'none', padding: '0 14px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem', whiteSpace: 'nowrap' }}>{lang === 'zh' ? '發送' : lang === 'ja' ? '送信' : 'Send'}</button>
               </div>
             </div>
           )}
