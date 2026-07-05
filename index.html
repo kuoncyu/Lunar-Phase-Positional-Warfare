@@ -210,7 +210,7 @@
   <div id="root"></div>
 
   <script type="text/plain" id="app-src">
-    const { initializeApp, getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, collection, getDocs, addDoc, runTransaction } = window._firebase || {};
+    const { initializeApp, getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, collection, getDocs, addDoc, runTransaction, query, orderBy, limit, deleteDoc, getCountFromServer } = window._firebase || {};
 
     const { useState, useEffect, useCallback, useRef } = React;
 
@@ -438,9 +438,21 @@
     }
     // === 聊天室元件 ===
     const CHANNEL_COLORS = { world: '#818cf8', battle: '#fbbf24', team: '#34d399' };
-    const ChatPanel = ({ open, messages, inputVal, setInput, onSend, onToggle, unread, chatBoxRef, t, lang, channel, setChannel, canBattle, canTeam, quickMessages, onQuickSend }) => {
+    const ChatPanel = ({ open, messages, inputVal, setInput, onSend, onToggle, unread, chatBoxRef, t, lang, channel, setChannel, canBattle, canTeam, quickMessages, onQuickSend, divider }) => {
       const [quickOpen, setQuickOpen] = useState(false);
       const [quickTab, setQuickTab] = useState('msg'); // msg | emoji | moon | dir
+      // 未讀分隔線／捲動控制：
+      // - followBottom：true 代表目前應該「跟隨」最新訊息（有新訊息就自動捲到底）；
+      //   打開面板時若有未讀，先設為 false（停在分隔線位置，不要被新訊息硬拉到底），使用者捲到底或按下↓按鈕後才恢復 true。
+      // - pendingScroll：面板剛開啟／切換分頁時，訊息可能還沒非同步載入完成，用這個 ref 記住「還沒完成這次該做的捲動」，
+      //   等訊息實際渲染出來後才真正執行一次，執行完就清掉，之後新訊息進來就不會再被這個初始捲動邏輯影響。
+      const [followBottom, setFollowBottom] = useState(true);
+      const dividerElRef = useRef(null);
+      const pendingScrollRef = useRef(null); // 'bottom' | 'divider' | null
+      const showDivider = !!(divider && divider.channel === channel);
+      const dividerIndex = showDivider ? messages.findIndex(m => !m.isLocalRule && m.time > divider.beforeTs && m.uid !== window._currentUid) : -1;
+      const dividerActive = showDivider && dividerIndex !== -1;
+
       // 拖曳移動：null 代表使用預設 CSS 位置（右下角），一旦拖曳過則改用 left/top 絕對定位
       // 按鈕（收合狀態）與面板（展開狀態）各自記住自己的拖曳位置，避免兩者互相干擾
       const [btnDragPos, setBtnDragPos] = useState(null); // { left, top }
@@ -522,6 +534,54 @@
         // eslint-disable-next-line react-hooks/exhaustive-deps
       }, [open]);
 
+      // 面板開啟、切換分頁、或未讀分隔線內容改變時，決定這次該捲到哪裡：有未讀就捲到分隔線位置並暫停跟隨；沒有就捲到底部並跟隨。
+      useEffect(() => {
+        if (!open) return;
+        pendingScrollRef.current = dividerActive ? 'divider' : 'bottom';
+        setFollowBottom(!dividerActive);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+      }, [open, channel, divider]);
+
+      // 訊息是非同步載入的，剛開啟時列表可能還是空的；這裡持續嘗試，直到目標元素真的出現才執行一次捲動，執行後即清除，
+      // 之後同一次開啟期間新進的訊息就不會再被這段初始捲動邏輯影響（改由下面的「跟隨捲動」effect 處理）。
+      useEffect(() => {
+        if (!pendingScrollRef.current) return;
+        const action = pendingScrollRef.current;
+        const id = setTimeout(() => {
+          if (action === 'divider' && dividerElRef.current) {
+            dividerElRef.current.scrollIntoView({ block: 'start' });
+            pendingScrollRef.current = null;
+          } else if (action === 'bottom' && chatBoxRef.current) {
+            chatBoxRef.current.scrollTop = chatBoxRef.current.scrollHeight;
+            pendingScrollRef.current = null;
+          }
+        }, 60);
+        return () => clearTimeout(id);
+      }, [messages, dividerActive]);
+
+      // 已經跟上最新訊息時（沒有分隔線暫停、且使用者目前停留在底部），持續把新訊息捲到畫面下方，維持原本「即時聊天」的體感
+      useEffect(() => {
+        if (pendingScrollRef.current) return;
+        if (followBottom && chatBoxRef.current) {
+          chatBoxRef.current.scrollTop = chatBoxRef.current.scrollHeight;
+        }
+      }, [messages]);
+
+      // 監測使用者手動捲動：只要捲到接近底部，視為「已跟上」，恢復自動跟隨並讓↓按鈕消失
+      const handleScroll = useCallback(() => {
+        const el = chatBoxRef.current;
+        if (!el) return;
+        const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 32;
+        setFollowBottom(nearBottom);
+      }, [chatBoxRef]);
+
+      const jumpToBottom = useCallback(() => {
+        pendingScrollRef.current = null;
+        if (chatBoxRef.current) chatBoxRef.current.scrollTop = chatBoxRef.current.scrollHeight;
+        setFollowBottom(true);
+      }, [chatBoxRef]);
+
+
       const btnPositionStyle = btnDragPos
         ? { left: `${btnDragPos.left}px`, top: `${btnDragPos.top}px`, right: 'auto', bottom: 'auto' }
         : { bottom: '80px', right: '16px' };
@@ -568,24 +628,39 @@
                 })}
               </div>
               {/* 訊息列表 */}
-              <div ref={chatBoxRef} style={{ flex: 1, padding: '10px 12px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px', scrollBehavior: 'smooth' }} className="custom-scroll">
-                {messages.length === 0 && <div style={{ textAlign: 'center', color: '#475569', fontSize: '0.8rem', marginTop: '20px' }}>{lang === 'zh' ? '尚無訊息，來打個招呼吧！' : lang === 'ja' ? 'メッセージがありません' : 'No messages yet. Say hi!'}</div>}
-                {messages.map((m, i) => {
-                  if (m.isLocalRule) return (
-                    <div key={m.id || i} style={{ textAlign: 'center', marginBottom: '4px' }}>
-                      <span style={{ fontSize: '0.75rem', color: '#fff', background: 'rgba(231,76,60,0.8)', padding: '4px 10px', borderRadius: '8px', display: 'inline-block', lineHeight: '1.4', border: '1px solid #c0392b' }}>🛡️ {m.text}</span>
-                    </div>
-                  );
-                  const isMe = m.isSystem === undefined && m.uid && m.uid === window._currentUid;
-                  const timeStr = new Date(m.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                  const accentColor = CHANNEL_COLORS[m.channel || 'world'];
-                  return (
-                    <div key={m.id || i} style={{ textAlign: isMe ? 'right' : 'left' }}>
-                      <span style={{ fontSize: '0.65rem', color: '#64748b' }}>{timeStr}</span> <span style={{ fontWeight: 'bold', color: isMe ? '#67e8f9' : '#fbbf24', fontSize: '0.75rem' }}>{m.name || '?'}</span>
-                      <div style={{ display: 'inline-block', background: isMe ? '#1e3a5f' : '#1e293b', padding: '6px 10px', borderRadius: '8px', fontSize: '0.85rem', maxWidth: '85%', wordWrap: 'break-word', textAlign: 'left', marginTop: '2px', borderLeft: `3px solid ${accentColor}`, border: isMe ? '1px solid rgba(103,232,249,0.2)' : '1px solid rgba(99,102,241,0.2)', borderLeftWidth: '3px', borderLeftColor: accentColor, display: 'block', marginLeft: isMe ? 'auto' : '0', marginRight: isMe ? '0' : 'auto' }}>{m.text}</div>
-                    </div>
-                  );
-                })}
+              <div style={{ flex: 1, position: 'relative', minHeight: 0 }}>
+                <div ref={chatBoxRef} onScroll={handleScroll} style={{ position: 'absolute', inset: 0, padding: '10px 12px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px', scrollBehavior: 'smooth' }} className="custom-scroll">
+                  {messages.length === 0 && <div style={{ textAlign: 'center', color: '#475569', fontSize: '0.8rem', marginTop: '20px' }}>{lang === 'zh' ? '尚無訊息，來打個招呼吧！' : lang === 'ja' ? 'メッセージがありません' : 'No messages yet. Say hi!'}</div>}
+                  {messages.map((m, i) => {
+                    const dividerHere = dividerActive && i === dividerIndex;
+                    if (m.isLocalRule) return (
+                      <React.Fragment key={m.id || i}>
+                        {dividerHere && <div ref={dividerElRef} style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '4px 0' }}><div style={{ flex: 1, height: '1px', background: 'rgba(248,113,113,0.4)' }} /><span style={{ fontSize: '0.68rem', color: '#f87171', fontWeight: 'bold', whiteSpace: 'nowrap' }}>{lang === 'zh' ? '以下為未讀訊息' : lang === 'ja' ? '以下は未読メッセージ' : 'Unread messages below'}</span><div style={{ flex: 1, height: '1px', background: 'rgba(248,113,113,0.4)' }} /></div>}
+                        <div style={{ textAlign: 'center', marginBottom: '4px' }}>
+                          <span style={{ fontSize: '0.75rem', color: '#fff', background: 'rgba(231,76,60,0.8)', padding: '4px 10px', borderRadius: '8px', display: 'inline-block', lineHeight: '1.4', border: '1px solid #c0392b' }}>🛡️ {m.text}</span>
+                        </div>
+                      </React.Fragment>
+                    );
+                    const isMe = m.isSystem === undefined && m.uid && m.uid === window._currentUid;
+                    const timeStr = new Date(m.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    const accentColor = CHANNEL_COLORS[m.channel || 'world'];
+                    return (
+                      <React.Fragment key={m.id || i}>
+                        {dividerHere && <div ref={dividerElRef} style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '4px 0' }}><div style={{ flex: 1, height: '1px', background: 'rgba(248,113,113,0.4)' }} /><span style={{ fontSize: '0.68rem', color: '#f87171', fontWeight: 'bold', whiteSpace: 'nowrap' }}>{lang === 'zh' ? '以下為未讀訊息' : lang === 'ja' ? '以下は未読メッセージ' : 'Unread messages below'}</span><div style={{ flex: 1, height: '1px', background: 'rgba(248,113,113,0.4)' }} /></div>}
+                        <div style={{ textAlign: isMe ? 'right' : 'left' }}>
+                          <span style={{ fontSize: '0.65rem', color: '#64748b' }}>{timeStr}</span> <span style={{ fontWeight: 'bold', color: isMe ? '#67e8f9' : '#fbbf24', fontSize: '0.75rem' }}>{m.name || '?'}</span>
+                          <div style={{ display: 'inline-block', background: isMe ? '#1e3a5f' : '#1e293b', padding: '6px 10px', borderRadius: '8px', fontSize: '0.85rem', maxWidth: '85%', wordWrap: 'break-word', textAlign: 'left', marginTop: '2px', borderLeft: `3px solid ${accentColor}`, border: isMe ? '1px solid rgba(103,232,249,0.2)' : '1px solid rgba(99,102,241,0.2)', borderLeftWidth: '3px', borderLeftColor: accentColor, display: 'block', marginLeft: isMe ? 'auto' : '0', marginRight: isMe ? '0' : 'auto' }}>{m.text}</div>
+                        </div>
+                      </React.Fragment>
+                    );
+                  })}
+                </div>
+                {/* 捲到最新訊息：不在底部（或正暫停在未讀分隔線）時顯示，點擊直接跳到聊天室最下方 */}
+                {!followBottom && (
+                  <button onClick={jumpToBottom} title={lang === 'zh' ? '跳到最新訊息' : lang === 'ja' ? '最新のメッセージへ' : 'Jump to latest'} style={{ position: 'absolute', right: '10px', bottom: '10px', width: '32px', height: '32px', borderRadius: '50%', background: '#4f46e5', color: '#fff', border: '1px solid rgba(255,255,255,0.3)', boxShadow: '0 2px 10px rgba(0,0,0,0.5)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.95rem', zIndex: 2 }}>
+                    ↓
+                  </button>
+                )}
               </div>
               {/* 快捷面板：訊息／表情／月相／方向，點擊即直接送出 */}
               {quickOpen && (
@@ -1063,6 +1138,13 @@
       const roomChatUnsub = useRef(null);
       const lastRoomChatSeenTs = useRef(Date.now());
       const activeChannelRef = useRef(null); // null＝面板關閉；否則為目前開啟的分頁，供監聽器判斷是否要累計未讀
+      // 「未讀分隔線」：記錄目前應該在哪個頻道、哪個時間點之前插入「以下為未讀訊息」分隔線。
+      // 與 lastChatTime／lastRoomChatSeenTs 分開追蹤，因為那兩個 ref 會隨每則新訊息即時往前推進（用於未讀數計數判斷），
+      // 沒辦法拿來當「這次打開聊天室之前，使用者讀到哪裡」的固定基準點；這裡改用專屬的 ref，只在使用者真正切換／開啟該頻道時才更新。
+      const [chatDivider, setChatDivider] = useState(null); // { channel, beforeTs } | null
+      const worldReadBoundary = useRef(Date.now());
+      const roomReadBoundary = useRef(Date.now());
+
       // 快捷訊息：8 組可自訂文字，儲存在 localStorage，離線也能使用、且不會隨語言切換被覆蓋
       const [quickMessages, setQuickMessages] = useState(() => {
         try {
@@ -1117,6 +1199,8 @@
         if (roomChatUnsub.current) { roomChatUnsub.current(); roomChatUnsub.current = null; }
         setRoomChatMessages([]); setRoomChatUnread(0);
         lastRoomChatSeenTs.current = Date.now();
+        roomReadBoundary.current = Date.now();
+        setChatDivider(prev => (prev && prev.channel !== 'world') ? null : prev);
         if (!roomId || !db) return;
         const ref = collection(db, 'artifacts', appId, 'public', 'data', 'moonphase_rooms', roomId, 'room_chat');
         roomChatUnsub.current = onSnapshot(ref, (snap) => {
@@ -1126,7 +1210,6 @@
           all.sort((a, b) => a.time - b.time);
           const kept = all.filter((m, i) => m.time > oneHourAgo && i >= all.length - 200);
           setRoomChatMessages(kept);
-          setTimeout(() => { if (chatBoxRef.current) chatBoxRef.current.scrollTop = chatBoxRef.current.scrollHeight; }, 50);
         });
         return () => { if (roomChatUnsub.current) { roomChatUnsub.current(); roomChatUnsub.current = null; } };
       }, [roomId, db]);
@@ -1149,11 +1232,17 @@
         if (hasNew) setRoomChatUnread(u => u + 1);
       }, [roomChatMessages, gameState.teamMode, gameState.teams, gameState.mode, myPlayerId, onlineRoomData]);
 
-      // 切換聊天分頁：同時清除該分頁對應的未讀數字
+      // 切換聊天分頁：清除該分頁對應的未讀數字之前，先記下「切換前的已讀基準時間」，
+      // 用來讓聊天面板判斷第一則未讀訊息在哪，插入「以下為未讀訊息」分隔線
       const setChatChannel = useCallback((ch) => {
         setChatChannelState(ch);
-        if (ch === 'world') setChatUnread(0); else setRoomChatUnread(0);
-      }, []);
+        const isWorld = ch === 'world';
+        const boundaryRef = isWorld ? worldReadBoundary : roomReadBoundary;
+        const hasUnread = isWorld ? chatUnread > 0 : roomChatUnread > 0;
+        setChatDivider(hasUnread ? { channel: ch, beforeTs: boundaryRef.current } : null);
+        if (isWorld) setChatUnread(0); else setRoomChatUnread(0);
+        boundaryRef.current = Date.now();
+      }, [chatUnread, roomChatUnread]);
 
       // 「戰鬥」需已加入連線房間；「組隊」除了要在房間內，該房間還必須開啟團戰模式才能使用
       const chatCanBattle = !!roomId;
@@ -1282,22 +1371,27 @@
           });
           if (hasNew) { setChatUnread(prev => { const n = prev + 1; return n; }); }
           setChatMessages([...msgsToKeep, ...localSysMsgs.current].sort((a,b)=>a.time-b.time));
-          setTimeout(() => { if (chatBoxRef.current) chatBoxRef.current.scrollTop = chatBoxRef.current.scrollHeight; }, 50);
         });
       }, [user, db]);
 
       const toggleChat = useCallback(() => {
         audioManager.init();
         setChatOpen(prev => {
-          if (!prev) { // opening
+          if (!prev) { // opening：先記下切換前的已讀基準時間，用來標出未讀分隔線的位置，再清除未讀計數
+            const isWorld = chatChannel === 'world';
+            const boundaryRef = isWorld ? worldReadBoundary : roomReadBoundary;
+            const hasUnread = isWorld ? chatUnread > 0 : roomChatUnread > 0;
+            setChatDivider(hasUnread ? { channel: chatChannel, beforeTs: boundaryRef.current } : null);
             setChatUnread(0); setRoomChatUnread(0);
             lastChatTime.current = Date.now(); lastRoomChatSeenTs.current = Date.now();
+            worldReadBoundary.current = Date.now(); roomReadBoundary.current = Date.now();
             if (!chatInitialized.current) initChat();
-            setTimeout(() => { if (chatBoxRef.current) chatBoxRef.current.scrollTop = chatBoxRef.current.scrollHeight; }, 100);
+          } else {
+            setChatDivider(null);
           }
           return !prev;
         });
-      }, [initChat]);
+      }, [initChat, chatChannel, chatUnread, roomChatUnread]);
 
       // 送出訊息：依目前開啟的頻道分頁決定送到哪裡。
       // - 世界：寫入全域聊天集合（原本的行為，所有人都看得到）。
@@ -1314,6 +1408,18 @@
           if (chatChannel === 'world') {
             const chatRef = collection(db, 'artifacts', appId, 'public', 'data', 'moonphase_chat');
             await addDoc(chatRef, { uid: user.uid, name, text, time: Date.now() });
+            // 世界頻道訊息最多保存 100 則：超過時把最舊的訊息從 Firestore 實際刪除，而不是只在畫面上隱藏，
+            // 避免集合筆數無限增長。用 count 聚合查詢先確認總數（成本很低），超量才真正讀取、刪除最舊的那些筆。
+            try {
+              const countSnap = await getCountFromServer(chatRef);
+              const total = countSnap.data().count;
+              if (total > 100) {
+                const overflow = total - 100;
+                const oldestQ = query(chatRef, orderBy('time', 'asc'), limit(overflow));
+                const oldestSnap = await getDocs(oldestQ);
+                await Promise.all(oldestSnap.docs.map(d => deleteDoc(d.ref)));
+              }
+            } catch (pruneErr) { console.error('World chat prune error', pruneErr); }
           } else if (roomIdRef.current) {
             const lobbyTm = !!(onlineRoomData && onlineRoomData.teamMode);
             const myTeam = (gameState.teamMode && gameState.teams) ? gameState.teams[gameState.mode === 'online' ? myPlayerId : 1]
@@ -1901,7 +2007,7 @@
             {showSettings && <SettingsModal onClose={() => setShowSettings(false)} lang={lang} setLang={setLang} bgmVol={bgmVol} setBgmVol={setBgmVol} sfxVol={sfxVol} setSfxVol={setSfxVol} toggleFs={toggleFullscreen} showTutorial={showTutorialInner} setShowTutorial={setShowTutorialInner} t={t} quickMessages={quickMessages} setQuickMessages={setQuickMessages} nickname={nickname} setNickname={setNickname} />}
 
             {/* 聊天室（浮動按鈕） */}
-            {user && <ChatPanel open={chatOpen} messages={visibleChatMessages} inputVal={chatInput} setInput={setChatInput} onSend={sendChatMessage} onToggle={toggleChat} unread={totalChatUnread} chatBoxRef={chatBoxRef} t={t} lang={lang} channel={chatChannel} setChannel={setChatChannel} canBattle={chatCanBattle} canTeam={chatCanTeam} quickMessages={quickMessages} onQuickSend={sendQuickChat} />}
+            {user && <ChatPanel open={chatOpen} messages={visibleChatMessages} inputVal={chatInput} setInput={setChatInput} onSend={sendChatMessage} onToggle={toggleChat} unread={totalChatUnread} chatBoxRef={chatBoxRef} t={t} lang={lang} channel={chatChannel} setChannel={setChatChannel} canBattle={chatCanBattle} canTeam={chatCanTeam} quickMessages={quickMessages} onQuickSend={sendQuickChat} divider={chatDivider} />}
 
             {gameState.mode === 'name_input' && (
               <div className="z-10 flex flex-col items-center p-6 sm:p-10 landscape:p-5 bg-slate-900/80 backdrop-blur-xl rounded-3xl border border-yellow-500/50 shadow-[0_0_40px_rgba(234,179,8,0.2)] relative w-full max-w-xl landscape:max-w-3xl my-4 landscape:my-3 mx-4 text-center max-h-[95vh] overflow-y-auto custom-scroll">
@@ -2283,7 +2389,7 @@
           {showSettings && <SettingsModal onClose={() => setShowSettings(false)} lang={lang} setLang={setLang} bgmVol={bgmVol} setBgmVol={setBgmVol} sfxVol={sfxVol} setSfxVol={setSfxVol} toggleFs={toggleFullscreen} showTutorial={showTutorialInner} setShowTutorial={setShowTutorialInner} t={t} quickMessages={quickMessages} setQuickMessages={setQuickMessages} nickname={nickname} setNickname={setNickname} />}
 
           {/* 聊天室（遊戲中） */}
-          {user && <ChatPanel open={chatOpen} messages={visibleChatMessages} inputVal={chatInput} setInput={setChatInput} onSend={sendChatMessage} onToggle={toggleChat} unread={totalChatUnread} chatBoxRef={chatBoxRef} t={t} lang={lang} channel={chatChannel} setChannel={setChatChannel} canBattle={chatCanBattle} canTeam={chatCanTeam} quickMessages={quickMessages} onQuickSend={sendQuickChat} />}
+          {user && <ChatPanel open={chatOpen} messages={visibleChatMessages} inputVal={chatInput} setInput={setChatInput} onSend={sendChatMessage} onToggle={toggleChat} unread={totalChatUnread} chatBoxRef={chatBoxRef} t={t} lang={lang} channel={chatChannel} setChannel={setChatChannel} canBattle={chatCanBattle} canTeam={chatCanTeam} quickMessages={quickMessages} onQuickSend={sendQuickChat} divider={chatDivider} />}
 
           {/* === 網路不同步提醒（阻擋操作，避免各客戶端棋盤不同步） === */}
           {isConnUnstable && (
@@ -2588,9 +2694,9 @@
     // Wait for Firebase module to load, then manually transpile and run the app
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js';
     import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js';
-    import { getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, collection, getDocs, addDoc, runTransaction } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
+    import { getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, collection, getDocs, addDoc, runTransaction, query, orderBy, limit, deleteDoc, getCountFromServer } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
 
-    window._firebase = { initializeApp, getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, collection, getDocs, addDoc, runTransaction };
+    window._firebase = { initializeApp, getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, collection, getDocs, addDoc, runTransaction, query, orderBy, limit, deleteDoc, getCountFromServer };
 
     function runApp() {
       try {
