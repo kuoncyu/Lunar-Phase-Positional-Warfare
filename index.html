@@ -224,7 +224,7 @@
         title: '月相陣地戰', subtitle: '派對連線與極限闖關！',
         btnChallenge: '單人極限闖關 (100層)', btnLeaderboard: '查閱闖關排行榜', btnLocal: '自由派對 (單/多人同機)', btnOnline: '線上房間連線對戰', btnMoonInfo: '月相知識',
         settings: '遊戲設定', language: '語言 (Language)', bgmVol: '音樂大小', sfxVol: '音效大小',
-        howToPlay: '遊戲玩法教學', fullscreen: '全螢幕切換', about: '關於遊戲', back: '返回',
+        howToPlay: '遊戲玩法教學', fullscreen: '全螢幕切換', about: '關於遊戲', back: '返回', btnResync: '重新同步棋盤（若對方出牌沒顯示可點此修復）',
         aboutText: "設計開發：邱祈雅 老師\n測試校正：郭柏宏 老師\n開發工具：Gemini\n靈感來源：Google Doodle「弦月升起」（Rise of the Half Moon）\n程式版本：20260630",
         player: '玩家', ai: '電腦', level: '層', totalScore: '總積分', win: '獲勝', tie: '平手', gameOver: '遊戲結束！結算領地...',
         tallyBase: '結算領地', phaseSame: '相同月相', phaseComp: '互補滿月', phaseSeq: '月相變化', teamBonus: '奪取敵方地盤',
@@ -257,7 +257,7 @@
         title: 'Moonphase Tactics', subtitle: 'Party & 100-Level Challenge!',
         btnChallenge: 'Solo Challenge (100 Lvl)', btnLeaderboard: 'Leaderboard', btnLocal: 'Local Party (1-4P)', btnOnline: 'Online Multiplayer', btnMoonInfo: 'Moon Phase Guide',
         settings: 'Settings', language: 'Language (語言)', bgmVol: 'Music Vol', sfxVol: 'SFX Vol',
-        howToPlay: 'How to Play', fullscreen: 'Toggle Fullscreen', about: 'About', back: 'Back',
+        howToPlay: 'How to Play', fullscreen: 'Toggle Fullscreen', about: 'About', back: 'Back', btnResync: 'Resync board (fixes it if an opponent\'s move didn\'t show up)',
         aboutText: "Design & Dev: Teacher Chiu Chi-Ya\nQA & Testing: Teacher Kuo Po-Hung\nDev Tool: Gemini\nInspiration: Google Doodle \"Rise of the Half Moon\"\nVersion: 20260630",
         player: 'Player', ai: 'CPU', level: 'Lvl', totalScore: 'Total Score', win: 'Wins', tie: 'Tie', gameOver: 'Game Over! Tallying...',
         tallyBase: 'Tallying', phaseSame: 'Identical Phase', phaseComp: 'Full Moon Match', phaseSeq: 'Phase Sequence', teamBonus: 'Enemy Territory Seized',
@@ -290,7 +290,7 @@
         title: '月相タクティクス', subtitle: 'パーティー＆100階層チャレンジ！',
         btnChallenge: 'ソロチャレンジ (100階層)', btnLeaderboard: 'ランキング', btnLocal: 'ローカルパーティー (1-4P)', btnOnline: 'オンライン対戦', btnMoonInfo: '月相ガイド',
         settings: '設定', language: '言語 (Language)', bgmVol: '音楽音量', sfxVol: '効果音音量',
-        howToPlay: '遊び方', fullscreen: 'フルスクリーン切替', about: '概要', back: '戻る',
+        howToPlay: '遊び方', fullscreen: 'フルスクリーン切替', about: '概要', back: '戻る', btnResync: 'ボードを再同期（相手の手が反映されない時はここをタップ）',
         aboutText: "設計・開発：邱祈雅 先生\nテスト・校正：郭柏宏 先生\n開発ツール：Gemini\nインスピレーション：Google Doodle「半月の出」\nバージョン：20260630",
         player: 'プレイヤー', ai: 'CPU', level: '階', totalScore: '総スコア', win: '勝利', tie: '引き分け', gameOver: 'ゲーム終了！集計中...',
         tallyBase: '集計中', phaseSame: '同じ月相', phaseComp: '満月のペア', phaseSeq: '月相の連鎖', teamBonus: '敵陣地奪取',
@@ -344,6 +344,7 @@
     const Swords = ({ className }) => <IconBase className={className}><path d="M14.5 17.5 3 6V3h3l11.5 11.5"/><path d="M13 19c-2 0-3-1-3-1l-3 3"/><path d="M19 13c0-2-1-3-1-3l3-3"/><path d="m19 19 3 3"/><path d="m5 5-3-3"/></IconBase>;
     const DeleteIcon = ({ className }) => <IconBase className={className}><path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"/><line x1="18" y1="9" x2="12" y2="15"/><line x1="12" y1="9" x2="18" y2="15"/></IconBase>;
     const XIcon = ({ className }) => <IconBase className={className}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></IconBase>;
+    const RefreshIcon = ({ className }) => <IconBase className={className}><path d="M21.5 2v6h-6"/><path d="M2.5 22v-6h6"/><path d="M2 11.5a10 10 0 0 1 18.8-4.3"/><path d="M22 12.5a10 10 0 0 1-18.8 4.3"/></IconBase>;
     const Minimize = ({ className }) => <IconBase className={className}><path d="M8 3v3a2 2 0 0 1-2 2H3"/><path d="M21 8h-3a2 2 0 0 1-2-2V3"/><path d="M3 16h3a2 2 0 0 1 2 2v3"/><path d="M16 21v-3a2 2 0 0 1 2-2h3"/></IconBase>;
     const Maximize = ({ className }) => <IconBase className={className}><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></IconBase>;
     const VolumeX = ({ className }) => <IconBase className={className}><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" x2="17" y1="9" y2="15"/><line x1="17" x2="23" y1="9" y2="15"/></IconBase>;
@@ -1299,6 +1300,15 @@
       const [isOffline, setIsOffline] = useState(typeof navigator !== 'undefined' ? !navigator.onLine : false);
       const [syncStuck, setSyncStuck] = useState(false); // 「連線不穩」畫面卡太久，提供手動重新連線的選項，避免真的卡死
 
+      // === 手動重新同步（右上角重整鍵）：
+      // 有些狀況下 Firestore 監聽器可能漏接某一步的 lastMove（例如短時間內連續好幾步、或短暫斷線後漏掉中間更新），
+      // 導致本機棋盤跟其他人永久兜不起來、卡在原地無法輪下一位玩家。這裡提供「直接向房主要一份目前完整狀態」的手動修復管道：
+      // 非房主按下按鈕 → 寫入 resyncRequest → 房主收到後把自己當下完整的棋盤／手牌／分數／回合發布到 hostSnapshot →
+      // 所有人（含房主自己）收到 hostSnapshot 後直接整份覆蓋本機狀態，等於強制跟房主對齊。
+      const lastHandledResyncReq = useRef(0);
+      const lastAppliedSnapshotTs = useRef(0);
+      const [resyncPending, setResyncPending] = useState(false);
+
       const [gameState, setGameState] = useState({
         mode: 'splash', boardType: 'classic', board: [], totalPlayers: 2, playersInfo: {}, hands: {}, decks: {}, scores: {},
         turn: 1, finalBaseScores: null, isAnimating: false, gameOver: false, tallyState: 'none', selectedCardIdx: null, scoringQueue: [], currentScoringEvent: null, pendingResolveInfo: null,
@@ -1856,7 +1866,7 @@
       // 避免舊房間的更新繼續套用到畫面上，或留著一個沒人用的監聽器。
       const leaveOnlineRoom = () => {
         audioManager.startLobbyBGM();
-        if (roomId) { setRoomId(''); setOnlineRoomData(null); setMyPlayerId(1); setOrderSwapPid(null); lastProcessedMoveTs.current = 0; setRemoteMoveQueue([]); setIsSyncing(false); setSyncStuck(false); }
+        if (roomId) { setRoomId(''); setOnlineRoomData(null); setMyPlayerId(1); setOrderSwapPid(null); lastProcessedMoveTs.current = 0; setRemoteMoveQueue([]); setIsSyncing(false); setSyncStuck(false); lastHandledResyncReq.current = 0; lastAppliedSnapshotTs.current = 0; setResyncPending(false); }
         setGameState(prev => ({ ...prev, mode: 'menu' }));
       };
 
@@ -1932,6 +1942,56 @@
         setRemoteMoveQueue(q => q.slice(1));
         playCard(nextMove.cardIdx, nextMove.boardIdx, true, nextMove.player);
       }, [remoteMoveQueue, gameState.isAnimating, gameState.mode, playCard]);
+
+      // 房主把「自己當下」的完整棋盤狀態發布出去，不改動本機任何東西，純粹讓其他人有一份可以對照、覆蓋的權威資料
+      const publishHostSnapshot = useCallback(() => {
+        if (!roomIdRef.current || !db) return;
+        setGameState(prev => {
+          updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'moonphase_rooms', roomIdRef.current), {
+            hostSnapshot: { board: prev.board, hands: prev.hands, decks: prev.decks, scores: prev.scores, turn: prev.turn, gameOver: prev.gameOver, finalBaseScores: prev.finalBaseScores || null, ts: Date.now() }
+          }).catch(console.error);
+          return prev;
+        });
+      }, [db]);
+
+      // 房主端：監看房間文件裡的重新同步請求，一有新的請求就把目前狀態發布出去
+      useEffect(() => {
+        if (!onlineRoomData || onlineRoomData.host !== mySessionKey) return;
+        const req = onlineRoomData.resyncRequest;
+        if (req && req.ts > lastHandledResyncReq.current) {
+          lastHandledResyncReq.current = req.ts;
+          publishHostSnapshot();
+        }
+      }, [onlineRoomData, mySessionKey, publishHostSnapshot]);
+
+      // 所有人（含房主自己）：收到 hostSnapshot 就整份覆蓋本機狀態，並清空還沒套用的舊佇列／動畫卡住的旗標，強制對齊到房主當下的進度
+      useEffect(() => {
+        if (gameState.mode !== 'online' || !onlineRoomData) return;
+        const snap = onlineRoomData.hostSnapshot;
+        if (!snap || snap.ts <= lastAppliedSnapshotTs.current) return;
+        lastAppliedSnapshotTs.current = snap.ts;
+        lastProcessedMoveTs.current = Date.now(); // 之後才發生的 lastMove 才需要再套用，避免把已經包含在這份快照裡的舊步伐重複疊加
+        setRemoteMoveQueue([]);
+        setGameState(prev => ({
+          ...prev, board: snap.board, hands: snap.hands, decks: snap.decks, scores: snap.scores, turn: snap.turn, gameOver: snap.gameOver,
+          finalBaseScores: snap.finalBaseScores, isAnimating: false, scoringQueue: [], currentScoringEvent: null, pendingResolveInfo: null, selectedCardIdx: null,
+          tallyState: snap.gameOver ? (prev.tallyState === 'none' ? 'start' : prev.tallyState) : 'none'
+        }));
+        setResyncPending(false);
+      }, [onlineRoomData, gameState.mode]);
+
+      // 重整鍵：房主直接發布自己的狀態；其他玩家則發出請求，等房主回應
+      const requestResync = useCallback(() => {
+        if (!roomIdRef.current || !db || !onlineRoomData) return;
+        audioManager.init();
+        if (onlineRoomData.host === mySessionKey) {
+          publishHostSnapshot();
+        } else {
+          setResyncPending(true);
+          updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'moonphase_rooms', roomIdRef.current), { resyncRequest: { by: mySessionKey, ts: Date.now() } }).catch(console.error);
+          setTimeout(() => setResyncPending(false), 6000); // 保底：房主若沒回應（例如已離線），6 秒後自動恢復按鈕原狀，不會一直卡在「同步中」
+        }
+      }, [db, onlineRoomData, mySessionKey, publishHostSnapshot]);
 
       useEffect(() => {
         if (!gameState.isAnimating) return;
@@ -2554,16 +2614,24 @@
               )}
             </div>
 
-            {/* 右側：回首頁與設定 */}
-            <div className="pointer-events-auto flex items-center gap-1 sm:gap-2 shrink-0">
+            {/* 右側：回首頁與設定；線上對戰時設定下方會多一個「重新同步」按鈕 */}
+            <div className="pointer-events-auto flex items-start gap-1 sm:gap-2 shrink-0">
               <button onClick={leaveOnlineRoom} className="p-1.5 sm:p-2.5 text-slate-300 hover:text-white bg-slate-900/80 hover:bg-rose-900/80 rounded-full border border-slate-600/50 hover:border-rose-500/50 shadow-lg backdrop-blur-md transition-all group" title={t.back}>
                 <Home className="w-4 h-4 sm:w-5 sm:h-5 group-hover:scale-110" />
               </button>
-              <button onClick={() => setShowSettings(true)} className="p-1.5 sm:p-2.5 text-indigo-300 hover:text-white bg-slate-900/80 hover:bg-indigo-900/80 rounded-full border border-slate-600/50 hover:border-indigo-500/50 shadow-lg backdrop-blur-md transition-all group" title={t.settings}>
-                <SettingsIcon className="w-4 h-4 sm:w-5 sm:h-5 group-hover:rotate-90 transition-transform" />
-              </button>
+              <div className="flex flex-col items-center gap-1 sm:gap-1.5">
+                <button onClick={() => setShowSettings(true)} className="p-1.5 sm:p-2.5 text-indigo-300 hover:text-white bg-slate-900/80 hover:bg-indigo-900/80 rounded-full border border-slate-600/50 hover:border-indigo-500/50 shadow-lg backdrop-blur-md transition-all group" title={t.settings}>
+                  <SettingsIcon className="w-4 h-4 sm:w-5 sm:h-5 group-hover:rotate-90 transition-transform" />
+                </button>
+                {gameState.mode === 'online' && (
+                  <button onClick={requestResync} disabled={resyncPending} className={`p-1.5 sm:p-2 rounded-full border shadow-lg backdrop-blur-md transition-all group ${resyncPending ? 'bg-amber-900/60 border-amber-500/50 text-amber-300 cursor-wait' : 'bg-slate-900/80 hover:bg-amber-900/80 border-slate-600/50 hover:border-amber-500/50 text-amber-300 hover:text-white'}`} title={t.btnResync}>
+                    <RefreshIcon className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${resyncPending ? 'animate-spin' : 'group-hover:rotate-180 transition-transform'}`} />
+                  </button>
+                )}
+              </div>
             </div>
           </div>
+
           {/* ================================ */}
 
           {gameState.tallyState !== 'none' && gameState.tallyState !== 'done' && (
