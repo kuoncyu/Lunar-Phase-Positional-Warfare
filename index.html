@@ -210,7 +210,7 @@
   <div id="root"></div>
 
   <script type="text/plain" id="app-src">
-    const { initializeApp, getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, collection, getDocs, addDoc } = window._firebase || {};
+    const { initializeApp, getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, collection, getDocs, addDoc, runTransaction } = window._firebase || {};
 
     const { useState, useEffect, useCallback, useRef } = React;
 
@@ -1151,7 +1151,7 @@
           setIsSyncing(!!(snap.metadata && snap.metadata.fromCache));
           if (!snap.exists()) return; const data = snap.data();
           setOnlineRoomData(data);
-          if (data.players && data.players[mySessionKey]) setMyPlayerId(data.players[mySessionKey].pId); // 房主換位後，同步自己目前的出牌順序
+          if (data.seats) { const pid = getPidForKey(data.seats, mySessionKey); if (pid) setMyPlayerId(pid); } // 房主換位後，同步自己目前的出牌順序
           if (data.status === 'playing') {
             audioManager.startModeBGM('battle'); // 非房主的客戶端原本沒有任何地方會切換音樂，導致進入對戰後仍持續播放大廳音樂
             setGameState(prev => {
@@ -1162,7 +1162,7 @@
               }
               return prev;
             });
-            if (data.lastMove && data.lastMove.player !== myPlayerId && data.lastMove.ts > lastProcessedMoveTs.current) { lastProcessedMoveTs.current = data.lastMove.ts; playCard(data.lastMove.cardIdx, data.lastMove.boardIdx, true); }
+            if (data.lastMove && data.lastMove.player !== myPlayerId && data.lastMove.ts > lastProcessedMoveTs.current) { lastProcessedMoveTs.current = data.lastMove.ts; playCard(data.lastMove.cardIdx, data.lastMove.boardIdx, true, data.lastMove.player); }
           }
         }, (err) => { console.error('Room sync error', err); setIsSyncing(true); });
         return () => unsubscribe();
@@ -1292,21 +1292,40 @@
         if (!user || !db) return alert("Firebase Offline");
         const newRoomId = Math.floor(1000 + Math.random() * 9000).toString();
         const maxP = onlineTeamMode ? 4 : onlineMaxPlayers;
-        try { await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'moonphase_rooms', newRoomId), { status: 'waiting', createdAt: Date.now(), host: mySessionKey, maxPlayers: maxP, boardPref: onlineBoardPref, teamMode: onlineTeamMode, teams: onlineTeamMode ? { 1: 'A', 2: 'B', 3: 'A', 4: 'B' } : null, players: { [mySessionKey]: { pId: 1, ready: true, uid: user.uid } }, round: 1 }); setRoomId(newRoomId); setMyPlayerId(1); setGameState(prev => ({ ...prev, mode: 'lobby_wait' })); } catch (e) { console.error(e); }
+        try { await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'moonphase_rooms', newRoomId), { status: 'waiting', createdAt: Date.now(), host: mySessionKey, maxPlayers: maxP, boardPref: onlineBoardPref, teamMode: onlineTeamMode, teams: onlineTeamMode ? { 1: 'A', 2: 'B', 3: 'A', 4: 'B' } : null, seats: { 1: mySessionKey, 2: null, 3: null, 4: null }, players: { [mySessionKey]: { ready: true, uid: user.uid } }, round: 1 }); setRoomId(newRoomId); setMyPlayerId(1); setGameState(prev => ({ ...prev, mode: 'lobby_wait' })); } catch (e) { console.error(e); }
       };
-      
+
+      // 依 seats（pId -> session key）反查某個 key 目前坐在哪個 pId；找不到回傳 null
+      const getPidForKey = (seats, key) => {
+        if (!seats || !key) return null;
+        const found = Object.entries(seats).find(([, k]) => k === key);
+        return found ? parseInt(found[0], 10) : null;
+      };
+
       const joinRoom = async (code) => {
         if (!user || !code || !db) return;
         try {
-          const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'moonphase_rooms', code); const snap = await getDoc(roomRef);
-          if (snap.exists() && snap.data().status === 'waiting') {
-            const data = snap.data(); const currentPlayers = Object.keys(data.players).length;
-            if (currentPlayers >= data.maxPlayers) return alert("Room Full");
-            let usedPids = Object.values(data.players).map(p=>p.pId); let newPid = 2; while(usedPids.includes(newPid)) newPid++;
-            await updateDoc(roomRef, { [`players.${mySessionKey}`]: { pId: newPid, ready: false, uid: user.uid } });
-            setRoomId(code); setMyPlayerId(newPid); setGameState(prev => ({ ...prev, mode: 'lobby_wait' }));
-          } else { alert("Not Found"); }
-        } catch (e) { console.error(e); }
+          const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'moonphase_rooms', code);
+          // 用交易（transaction）讀取＋寫入，避免兩個人幾乎同時按下加入時，
+          // 各自根據「加入前」讀到的舊座位表算出同一個空位（pId），
+          // 導致兩個真人被分到同一個座位、之後每次輪到那個座位兩邊都會各自出牌，棋盤就對不起來。
+          const newPid = await runTransaction(db, async (tx) => {
+            const snap = await tx.get(roomRef);
+            if (!snap.exists() || snap.data().status !== 'waiting') throw new Error('NOT_FOUND');
+            const data = snap.data();
+            const seats = data.seats || {};
+            const occupied = Object.values(seats).filter(Boolean).length;
+            if (occupied >= data.maxPlayers) throw new Error('ROOM_FULL');
+            let pid = 2; while (seats[pid]) pid++;
+            tx.update(roomRef, { [`players.${mySessionKey}`]: { ready: false, uid: user.uid }, [`seats.${pid}`]: mySessionKey });
+            return pid;
+          });
+          setRoomId(code); setMyPlayerId(newPid); setGameState(prev => ({ ...prev, mode: 'lobby_wait' }));
+        } catch (e) {
+          if (e && e.message === 'ROOM_FULL') alert("Room Full");
+          else if (e && e.message === 'NOT_FOUND') alert("Not Found");
+          else console.error(e);
+        }
       };
 
       const toggleReadyOnline = async () => {
@@ -1337,40 +1356,40 @@
       // 點擊某個 P 位：第一次點選記住該位，第二次點選另一個「有玩家」的 P 位，兩者互換出牌順序（互換 pId）
       const handleOrderSwapClick = async (pId) => {
         if (!roomId || !user || !db || !onlineRoomData || onlineRoomData.host !== mySessionKey) return;
-        const clickedEntry = Object.entries(onlineRoomData.players).find(([, p]) => p.pId === pId);
+        const seats = onlineRoomData.seats || {};
+        const clickedKey = seats[pId] || null;
         if (orderSwapPid === null) {
-          if (!clickedEntry) return; // 第一次點選必須是「有人」的位置，才有東西可以移動
+          if (!clickedKey) return; // 第一次點選必須是「有人」的位置，才有東西可以移動
           setOrderSwapPid(pId);
           return;
         }
         if (orderSwapPid === pId) { setOrderSwapPid(null); return; } // 再點一次同一個位置：取消選取
-        const sourceEntry = Object.entries(onlineRoomData.players).find(([, p]) => p.pId === orderSwapPid);
+        const sourceKey = seats[orderSwapPid] || null;
         setOrderSwapPid(null);
-        if (!sourceEntry) return;
-        const [sourceKey] = sourceEntry;
+        if (!sourceKey) return;
         try {
-          if (clickedEntry) {
-            // 目標位置也有人：互換兩人的出牌順序
-            const [targetKey] = clickedEntry;
-            await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'moonphase_rooms', roomId), { [`players.${sourceKey}.pId`]: pId, [`players.${targetKey}.pId`]: orderSwapPid });
-          } else {
-            // 目標是空位（原本由 AI 遞補）：直接把玩家移過去即可，不需要交換
-            await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'moonphase_rooms', roomId), { [`players.${sourceKey}.pId`]: pId });
-          }
+          // 只寫房間層級的 seats 欄位（跟 teams 欄位性質一樣），完全不去碰任何玩家自己的 players.{key} 子欄位。
+          // 之前是直接寫 players.{對方的key}.pId，如果資安規則限制「玩家只能寫自己那一筆資料」，
+          // 房主想搬動別人的座位就會被擋下來——這正是「只有沒人的位置能換，換到真人那格就沒反應」的原因。
+          await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'moonphase_rooms', roomId), {
+            [`seats.${pId}`]: sourceKey,
+            [`seats.${orderSwapPid}`]: clickedKey, // clickedKey 為 null 也沒關係，代表原本是空位
+          });
         } catch (e) { console.error(e); }
       };
 
       const startOnlineGame = async () => {
         if (!roomId || !user || !db || !onlineRoomData) return;
         audioManager.startModeBGM('battle');
-        const humanCount = Object.keys(onlineRoomData.players).length; const totalP = onlineRoomData.maxPlayers;
+        const seats = onlineRoomData.seats || {};
+        const humanCount = Object.values(seats).filter(Boolean).length; const totalP = onlineRoomData.maxPlayers;
         const teamMode = !!onlineRoomData.teamMode;
         const teams = teamMode ? (onlineRoomData.teams || { 1: 'A', 2: 'B', 3: 'A', 4: 'B' }) : null;
         let bId = onlineRoomData.boardPref;
         if (!bId || bId === 'random') bId = getActualBoardId(totalP);
         const initData = generateInitData('online', totalP, humanCount, bId, teamMode, teams);
         for(let i=1; i<=totalP; i++) initData.playersInfo[i] = { type: 'ai', difficulty: 'medium' };
-        Object.entries(onlineRoomData.players).forEach(([key, p]) => { initData.playersInfo[p.pId] = { type: 'human', uid: key }; });
+        Object.entries(seats).forEach(([pidStr, key]) => { if (key) initData.playersInfo[parseInt(pidStr, 10)] = { type: 'human', uid: key }; });
         try { await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'moonphase_rooms', roomId), { status: 'playing', initialState: initData, round: (onlineRoomData.round || 1) + 1, lastMove: null }); } catch (e) { console.error(e); }
       };
 
@@ -1401,16 +1420,20 @@
         return { board: newBoard, decks: newDecks, hands: newHands, isAnimating: false, turn: nextT, gameOver, finalBaseScores, tallyState: gameOver ? 'start' : 'none', scoringQueue: [], currentScoringEvent: null, pendingResolveInfo: null };
       };
 
-      const playCard = useCallback((cardIdx, boardIdx, isRemote = false) => {
+      const playCard = useCallback((cardIdx, boardIdx, isRemote = false, movePlayer = null) => {
         audioManager.init(); audioManager.playPlaceCard();
         setGameState(prev => {
           if (prev.isAnimating || prev.gameOver || !prev.board || prev.board[boardIdx] !== null) return prev;
-          const hand = prev.hands[prev.turn]; if (!hand || hand[cardIdx] === undefined) return prev;
+          // 遠端（對方／房主廣播）的落子一律以訊息裡明確帶的 player 為準，不要相信本機當下的 prev.turn；
+          // 這樣就算本機的回合狀態不小心跟房間的權威狀態有一點落差，套用對方那步時也一定會記到正確的人頭上，
+          // 不會因為認錯人而讓兩邊棋盤越走越歪。
+          const actingPlayer = (isRemote && movePlayer != null) ? movePlayer : prev.turn;
+          const hand = prev.hands[actingPlayer]; if (!hand || hand[cardIdx] === undefined) return prev;
           
           const playedPhase = hand[cardIdx]; let newHand = [...hand]; newHand.splice(cardIdx, 1);
           let newBoard = [...prev.board]; newBoard[boardIdx] = { phase: playedPhase, player: 0 }; 
 
-          if (!isRemote && prev.mode === 'online' && roomIdRef.current && db) { updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'moonphase_rooms', roomIdRef.current), { lastMove: { cardIdx, boardIdx, player: prev.turn, ts: Date.now() } }).catch(console.error); }
+          if (!isRemote && prev.mode === 'online' && roomIdRef.current && db) { updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'moonphase_rooms', roomIdRef.current), { lastMove: { cardIdx, boardIdx, player: actingPlayer, ts: Date.now() } }).catch(console.error); }
 
           const edges = ALL_BOARDS[prev.boardType]?.edges || []; 
           let events = []; let totalCaptured = new Set();
@@ -1425,7 +1448,7 @@
 
           // 團戰模式：若本回合佔領的地盤先前屬於「對手隊伍」（非隊友、非中立），每塊地盤額外 +1 分（同一地盤不重複疊加）
           if (prev.teamMode && prev.teams) {
-            const myTeam = prev.teams[prev.turn];
+            const myTeam = prev.teams[actingPlayer];
             const bonusCells = Array.from(totalCaptured).filter(idx => {
               const cell = newBoard[idx];
               if (!cell || !cell.player) return false; // 中立或剛落下的牌，不算
@@ -1436,7 +1459,7 @@
             }
           }
 
-          return { ...prev, board: newBoard, hands: {...prev.hands, [prev.turn]: newHand}, selectedCardIdx: null, isAnimating: true, scoringQueue: events.length > 0 ? events.slice(1) : [], currentScoringEvent: events.length > 0 ? events[0] : null, pendingResolveInfo: { captured: Array.from(totalCaptured), newHand, turn: prev.turn } };
+          return { ...prev, board: newBoard, hands: {...prev.hands, [actingPlayer]: newHand}, selectedCardIdx: null, isAnimating: true, scoringQueue: events.length > 0 ? events.slice(1) : [], currentScoringEvent: events.length > 0 ? events[0] : null, pendingResolveInfo: { captured: Array.from(totalCaptured), newHand, turn: actingPlayer } };
         });
       }, [t]);
 
@@ -1877,7 +1900,8 @@
                     )}
                     <div className="flex flex-col gap-2 sm:gap-3">
                       {Array.from({length: onlineRoomData.maxPlayers}, (_,i)=>i+1).map(pId => {
-                        const pEntry = Object.entries(onlineRoomData.players).find(([u,p])=>p.pId===pId);
+                        const occupantKey = (onlineRoomData.seats || {})[pId] || null;
+                        const pEntry = (occupantKey && onlineRoomData.players[occupantKey]) ? [occupantKey, onlineRoomData.players[occupantKey]] : null;
                         const isMe = pEntry && pEntry[0] === mySessionKey;
                         const isHost = pEntry && pEntry[0] === onlineRoomData.host;
                         const amHost = onlineRoomData.host === mySessionKey;
@@ -2285,9 +2309,9 @@
     // Wait for Firebase module to load, then manually transpile and run the app
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js';
     import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js';
-    import { getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, collection, getDocs, addDoc } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
+    import { getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, collection, getDocs, addDoc, runTransaction } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
 
-    window._firebase = { initializeApp, getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, collection, getDocs, addDoc };
+    window._firebase = { initializeApp, getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, collection, getDocs, addDoc, runTransaction };
 
     function runApp() {
       try {
@@ -2331,4 +2355,4 @@
   </script>
 
 </body>
-</html>
+  </html>
