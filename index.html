@@ -962,6 +962,12 @@
 
       const lastProcessedMoveTs = useRef(0);
       const roomIdRef = useRef('');
+      // 遠端落子佇列：Firestore 監聽器收到新的 lastMove 時，若本機當下正在跑上一步的計分動畫（isAnimating），
+      // 直接呼叫 playCard 會被 playCard 內部的 guard 擋掉而「靜靜失敗」；但先前的寫法會在呼叫前就先把
+      // lastProcessedMoveTs 標記為已處理，導致那一步就此永遠遺失、兩邊棋盤從此各自發展、卡死無法出牌。
+      // 改用佇列：只要收到「還沒排過隊」的新步伐就先塞進佇列，實際套用交給下面的 effect，
+      // 等本機沒有在跑動畫時才依序、逐一取出套用，確保每一步都不會被吃掉。
+      const [remoteMoveQueue, setRemoteMoveQueue] = useState([]);
 
       // === 連線同步狀態（避免網路延遲造成棋盤不同步） ===
       const [isSyncing, setIsSyncing] = useState(false); // Firestore 監聽器目前是否讀取本地快取（代表尚未跟伺服器同步）
@@ -1158,11 +1164,17 @@
               if (prev.mode !== 'online' && prev.mode !== 'lobby_wait') return prev; // 已經離開線上房間，不要再套用房間更新
               if (prev.mode !== 'online' || (data.round && data.round !== prev.round)) {
                 lastProcessedMoveTs.current = 0; 
+                setRemoteMoveQueue([]); // 新局開始，清空上一局殘留、尚未套用的舊落子佇列
                 return { ...prev, mode: 'online', boardType: data.initialState.boardType, ...data.initialState, turn: 1, finalBaseScores: null, isAnimating: false, gameOver: false, tallyState: 'none', selectedCardIdx: null, scoringQueue: [], currentScoringEvent: null, pendingResolveInfo: null, round: data.round || 1 };
               }
               return prev;
             });
-            if (data.lastMove && data.lastMove.player !== myPlayerId && data.lastMove.ts > lastProcessedMoveTs.current) { lastProcessedMoveTs.current = data.lastMove.ts; playCard(data.lastMove.cardIdx, data.lastMove.boardIdx, true, data.lastMove.player); }
+            // 只負責「排隊」：同一個 ts 只排一次，實際套用交給下面專門的 effect（依序、且只在沒有動畫時套用），
+            // 這樣就算本機這一刻正忙著跑上一步的計分動畫，這一步也不會被跳過、遺失。
+            if (data.lastMove && data.lastMove.player !== myPlayerId && data.lastMove.ts > lastProcessedMoveTs.current) {
+              lastProcessedMoveTs.current = data.lastMove.ts;
+              setRemoteMoveQueue(q => [...q, data.lastMove]);
+            }
           }
         }, (err) => { console.error('Room sync error', err); setIsSyncing(true); });
         return () => unsubscribe();
@@ -1399,7 +1411,7 @@
       // 避免舊房間的更新繼續套用到畫面上，或留著一個沒人用的監聽器。
       const leaveOnlineRoom = () => {
         audioManager.startLobbyBGM();
-        if (roomId) { setRoomId(''); setOnlineRoomData(null); setMyPlayerId(1); setOrderSwapPid(null); lastProcessedMoveTs.current = 0; setIsSyncing(false); setSyncStuck(false); }
+        if (roomId) { setRoomId(''); setOnlineRoomData(null); setMyPlayerId(1); setOrderSwapPid(null); lastProcessedMoveTs.current = 0; setRemoteMoveQueue([]); setIsSyncing(false); setSyncStuck(false); }
         setGameState(prev => ({ ...prev, mode: 'menu' }));
       };
 
@@ -1462,6 +1474,19 @@
           return { ...prev, board: newBoard, hands: {...prev.hands, [actingPlayer]: newHand}, selectedCardIdx: null, isAnimating: true, scoringQueue: events.length > 0 ? events.slice(1) : [], currentScoringEvent: events.length > 0 ? events[0] : null, pendingResolveInfo: { captured: Array.from(totalCaptured), newHand, turn: actingPlayer } };
         });
       }, [t]);
+
+      // 依序套用遠端落子佇列：一次只取出最前面那一步，且必須等本機目前沒有在跑計分動畫（isAnimating）才套用，
+      // 套用後動畫會把 isAnimating 設回 true，等這步跑完、isAnimating 再度變回 false 時，這個 effect 才會
+      // 接著處理佇列裡的下一步。如此一來即使短時間內連續收到好幾步（例如電腦連續幾回合快速出牌），
+      // 也會照順序一步一步套用，不會有任何一步被「正在動畫中」的 guard 悄悄吃掉。
+      useEffect(() => {
+        if (gameState.mode !== 'online') return;
+        if (gameState.isAnimating) return;
+        if (remoteMoveQueue.length === 0) return;
+        const nextMove = remoteMoveQueue[0];
+        setRemoteMoveQueue(q => q.slice(1));
+        playCard(nextMove.cardIdx, nextMove.boardIdx, true, nextMove.player);
+      }, [remoteMoveQueue, gameState.isAnimating, gameState.mode, playCard]);
 
       useEffect(() => {
         if (!gameState.isAnimating) return;
@@ -1577,8 +1602,14 @@
         let isHidden = false;
         if (!isBoard && index >= 0 && !gameState.gameOver) { 
           const pInfo = gameState.playersInfo[player];
-          if (pInfo && pInfo.type === 'ai') isHidden = true;
-          else if (gameState.mode === 'online' && player !== myPlayerId) isHidden = true; 
+          // 團戰模式下，隊友的手牌互相公開（包含隊友是電腦時），方便兩人合作規劃戰術；
+          // 只有敵隊（或非團戰模式下的其他玩家／電腦）才維持蓋牌。
+          const selfId = gameState.mode === 'online' ? myPlayerId : 1;
+          const isTeammate = !!(gameState.teamMode && gameState.teams && player !== selfId && gameState.teams[player] && gameState.teams[player] === gameState.teams[selfId]);
+          if (!isTeammate) {
+            if (pInfo && pInfo.type === 'ai') isHidden = true;
+            else if (gameState.mode === 'online' && player !== myPlayerId) isHidden = true; 
+          }
         }
 
         let cInfo = P_COLORS[player] || P_COLORS[1];
@@ -2355,4 +2386,4 @@
   </script>
 
 </body>
-  </html>
+</html>
