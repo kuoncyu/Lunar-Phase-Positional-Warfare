@@ -1153,6 +1153,7 @@
           setOnlineRoomData(data);
           if (data.players && data.players[mySessionKey]) setMyPlayerId(data.players[mySessionKey].pId); // 房主換位後，同步自己目前的出牌順序
           if (data.status === 'playing') {
+            audioManager.startModeBGM('battle'); // 非房主的客戶端原本沒有任何地方會切換音樂，導致進入對戰後仍持續播放大廳音樂
             setGameState(prev => {
               if (prev.mode !== 'online' && prev.mode !== 'lobby_wait') return prev; // 已經離開線上房間，不要再套用房間更新
               if (prev.mode !== 'online' || (data.round && data.round !== prev.round)) {
@@ -1336,15 +1337,27 @@
       // 點擊某個 P 位：第一次點選記住該位，第二次點選另一個「有玩家」的 P 位，兩者互換出牌順序（互換 pId）
       const handleOrderSwapClick = async (pId) => {
         if (!roomId || !user || !db || !onlineRoomData || onlineRoomData.host !== mySessionKey) return;
-        const entry = Object.entries(onlineRoomData.players).find(([, p]) => p.pId === pId);
-        if (!entry) return; // 空位（AI 候補）無法參與換位
-        if (orderSwapPid === null) { setOrderSwapPid(pId); return; }
-        if (orderSwapPid === pId) { setOrderSwapPid(null); return; } // 取消選取
-        const otherEntry = Object.entries(onlineRoomData.players).find(([, p]) => p.pId === orderSwapPid);
+        const clickedEntry = Object.entries(onlineRoomData.players).find(([, p]) => p.pId === pId);
+        if (orderSwapPid === null) {
+          if (!clickedEntry) return; // 第一次點選必須是「有人」的位置，才有東西可以移動
+          setOrderSwapPid(pId);
+          return;
+        }
+        if (orderSwapPid === pId) { setOrderSwapPid(null); return; } // 再點一次同一個位置：取消選取
+        const sourceEntry = Object.entries(onlineRoomData.players).find(([, p]) => p.pId === orderSwapPid);
         setOrderSwapPid(null);
-        if (!otherEntry) return;
-        const [uid1] = entry; const [uid2] = otherEntry;
-        try { await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'moonphase_rooms', roomId), { [`players.${uid1}.pId`]: orderSwapPid, [`players.${uid2}.pId`]: pId }); } catch (e) { console.error(e); }
+        if (!sourceEntry) return;
+        const [sourceKey] = sourceEntry;
+        try {
+          if (clickedEntry) {
+            // 目標位置也有人：互換兩人的出牌順序
+            const [targetKey] = clickedEntry;
+            await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'moonphase_rooms', roomId), { [`players.${sourceKey}.pId`]: pId, [`players.${targetKey}.pId`]: orderSwapPid });
+          } else {
+            // 目標是空位（原本由 AI 遞補）：直接把玩家移過去即可，不需要交換
+            await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'moonphase_rooms', roomId), { [`players.${sourceKey}.pId`]: pId });
+          }
+        } catch (e) { console.error(e); }
       };
 
       const startOnlineGame = async () => {
@@ -1461,6 +1474,10 @@
         if (gameState.gameOver || gameState.isAnimating || gameState.mode === 'menu') { setAiThinkingPlayer(null); return; }
         const currentP = gameState.playersInfo[gameState.turn];
         if (currentP && currentP.type === 'ai') {
+          // 連線對戰時，AI 的回合只能由「房主」的客戶端計算並透過 lastMove 廣播出去；
+          // 如果每個客戶端各自獨立模擬 AI 出牌（Math.random 結果不會一樣），會造成兩邊棋盤各自往不同方向發展、
+          // 進而整場棋盤不同步。非房主客戶端在這裡什麼都不做，乖乖等房主那份 lastMove 同步過來即可。
+          if (gameState.mode === 'online' && onlineRoomData && onlineRoomData.host !== mySessionKey) { setAiThinkingPlayer(null); return; }
           setAiThinkingPlayer(gameState.turn);
           const thinkTime = Math.random() * 1500 + 1000; 
           const timer = setTimeout(() => {
@@ -1497,7 +1514,7 @@
           }, thinkTime); 
           return () => clearTimeout(timer);
         } else { setAiThinkingPlayer(null); }
-      }, [gameState.turn, gameState.mode, gameState.isAnimating, gameState.gameOver, gameState.board, gameState.hands, gameState.boardType, playCard, gameState.playersInfo, gameState.totalPlayers]); 
+      }, [gameState.turn, gameState.mode, gameState.isAnimating, gameState.gameOver, gameState.board, gameState.hands, gameState.boardType, playCard, gameState.playersInfo, gameState.totalPlayers, onlineRoomData, mySessionKey]); 
 
       const P_COLORS = {
         1: { base: 'indigo', hex: '99,102,241', text: 'text-indigo-300', bgText: 'text-indigo-100', border: 'border-indigo-500', ring: 'ring-indigo-400', bg: 'bg-indigo-900', shadow: 'rgba(99,102,241,0.5)' },
@@ -1872,7 +1889,7 @@
                           <div key={pId} className={`flex justify-between items-center p-3 sm:p-4 rounded-2xl border transition-all ${isSelectedForSwap ? 'ring-2 ring-amber-400' : ''} ${pEntry ? `bg-${cInfo.base}-900/20 border-${cInfo.base}-500/40` : 'bg-slate-800/50 border-slate-700 border-dashed'}`}>
                             <span className={`font-black flex items-center gap-2 text-base sm:text-xl ${pEntry ? cInfo.text : 'text-slate-600'}`}>
                               {isHost && <span>👑</span>}
-                              {amHost && pEntry ? (
+                              {amHost ? (
                                 <button onClick={() => handleOrderSwapClick(pId)} className={`px-1.5 rounded-lg hover:bg-white/10 ${isSelectedForSwap ? 'bg-amber-500/30' : ''}`}>P{pId}</button>
                               ) : (
                                 <span>P{pId}</span>
@@ -2314,4 +2331,4 @@
   </script>
 
 </body>
-  </html>
+</html>
