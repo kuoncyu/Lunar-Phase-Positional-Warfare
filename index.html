@@ -912,6 +912,26 @@
       }
     };
 
+    const TUT_RULES = {
+      zh: {
+        tallyPara: <>輪流將手牌放入棋盤空位。遊戲結束時，你的專屬顏色佔領的<strong className="text-white">每一個格子都會算作 1 分</strong>！</>,
+        comboTitle: '連線掠奪機制',
+        comboPara: <>若與周圍(有白線相連)的卡牌達成條件，可獲得<strong className="text-white">額外連線分數</strong>，並<strong className="text-rose-400">強制將相連的卡牌變成你的顏色！</strong></>,
+        ptsSame: '(+1 分)', ptsComp: '(+2 分)', ptsSeq: '(+長度 分)'
+      },
+      en: {
+        tallyPara: <>Take turns placing cards into empty board slots. When the game ends, <strong className="text-white">every cell controlled by your color counts as 1 point</strong>!</>,
+        comboTitle: 'Connection Capture Mechanic',
+        comboPara: <>If a card meets certain conditions with a neighbor (connected by a white line), you earn <strong className="text-white">bonus connection points</strong>, and the connected cards get <strong className="text-rose-400">forcibly flipped to your color!</strong></>,
+        ptsSame: '(+1 pt)', ptsComp: '(+2 pts)', ptsSeq: '(+chain length pts)'
+      },
+      ja: {
+        tallyPara: <>交代でカードを盤面の空きマスに置いていきます。ゲーム終了時、<strong className="text-white">自分の色が占めているマスは1マスにつき1点</strong>になります！</>,
+        comboTitle: '連結奪取メカニズム',
+        comboPara: <>隣接するカード（白い線でつながっているマス）と条件が合うと、<strong className="text-white">連結ボーナス点</strong>が得られ、<strong className="text-rose-400">隣接カードが強制的に自分の色になります！</strong></>,
+        ptsSame: '(+1点)', ptsComp: '(+2点)', ptsSeq: '(+連結数点)'
+      }
+    };
     const TUT_TIEBREAK = {
       zh: { title: '⚖️ 同分規則', text1: '單人極限闖關：與電腦同分時，視為玩家獲勝、電腦落敗（一樣會播放勝利音效）。', text2: '多人連線對戰與自由派對：同分時，玩家編號較大（也就是較晚出手的「後手」）視為敗方。', text3: '團隊競賽：同分時，P4 玩家所在的隊伍視為敗方。' },
       en: { title: '⚖️ Tie-Break Rules', text1: 'Solo Challenge: a tied score against the AI counts as a player win (the AI loses) — the victory sound still plays.', text2: 'Online Multiplayer & Local Party: on a tied score, the player with the higher player number (the one who acted later) is treated as the loser.', text3: 'Team Battle: on a tied score, whichever team includes Player 4 is treated as the losing team.' },
@@ -920,7 +940,7 @@
 
     const SettingsModal = ({ onClose, lang, setLang, bgmVol, setBgmVol, sfxVol, setSfxVol, toggleFs, showTutorial, setShowTutorial, t, quickMessages, setQuickMessages, nickname, setNickname }) => {
       const [tutTab, setTutTab] = useState('rules'); // rules | modes | chat | settings
-      const tm = TUT_MODES[lang] || TUT_MODES.zh, tc = TUT_CHAT[lang] || TUT_CHAT.zh, ts = TUT_SETTINGS[lang] || TUT_SETTINGS.zh, tb = TUT_TIEBREAK[lang] || TUT_TIEBREAK.zh;
+      const tm = TUT_MODES[lang] || TUT_MODES.zh, tc = TUT_CHAT[lang] || TUT_CHAT.zh, ts = TUT_SETTINGS[lang] || TUT_SETTINGS.zh, tb = TUT_TIEBREAK[lang] || TUT_TIEBREAK.zh, tr = TUT_RULES[lang] || TUT_RULES.zh;
       const tutTabLabel = { rules: lang === 'zh' ? '基礎規則' : lang === 'ja' ? '基本ルール' : 'Basic Rules', modes: lang === 'zh' ? '遊戲模式' : lang === 'ja' ? 'ゲームモード' : 'Game Modes', chat: lang === 'zh' ? '聊天室' : lang === 'ja' ? 'チャット' : 'Chat', settings: lang === 'zh' ? '設定功能' : lang === 'ja' ? '設定機能' : 'Settings' };
       if (showTutorial) return (
         <div className="fixed inset-0 z-[99999] bg-slate-950/95 overflow-y-auto px-4 py-4 sm:py-8 flex flex-col items-center backdrop-blur-md custom-scroll">
@@ -937,15 +957,15 @@
             <div className="space-y-4 sm:space-y-6 text-sm sm:text-base text-slate-200">
               <section className="bg-slate-800/40 p-3 sm:p-4 rounded-2xl border border-slate-700">
                 <h3 className="text-lg sm:text-xl font-bold mb-2 text-indigo-300">🎯 {t.tallyBase}</h3>
-                <p>輪流將手牌放入棋盤空位。遊戲結束時，你的專屬顏色佔領的<strong className="text-white">每一個格子都會算作 1 分</strong>！</p>
+                <p>{tr.tallyPara}</p>
               </section>
               <section className="bg-slate-800/40 p-3 sm:p-4 rounded-2xl border border-slate-700">
-                <h3 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4 text-yellow-300">⚡ 連線掠奪機制</h3>
-                <p className="mb-3 sm:mb-4">若與周圍(有白線相連)的卡牌達成條件，可獲得<strong className="text-white">額外連線分數</strong>，並<strong className="text-rose-400">強制將相連的卡牌變成你的顏色！</strong></p>
+                <h3 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4 text-yellow-300">⚡ {tr.comboTitle}</h3>
+                <p className="mb-3 sm:mb-4">{tr.comboPara}</p>
                 <div className="space-y-3 sm:space-y-4">
-                  <div className="bg-slate-900 p-3 sm:p-4 rounded-xl border border-cyan-900/50"><h4 className="font-bold text-cyan-300 mb-1">🔹 {t.phaseSame} (+1 分)</h4><div className="flex items-center gap-2"><div className="w-8 h-10 sm:w-10 sm:h-12 bg-slate-800 rounded-lg p-1"><MoonSvg phase={4}/></div><div className="h-0.5 w-6 bg-cyan-400"></div><div className="w-8 h-10 sm:w-10 sm:h-12 bg-slate-800 rounded-lg p-1"><MoonSvg phase={4}/></div></div></div>
-                  <div className="bg-slate-900 p-3 sm:p-4 rounded-xl border border-yellow-900/50"><h4 className="font-bold text-yellow-300 mb-1">🔸 {t.phaseComp} (+2 分)</h4><div className="flex items-center gap-2"><div className="w-8 h-10 sm:w-10 sm:h-12 bg-slate-800 rounded-lg p-1"><MoonSvg phase={1}/></div><div className="h-0.5 w-6 bg-yellow-400"></div><div className="w-8 h-10 sm:w-10 sm:h-12 bg-slate-800 rounded-lg p-1"><MoonSvg phase={5}/></div></div></div>
-                  <div className="bg-slate-900 p-3 sm:p-4 rounded-xl border border-purple-900/50"><h4 className="font-bold text-purple-300 mb-1">🟣 {t.phaseSeq} (+長度 分)</h4><div className="flex items-center gap-1"><div className="w-6 h-8 sm:w-8 sm:h-10 bg-slate-800 rounded-md p-1"><MoonSvg phase={0}/></div><div className="h-0.5 w-3 sm:w-4 bg-purple-400"></div><div className="w-6 h-8 sm:w-8 sm:h-10 bg-slate-800 rounded-md p-1"><MoonSvg phase={1}/></div><div className="h-0.5 w-3 sm:w-4 bg-purple-400"></div><div className="w-6 h-8 sm:w-8 sm:h-10 bg-slate-800 rounded-md p-1"><MoonSvg phase={2}/></div></div></div>
+                  <div className="bg-slate-900 p-3 sm:p-4 rounded-xl border border-cyan-900/50"><h4 className="font-bold text-cyan-300 mb-1">🔹 {t.phaseSame} {tr.ptsSame}</h4><div className="flex items-center gap-2"><div className="w-8 h-10 sm:w-10 sm:h-12 bg-slate-800 rounded-lg p-1"><MoonSvg phase={4}/></div><div className="h-0.5 w-6 bg-cyan-400"></div><div className="w-8 h-10 sm:w-10 sm:h-12 bg-slate-800 rounded-lg p-1"><MoonSvg phase={4}/></div></div></div>
+                  <div className="bg-slate-900 p-3 sm:p-4 rounded-xl border border-yellow-900/50"><h4 className="font-bold text-yellow-300 mb-1">🔸 {t.phaseComp} {tr.ptsComp}</h4><div className="flex items-center gap-2"><div className="w-8 h-10 sm:w-10 sm:h-12 bg-slate-800 rounded-lg p-1"><MoonSvg phase={1}/></div><div className="h-0.5 w-6 bg-yellow-400"></div><div className="w-8 h-10 sm:w-10 sm:h-12 bg-slate-800 rounded-lg p-1"><MoonSvg phase={5}/></div></div></div>
+                  <div className="bg-slate-900 p-3 sm:p-4 rounded-xl border border-purple-900/50"><h4 className="font-bold text-purple-300 mb-1">🟣 {t.phaseSeq} {tr.ptsSeq}</h4><div className="flex items-center gap-1"><div className="w-6 h-8 sm:w-8 sm:h-10 bg-slate-800 rounded-md p-1"><MoonSvg phase={0}/></div><div className="h-0.5 w-3 sm:w-4 bg-purple-400"></div><div className="w-6 h-8 sm:w-8 sm:h-10 bg-slate-800 rounded-md p-1"><MoonSvg phase={1}/></div><div className="h-0.5 w-3 sm:w-4 bg-purple-400"></div><div className="w-6 h-8 sm:w-8 sm:h-10 bg-slate-800 rounded-md p-1"><MoonSvg phase={2}/></div></div></div>
                 </div>
               </section>
               <section className="bg-slate-800/40 p-3 sm:p-4 rounded-2xl border border-slate-700">
@@ -2934,4 +2954,4 @@
   </script>
 
 </body>
-  </html>
+</html>
