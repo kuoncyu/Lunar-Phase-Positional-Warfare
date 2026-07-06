@@ -1556,21 +1556,21 @@
         };
         beat();
         if (!hasAnnouncedJoin.current) { hasAnnouncedJoin.current = true; announce('join'); }
-        const heartbeatInterval = setInterval(beat, 20000);
+        const heartbeatInterval = setInterval(beat, 60000); // 每 60 秒回報一次在線心跳
 
-        // 監聽全體在線名單：本機每 15 秒也重新掃一次，把太久沒回報心跳（逾時視為已離線）的名單過濾掉，
+        // 監聽全體在線名單：本機每 10 秒重新掃一次，把超過 60 秒沒回報心跳（視為斷線）的名單過濾掉，
         // 這樣即使對方是異常斷線、沒能來得及觸發下面的離場公告，名單／人數也還是會自動恢復正確
         const presenceCollRef = collection(db, 'artifacts', appId, 'public', 'data', 'moonphase_presence');
         let latestDocs = [];
         const recompute = () => {
-          const cutoff = Date.now() - 45000;
+          const cutoff = Date.now() - 60000; // 60 秒內沒有心跳視為離線
           setOnlinePlayers(latestDocs.filter(p => p.ts > cutoff).sort((a, b) => a.ts - b.ts));
         };
         presenceUnsub.current = onSnapshot(presenceCollRef, (snap) => {
           latestDocs = []; snap.forEach(d => latestDocs.push({ id: d.id, ...d.data() }));
           recompute();
         });
-        const staleTrimInterval = setInterval(recompute, 15000);
+        const staleTrimInterval = setInterval(recompute, 10000);
 
         const handleLeave = () => {
           deleteDoc(presenceRef).catch(() => {});
