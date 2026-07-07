@@ -669,7 +669,7 @@
                       <React.Fragment key={m.id || i}>
                         {dividerHere && <div ref={dividerElRef} style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '4px 0' }}><div style={{ flex: 1, height: '1px', background: 'rgba(248,113,113,0.4)' }} /><span style={{ fontSize: '0.68rem', color: '#f87171', fontWeight: 'bold', whiteSpace: 'nowrap' }}>{lang === 'zh' ? '以下為未讀訊息' : lang === 'ja' ? '以下は未読メッセージ' : 'Unread messages below'}</span><div style={{ flex: 1, height: '1px', background: 'rgba(248,113,113,0.4)' }} /></div>}
                         <div style={{ textAlign: 'center', margin: '2px 0' }}>
-                          <span style={{ fontSize: '0.7rem', color: m.sysType === 'leave' ? '#94a3b8' : '#86efac', fontStyle: 'italic' }}>{m.sysType === 'leave' ? '⚪' : '🟢'} {m.text}</span>
+                          <span style={{ fontSize: '0.7rem', color: m.sysType === 'leave' ? '#94a3b8' : m.sysType === 'timeout' ? '#fb923c' : '#86efac', fontStyle: 'italic' }}>{m.sysType === 'leave' ? '⚪' : m.sysType === 'timeout' ? '🔴' : '🟢'} {m.text}</span>
                         </div>
                       </React.Fragment>
                     );
